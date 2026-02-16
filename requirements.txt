@@ -1,0 +1,10 @@
+streamlit
+bcrypt
+opencv-python-headless
+numpy
+python-dotenv
+pillow
+pandas
+plotly
+streamlit-option-menu
+streamlit-autorefresh
