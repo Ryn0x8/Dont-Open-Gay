@@ -1,6 +1,6 @@
 import random
 import smtplib
-from streamlit import st
+import  streamlit as st
 import bcrypt
 import cv2
 import os
