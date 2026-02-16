@@ -1,5 +1,6 @@
 import random
 import smtplib
+from turtle import st
 import bcrypt
 import cv2
 import os
@@ -27,8 +28,8 @@ def send_otp(receiver_email: str, otp: str) -> bool:
         bool: True if email sent successfully, False otherwise
     """
 
-    sender_email = os.getenv("EMAIL_ADDRESS")
-    app_password = os.getenv("EMAIL_APP_PASSWORD")
+    sender_email = st.secrets["EMAIL_ADDRESS"]
+    app_password = st.secrets["EMAIL_APP_PASSWORD"]
     print(sender_email, app_password)
 
     if not sender_email or not app_password:
@@ -153,8 +154,8 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
     Returns:
         bool: True if email sent successfully, False otherwise
     """
-    sender_email = os.getenv("EMAIL_ADDRESS")
-    app_password = os.getenv("EMAIL_APP_PASSWORD")
+    sender_email = st.secrets["EMAIL_ADDRESS"]
+    app_password = st.secrets["EMAIL_APP_PASSWORD"]
 
     if not sender_email or not app_password:
         print("Email credentials are not configured.")
