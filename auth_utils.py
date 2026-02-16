@@ -1,6 +1,6 @@
 import random
 import smtplib
-from turtle import st
+from streamlit import st
 import bcrypt
 import cv2
 import os
