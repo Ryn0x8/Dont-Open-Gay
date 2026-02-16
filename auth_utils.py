@@ -15,7 +15,7 @@ load_dotenv()
 
 # Initialize Firebase Admin SDK (assumes database.py already did, but safe)
 if not firebase_admin._apps:
-    cred = credentials.Certificate(st.secrets["firebase"])
+    cred = credentials.Certificate(dict(st.secrets["firebase"]))
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()

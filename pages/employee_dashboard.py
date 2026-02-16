@@ -27,8 +27,8 @@ from email.message import EmailMessage
 import smtplib
 
 def send_email(to_email, subject, body):
-    sender_email = os.getenv("EMAIL_ADDRESS")
-    app_password = os.getenv("EMAIL_APP_PASSWORD")
+    sender_email = st.secrets["EMAIL_ADDRESS"]
+    app_password = st.secrets["EMAIL_APP_PASSWORD"]
     if not sender_email or not app_password:
         print("Email credentials missing")
         return False
