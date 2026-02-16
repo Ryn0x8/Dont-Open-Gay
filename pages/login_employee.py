@@ -7,7 +7,7 @@ import time
 # --- Page config ---
 st.set_page_config(page_title="Employee Login - Anvaya", layout="wide", initial_sidebar_state="collapsed")
 
-# --- Page-specific CSS overrides (doesn't affect global theme) ---
+# --- Page-specific CSS overrides (your original design) ---
 st.markdown("""
 <style>
     /* Hide Streamlit default UI */
@@ -169,8 +169,6 @@ def get_base64_image(path):
 
 # --- Logo ---
 logo_base64 = get_base64_image("logo.jpg")
-
-# --- Header Section ---
 if logo_base64:
     st.markdown(f"""
     <div style="text-align:center; margin-bottom:25px;">
@@ -179,7 +177,6 @@ if logo_base64:
     </div>
     """, unsafe_allow_html=True)
 else:
-    # Fallback if logo not found
     st.markdown("""
     <div style="text-align:center; margin-bottom:25px;">
         <div style="width:100px; height:100px; border-radius:50%; background-color:#2563EB; margin:0 auto; display:flex; align-items:center; justify-content:center; box-shadow:0px 8px 20px rgba(0,0,0,0.1);">
@@ -191,67 +188,91 @@ else:
 st.markdown('<h3 style="text-align:center; margin-bottom:5px; font-weight:600;">Employee Login</h3>', unsafe_allow_html=True)
 st.markdown('<p style="text-align:center; margin-top:0px; margin-bottom:25px; font-size:15px; opacity:0.8;">Welcome back! Enter your credentials to continue.</p>', unsafe_allow_html=True)
 
-with st.form("emp_login_form"):
-    email = st.text_input("Email", placeholder="Enter your email address", key="login_email")
-    password = st.text_input("Password", type="password", placeholder="Enter your password", key="login_password")
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        login_clicked = st.form_submit_button("Login", use_container_width=True)
+# --- Session state initialization for multi-step login ---
+if "login_step" not in st.session_state:
+    st.session_state.login_step = "credentials"
+if "user_data" not in st.session_state:
+    st.session_state.user_data = None
+if "face_verified" not in st.session_state:
+    st.session_state.face_verified = False
 
-st.markdown("<br>", unsafe_allow_html=True)
-
-col1, col2, col3, col4 = st.columns([1, 0.5, 0.6, 1])
-
-with col2:
-    if st.button("← Back to Home", key="home_btn", use_container_width=True):
-        st.switch_page("app.py")
-
-with col3:
-    if st.button("Create an account →", key="signup_btn", use_container_width=True):
-        st.switch_page("pages/signup_employee.py")
-
-if login_clicked:
-    if not email or not password:
-        st.error("⚠️ Please enter both email and password.")
-    else:
-        user = get_user(email)
+# --- Step 1: Credentials ---
+if st.session_state.login_step == "credentials":
+    with st.form("emp_login_form"):
+        email = st.text_input("Email", placeholder="Enter your email address", key="login_email")
+        password = st.text_input("Password", type="password", placeholder="Enter your password", key="login_password")
         
-        if user:
-            # user tuple: (id, name, email, password, role)
-            stored_password = user[3]   # password
-            stored_role = user[4]       # role
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            login_clicked = st.form_submit_button("Login", use_container_width=True)
 
-            if stored_role != "employee":
-                st.error("❌ This account is not registered as an employee.")
-            elif check_password(password, stored_password):
-                with st.spinner("📸 Verifying identity with face recognition..."):
-                    if verify_face(email):
-                        # Set session state BEFORE redirect
-                        st.session_state.authenticated = True
-                        st.session_state.user_id = user[0]      # id
-                        st.session_state.user_name = user[1]    # name
-                        st.session_state.user_email = user[2]   # email (was incorrectly user[3] before)
+    st.markdown("<br>", unsafe_allow_html=True)
 
-                        st.success("✅ Login successful! Welcome back.")
-                        st.balloons()
-                        
-                        st.markdown(f"""
-                        <div style="text-align:center; padding:20px; background-color:#f0fdf4; border-radius:10px; margin-top:20px;">
-                            <h4 style="color:#166534; margin-bottom:5px;">Welcome, {user[1]}!</h4>
-                            <p style="color:#166534;">You have successfully logged in as an employee.</p>
-                        </div>
-                        """, unsafe_allow_html=True)
+    # Navigation buttons
+    col1, col2, col3, col4 = st.columns([1, 0.5, 0.6, 1])
+    with col2:
+        if st.button("← Back to Home", key="home_btn", use_container_width=True):
+            st.switch_page("app.py")
+    with col3:
+        if st.button("Create an account →", key="signup_btn", use_container_width=True):
+            st.switch_page("pages/signup_employee.py")
 
-                        st.info("Redirecting to your dashboard...")
-                        time.sleep(3)
-                        st.switch_page("pages/employee_dashboard.py")
-                    else:
-                        st.error("❌ Face verification failed. Please try again.")
-                        st.info("Make sure you're in a well-lit area and looking directly at the camera.")
-            else:
-                st.error("❌ Incorrect password. Please try again.")
-                st.info("Forgot your password? Contact your administrator.")
+    if login_clicked:
+        if not email or not password:
+            st.error("⚠️ Please enter both email and password.")
         else:
-            st.error("❌ No account found with this email.")
-            st.info("Don't have an account? Click 'Create an account' below.")
+            user = get_user(email)
+            if user:
+                stored_password = user[3]
+                stored_role = user[4]
+
+                if stored_role != "employee":
+                    st.error("❌ This account is not registered as an employee.")
+                elif check_password(password, stored_password):
+                    # Move to face verification
+                    st.session_state.user_data = user
+                    st.session_state.login_step = "verifying"
+                    st.rerun()
+                else:
+                    st.error("❌ Incorrect password. Please try again.")
+            else:
+                st.error("❌ No account found with this email.")
+                st.info("Don't have an account? Click 'Create an account' below.")
+
+# --- Step 2: Face Verification ---
+if st.session_state.login_step == "verifying":
+    user = st.session_state.user_data
+    st.markdown("### 📸 Face Verification")
+    st.write("Please look at the camera and take a photo for verification.")
+
+    # Call verify_face – it now uses st.camera_input and returns True/False
+    if verify_face(user[2]):  # user[2] is email
+        # Success
+        st.session_state.authenticated = True
+        st.session_state.user_id = user[0]
+        st.session_state.user_name = user[1]
+        st.session_state.user_email = user[2]
+
+        st.success("✅ Login successful! Welcome back.")
+        st.balloons()
+        st.markdown(f"""
+        <div style="text-align:center; padding:20px; background-color:#f0fdf4; border-radius:10px; margin-top:20px;">
+            <h4 style="color:#166534; margin-bottom:5px;">Welcome, {user[1]}!</h4>
+            <p style="color:#166534;">You have successfully logged in as an employee.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Clean up session and redirect
+        st.session_state.login_step = "credentials"
+        st.session_state.user_data = None
+        st.info("Redirecting to your dashboard...")
+        time.sleep(2)
+        st.switch_page("pages/employee_dashboard.py")
+    else:
+        # Verification failed – stay in this step (user can retry)
+        if st.button("Try Again"):
+            st.rerun()
+        if st.button("Back to Login"):
+            st.session_state.login_step = "credentials"
+            st.session_state.user_data = None
+            st.rerun()

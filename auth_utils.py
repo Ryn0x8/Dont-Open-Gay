@@ -80,45 +80,155 @@ def check_password(password, hashed):
     return bcrypt.checkpw(password.encode(), hashed)
 
 # ===== FACE =====
+import os
+import cv2
+import numpy as np
+import streamlit as st
+
+# -----------------------------
+# Capture and save user face
+# -----------------------------
 def capture_face(email):
+    """
+    Capture face from browser camera and save for a given email.
+    """
     if not os.path.exists("faces"):
         os.makedirs("faces")
 
+    st.info("📸 Please capture your face for registration")
+
+    img_file = st.camera_input("Take a photo")
+
+    if img_file is None:
+        return False
+
+    # Convert to OpenCV format
+    bytes_data = img_file.getvalue()
+    np_arr = np.frombuffer(bytes_data, np.uint8)
+    frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+    if frame is None:
+        st.error("Could not process image")
+        return False
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     face_cascade = cv2.CascadeClassifier(
         cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
     )
 
-    cap = cv2.VideoCapture(0)
-    for i in range(10):   # capture a few frames to warm up camera
-        ret, frame = cap.read()
-    cap.release()
-
-
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
     if len(faces) == 0:
+        st.error("No face detected. Try again in good lighting.")
         return False
 
-    for (x, y, w, h) in faces:
-        face = gray[y:y+h, x:x+w]
-        face = cv2.resize(face, (200, 200))
-        cv2.imwrite(f"faces/{email}.jpg", face)
-        return True
+    # Take the first face found
+    x, y, w, h = faces[0]
+    face = gray[y:y+h, x:x+w]
+    face = cv2.resize(face, (200, 200))
 
+    cv2.imwrite(f"faces/{email}.jpg", face)
+    st.success("✅ Face captured successfully!")
+    return True
+
+# -----------------------------
+# Verify face against stored
+# -----------------------------
+# -----------------------------
+# Capture and save user face (Registration)
+# -----------------------------
+def capture_face(email):
+    """
+    Capture face from browser camera and save for a given email.
+    Returns True if a face is detected and saved.
+    """
+    if not os.path.exists("faces"):
+        os.makedirs("faces")
+
+    st.info("📸 Please capture your face for registration")
+
+    # Persist camera input across reruns
+    if "reg_face" not in st.session_state:
+        st.session_state.reg_face = None
+
+    img_file = st.camera_input("Take a photo", key="register_camera")
+
+    if img_file is not None:
+        st.session_state.reg_face = img_file
+
+    if st.session_state.reg_face is None:
+        return False  # No photo captured yet
+
+    # Convert to OpenCV format
+    bytes_data = st.session_state.reg_face.getvalue()
+    np_arr = np.frombuffer(bytes_data, np.uint8)
+    frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+    if frame is None:
+        st.error("Could not process image")
+        return False
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    face_cascade = cv2.CascadeClassifier(
+        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    )
+
+    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+
+    if len(faces) == 0:
+        st.error("No face detected. Make sure you are in good lighting and try again.")
+        return False
+
+    # Take the first detected face
+    x, y, w, h = faces[0]
+    face = gray[y:y+h, x:x+w]
+    face = cv2.resize(face, (200, 200))
+
+    # Save to file
+    cv2.imwrite(f"faces/{email}.jpg", face)
+    st.success("✅ Face captured and saved successfully!")
+    # Clear stored image for next attempt
+    st.session_state.reg_face = None
+    return True
+
+# -----------------------------
+# Verify face against stored face (Login)
+# -----------------------------
 def verify_face(email):
+    """
+    Capture a new face using st.camera_input and compare with stored face.
+    Returns True if matched.
+    """
     path = f"faces/{email}.jpg"
     if not os.path.exists(path):
+        st.error("No registered face found. Please register first.")
         return False
 
-    stored_face = cv2.imread(path, 0)
+    stored_face = cv2.imread(path, 0)  # stored grayscale face
 
-    cap = cv2.VideoCapture(0)
-    ret, frame = cap.read()
-    cap.release()
+    # Persist the captured image across reruns
+    if "verify_face_img" not in st.session_state:
+        st.session_state.verify_face_img = None
+
+    img_file = st.camera_input("Take a photo", key="verify_camera")
+
+    if img_file is not None:
+        st.session_state.verify_face_img = img_file
+
+    if st.session_state.verify_face_img is None:
+        st.info("📸 Please take a photo to continue.")
+        return False
+
+    # Convert to OpenCV format
+    bytes_data = st.session_state.verify_face_img.getvalue()
+    np_arr = np.frombuffer(bytes_data, np.uint8)
+    frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+    if frame is None:
+        st.error("Could not process image")
+        return False
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
     face_cascade = cv2.CascadeClassifier(
         cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
     )
@@ -126,21 +236,29 @@ def verify_face(email):
     faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
     if len(faces) == 0:
-        print("Face not detected")
+        st.error("Face not detected. Make sure you are in good lighting.")
         return False
 
-    for (x, y, w, h) in faces:
-        face = gray[y:y+h, x:x+w]
-        face = cv2.resize(face, (200, 200))
+    # Take the first detected face
+    x, y, w, h = faces[0]
+    face = gray[y:y+h, x:x+w]
+    face = cv2.resize(face, (200, 200))
 
-        diff = cv2.absdiff(stored_face, face)
-        score = np.mean(diff)
-        print(score)
+    # Compare with stored face
+    diff = cv2.absdiff(stored_face, face)
+    score = np.mean(diff)
+    st.write(f"Face difference score: {score:.2f}")  # optional debug
 
-        if score < 30: 
-            return True
-
-    return False
+    if score < 30:  # threshold can be tuned
+        st.success("✅ Face verified successfully!")
+        # Clear stored image for next attempt
+        st.session_state.verify_face_img = None
+        return True
+    else:
+        st.error("❌ Face does not match the registered one.")
+        # Clear stored image so user can retry
+        st.session_state.verify_face_img = None
+        return False
 
 def send_email(to_email: str, subject: str, body: str) -> bool:
     """

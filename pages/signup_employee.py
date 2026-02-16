@@ -120,7 +120,6 @@ st.markdown("""
         box-shadow: 0 6px 8px -1px rgba(16,185,129,0.3) !important;
     }
 
-
     /* Message styling */
     .stAlert {
         border-radius: 10px !important;
@@ -216,85 +215,108 @@ else:
 st.markdown('<h3 style="text-align:center; margin-bottom:5px; font-weight:600;">Employee Sign Up</h3>', unsafe_allow_html=True)
 st.markdown('<p style="text-align:center; margin-top:0px; margin-bottom:25px; font-size:15px; opacity:0.8;">Create your employee account to get started.</p>', unsafe_allow_html=True)
 
+# Initialize session state for multi-step signup
+if "signup_step" not in st.session_state:
+    st.session_state.signup_step = "account"
+if "signup_data" not in st.session_state:
+    st.session_state.signup_data = {}
 if "otp_sent" not in st.session_state:
     st.session_state.otp_sent = False
-if "otp_verified" not in st.session_state:
-    st.session_state.otp_verified = False
-if "email_for_verification" not in st.session_state:
-    st.session_state.email_for_verification = None
+if "otp" not in st.session_state:
+    st.session_state.otp = None
+if "face_captured" not in st.session_state:
+    st.session_state.face_captured = False
 
-with st.form("employee_signup_form"):
-    st.markdown('<p style="font-size:18px; font-weight:600; margin-bottom:20px;">Account Details</p>', unsafe_allow_html=True)
-    
-    name = st.text_input("Full Name", placeholder="Enter your full name", key="form_name")
-    email = st.text_input("Email Address", placeholder="Enter your email address", key="form_email")
-    password = st.text_input("Password", type="password", placeholder="Create a strong password", key="form_password")
-    
-    send_otp_clicked = st.form_submit_button("📧 Send OTP")
-    
-    if st.session_state.otp_sent and not st.session_state.otp_verified:
-        st.markdown('<div class="otp-section">', unsafe_allow_html=True)
-        st.markdown('<p style="font-size:16px; font-weight:600; margin-bottom:15px;">OTP Verification</p>', unsafe_allow_html=True)
-        
-        user_otp = st.text_input("Enter OTP", placeholder="Enter the 6-digit OTP sent to your email", key="form_otp")
-        
-        verify_clicked = st.form_submit_button("✅ Verify & Capture Face")
-        st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        verify_clicked = False
-        user_otp = None
+# --- Step 1: Account Details ---
+if st.session_state.signup_step == "account":
+    with st.form("employee_signup_form"):
+        st.markdown('<p style="font-size:18px; font-weight:600; margin-bottom:20px;">Account Details</p>', unsafe_allow_html=True)
+        name = st.text_input("Full Name", placeholder="Enter your full name", key="form_name")
+        email = st.text_input("Email Address", placeholder="Enter your email address", key="form_email")
+        password = st.text_input("Password", type="password", placeholder="Create a strong password", key="form_password")
+        send_otp_clicked = st.form_submit_button("📧 Send OTP")
 
-if send_otp_clicked:
-    if not name or not email or not password:
-        st.error("⚠️ Please fill in all fields before sending OTP.")
-    else:
-        existing_user = get_user(email)
-        if existing_user:
-            st.error("❌ Email already registered! Please use a different email or login.")
+    if send_otp_clicked:
+        if not name or not email or not password:
+            st.error("⚠️ Please fill in all fields before sending OTP.")
         else:
-            otp = generate_otp()
-            st.session_state.otp = otp
-            st.session_state.email_for_verification = email
-            st.session_state.otp_sent = True
-            st.session_state.otp_verified = False
-            
-            with st.spinner("Sending OTP to your email..."):
-                send_otp(email, otp)
-            
-            st.success("✅ OTP Sent! Please check your email.")
-            st.rerun()  
-
-if verify_clicked and user_otp:
-    if not user_otp:
-        st.error("⚠️ Please enter the OTP.")
-    elif user_otp == str(st.session_state.otp):
-        with st.spinner("📸 Verifying OTP and capturing face..."):
-            st.info("📷 Please look at the camera for face capture...")
-            
-            success = capture_face(email)
-            
-            if success:
-                hashed = hash_password(password)
-                add_user(name, email, hashed, "employee")
-                
-                st.session_state.otp_verified = True
-                st.success("✅ Employee Account Created Successfully!")
-                st.balloons()
-                
-                st.markdown(f"""
-                <div style="text-align:center; padding:20px; background-color:#f0fdf4; border-radius:10px; margin:20px 0;">
-                    <h4 style="color:#166534; margin-bottom:5px;">Welcome, {name}!</h4>
-                    <p style="color:#166534;">Your employee account has been created successfully.</p>
-                    <p style="color:#166534; font-size:14px;">You can now login with your credentials.</p>
-                </div>
-                """, unsafe_allow_html=True)
+            existing_user = get_user(email)
+            if existing_user:
+                st.error("❌ Email already registered! Please use a different email or login.")
             else:
-                st.error("❌ Face/Logo not detected. Please try again.")
-                st.info("Make sure you're in a well-lit area and looking directly at the camera.")
-    else:
-        st.error("❌ Invalid OTP. Please try again.")
+                # Generate OTP and store data temporarily
+                otp = generate_otp()
+                st.session_state.otp = otp
+                st.session_state.signup_data = {"name": name, "email": email, "password": password}
+                st.session_state.otp_sent = True
 
-if st.session_state.get('otp_verified', False):
+                with st.spinner("Sending OTP to your email..."):
+                    send_otp(email, otp)
+
+                st.success("✅ OTP Sent! Please check your email.")
+                st.session_state.signup_step = "otp"
+                st.rerun()
+
+# --- Step 2: OTP Verification ---
+if st.session_state.signup_step == "otp":
+    st.markdown("### 📧 Verify OTP")
+    st.write(f"Enter the 6-digit code sent to **{st.session_state.signup_data['email']}**")
+
+    with st.form("otp_verification_form"):
+        user_otp = st.text_input("Enter OTP", placeholder="6-digit code", max_chars=6)
+        verify_clicked = st.form_submit_button("✅ Verify OTP")
+
+        if verify_clicked:
+            if not user_otp:
+                st.error("⚠️ Please enter the OTP.")
+            elif user_otp == str(st.session_state.otp):
+                st.success("✅ OTP verified! Now capture your face.")
+                st.session_state.signup_step = "face"
+                st.rerun()
+            else:
+                st.error("❌ Invalid OTP. Please try again.")
+
+    if st.button("← Back to Account Details"):
+        st.session_state.signup_step = "account"
+        st.rerun()
+
+# --- Step 3: Face Capture ---
+if st.session_state.signup_step == "face":
+    st.markdown("### 📸 Face Capture")
+    st.write("Please look at the camera and take a photo for your profile.")
+
+    # Call capture_face – it returns True when successful
+    if capture_face(st.session_state.signup_data["email"]):
+        # Face captured successfully – create account
+        hashed = hash_password(st.session_state.signup_data["password"])
+        add_user(
+            st.session_state.signup_data["name"],
+            st.session_state.signup_data["email"],
+            hashed,
+            "employee"
+        )
+        st.session_state.face_captured = True
+        st.success("✅ Employee Account Created Successfully!")
+        st.balloons()
+        st.markdown(f"""
+        <div style="text-align:center; padding:20px; background-color:#f0fdf4; border-radius:10px; margin:20px 0;">
+            <h4 style="color:#166534; margin-bottom:5px;">Welcome, {st.session_state.signup_data['name']}!</h4>
+            <p style="color:#166534;">Your employee account has been created successfully.</p>
+            <p style="color:#166534; font-size:14px;">You can now login with your credentials.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Clear session and provide login button
+        st.session_state.signup_step = "complete"
+        st.rerun()
+    else:
+        # capture_face shows its own error messages; user can retry
+        if st.button("← Back to OTP"):
+            st.session_state.signup_step = "otp"
+            st.rerun()
+
+# --- Step 4: Completion (optional) ---
+if st.session_state.get("face_captured", False):
     st.markdown("""
     <div style="text-align:center; padding:15px; background-color:#f0fdf4; border-radius:10px; margin:20px 0;">
         <p style="color:#166534; margin:0;">✓ Account created successfully! You can now login.</p>
