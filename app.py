@@ -3,8 +3,6 @@ from PIL import Image
 import base64
 from database import update_expired_jobs
 
-update_expired_jobs()   
-
 st.set_page_config(
     page_title="Anvaya",
     page_icon="💼",
