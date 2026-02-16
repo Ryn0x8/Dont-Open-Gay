@@ -1,49 +1,56 @@
 import random
 import smtplib
-import  streamlit as st
+import streamlit as st
 import bcrypt
 import cv2
-import os
 import numpy as np
-from dotenv import load_dotenv  
+from email.message import EmailMessage
+from dotenv import load_dotenv
+import firebase_admin
+from firebase_admin import credentials, firestore
+import os
+import base64
 
 load_dotenv()
 
+# Initialize Firebase Admin SDK (assumes database.py already did, but safe)
+if not firebase_admin._apps:
+    cred = credentials.Certificate(st.secrets["firebase"])
+    firebase_admin.initialize_app(cred)
+
+db = firestore.client()
+
+# ===== EMAIL =====
+def send_email(to_email: str, subject: str, body: str) -> bool:
+    """Sends an email using configured SMTP."""
+    sender_email = os.getenv("EMAIL_ADDRESS")
+    app_password = os.getenv("EMAIL_APP_PASSWORD")
+    if not sender_email or not app_password:
+        print("Email credentials are not configured.")
+        return False
+    try:
+        msg = EmailMessage()
+        msg["From"] = sender_email
+        msg["To"] = to_email
+        msg["Subject"] = subject
+        msg.set_content(body)
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(sender_email, app_password)
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+        return False
 
 # ===== OTP =====
 def generate_otp():
     return str(random.randint(100000, 999999))
 
-from email.message import EmailMessage
-
 def send_otp(receiver_email: str, otp: str) -> bool:
-    """
-    Sends a One-Time Password (OTP) to the specified email address.
-
-    Args:
-        receiver_email (str): Recipient's email address
-        otp (str): Generated OTP code
-
-    Returns:
-        bool: True if email sent successfully, False otherwise
-    """
-
-    sender_email = st.secrets["EMAIL_ADDRESS"]
-    app_password = st.secrets["EMAIL_APP_PASSWORD"]
-    print(sender_email, app_password)
-
-    if not sender_email or not app_password:
-        print("Email credentials are not configured.")
-        return False
-
-    try:
-        # Create email message
-        msg = EmailMessage()
-        msg["From"] = sender_email
-        msg["To"] = receiver_email
-        msg["Subject"] = "Your Anvaya Verification Code"
-
-        msg.set_content(f"""
+    """Sends OTP via email."""
+    subject = "Your Anvaya Verification Code"
+    body = f"""
 Hello,
 
 Your One-Time Password (OTP) for verification is:
@@ -52,25 +59,10 @@ Your One-Time Password (OTP) for verification is:
 
 This code will expire shortly. Do not share this code with anyone.
 
-If you did not request this, please ignore this email.
-
-Regards,  
+Regards,
 Team Anvaya
-        """)
-
-        # Send email securely
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.starttls()
-            server.login(sender_email, app_password)
-            server.send_message(msg)
-
-        print(f"OTP successfully sent to {receiver_email}")
-        return True
-
-    except Exception as e:
-        print(f"Failed to send OTP: {e}")
-        return False
-
+    """
+    return send_email(receiver_email, subject, body)
 
 # ===== PASSWORD =====
 def hash_password(password):
@@ -80,70 +72,12 @@ def check_password(password, hashed):
     return bcrypt.checkpw(password.encode(), hashed)
 
 # ===== FACE =====
-import os
-import cv2
-import numpy as np
-import streamlit as st
-
-# -----------------------------
-# Capture and save user face
-# -----------------------------
 def capture_face(email):
     """
-    Capture face from browser camera and save for a given email.
+    Capture face from browser camera and store in Firestore as Base64.
+    Returns True if face detected and saved.
     """
-    if not os.path.exists("faces"):
-        os.makedirs("faces")
-
-    st.info("📸 Please capture your face for registration")
-
-    img_file = st.camera_input("Take a photo")
-
-    if img_file is None:
-        return False
-
-    # Convert to OpenCV format
-    bytes_data = img_file.getvalue()
-    np_arr = np.frombuffer(bytes_data, np.uint8)
-    frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
-    if frame is None:
-        st.error("Could not process image")
-        return False
-
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    face_cascade = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    )
-
-    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-
-    if len(faces) == 0:
-        st.error("No face detected. Try again in good lighting.")
-        return False
-
-    # Take the first face found
-    x, y, w, h = faces[0]
-    face = gray[y:y+h, x:x+w]
-    face = cv2.resize(face, (200, 200))
-
-    cv2.imwrite(f"faces/{email}.jpg", face)
-    st.success("✅ Face captured successfully!")
-    return True
-
-# -----------------------------
-# Verify face against stored
-# -----------------------------
-# -----------------------------
-# Capture and save user face (Registration)
-# -----------------------------
-def capture_face(email):
-    """
-    Capture face from browser camera and save for a given email.
-    Returns True if a face is detected and saved.
-    """
-    if not os.path.exists("faces"):
-        os.makedirs("faces")
+    import streamlit as st
 
     st.info("📸 Please capture your face for registration")
 
@@ -184,29 +118,53 @@ def capture_face(email):
     face = gray[y:y+h, x:x+w]
     face = cv2.resize(face, (200, 200))
 
-    # Save to file
-    cv2.imwrite(f"faces/{email}.jpg", face)
+    # Encode face as JPEG bytes
+    ret, buffer = cv2.imencode('.jpg', face)
+    if not ret:
+        st.error("Failed to encode face image")
+        return False
+
+    # Convert to Base64 string
+    face_base64 = base64.b64encode(buffer.tobytes()).decode('utf-8')
+
+    # Store in Firestore (faces collection, document ID = email)
+    db.collection('faces').document(email).set({
+        'image': face_base64,
+        'uploaded_at': firestore.SERVER_TIMESTAMP
+    })
+
     st.success("✅ Face captured and saved successfully!")
-    # Clear stored image for next attempt
     st.session_state.reg_face = None
     return True
 
-# -----------------------------
-# Verify face against stored face (Login)
-# -----------------------------
 def verify_face(email):
     """
-    Capture a new face using st.camera_input and compare with stored face.
+    Capture a new face and compare with stored face from Firestore.
     Returns True if matched.
     """
-    path = f"faces/{email}.jpg"
-    if not os.path.exists(path):
+    import streamlit as st
+
+    # Retrieve stored face from Firestore
+    face_doc = db.collection('faces').document(email).get()
+    if not face_doc.exists:
         st.error("No registered face found. Please register first.")
         return False
 
-    stored_face = cv2.imread(path, 0)  # stored grayscale face
+    stored_base64 = face_doc.to_dict().get('image')
+    if not stored_base64:
+        st.error("Stored face data is missing.")
+        return False
 
-    # Persist the captured image across reruns
+    # Decode Base64 to image
+    stored_bytes = base64.b64decode(stored_base64)
+    np_arr_stored = np.frombuffer(stored_bytes, np.uint8)
+    stored_face = cv2.imdecode(np_arr_stored, cv2.IMREAD_GRAYSCALE)
+
+    if stored_face is None:
+        st.error("Stored face image is corrupted.")
+        return False
+
+    # Persist camera input across reruns
     if "verify_face_img" not in st.session_state:
         st.session_state.verify_face_img = None
 
@@ -247,54 +205,13 @@ def verify_face(email):
     # Compare with stored face
     diff = cv2.absdiff(stored_face, face)
     score = np.mean(diff)
-    st.write(f"Face difference score: {score:.2f}")  # optional debug
+    st.write(f"Face difference score: {score:.2f}")
 
     if score < 30:  # threshold can be tuned
         st.success("✅ Face verified successfully!")
-        # Clear stored image for next attempt
         st.session_state.verify_face_img = None
         return True
     else:
         st.error("❌ Face does not match the registered one.")
-        # Clear stored image so user can retry
         st.session_state.verify_face_img = None
         return False
-
-def send_email(to_email: str, subject: str, body: str) -> bool:
-    """
-    Sends an email using the configured SMTP server.
-
-    Args:
-        to_email (str): Recipient's email address
-        subject (str): Email subject
-        body (str): Plain text email body
-
-    Returns:
-        bool: True if email sent successfully, False otherwise
-    """
-    sender_email = st.secrets["EMAIL_ADDRESS"]
-    app_password = st.secrets["EMAIL_APP_PASSWORD"]
-
-    if not sender_email or not app_password:
-        print("Email credentials are not configured.")
-        return False
-
-    try:
-        msg = EmailMessage()
-        msg["From"] = sender_email
-        msg["To"] = to_email
-        msg["Subject"] = subject
-        msg.set_content(body)
-
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.starttls()
-            server.login(sender_email, app_password)
-            server.send_message(msg)
-
-        print(f"Email successfully sent to {to_email}")
-        return True
-
-    except Exception as e:
-        print(f"Failed to send email: {e}")
-        return False
-

@@ -9,16 +9,19 @@ from streamlit_option_menu import option_menu
 from auth_utils import send_email
 from streamlit_autorefresh import st_autorefresh
 from database import (
-    create_tables, get_company_by_id, update_company_profile,
+    get_company_by_id, update_company_profile,
     get_applications_for_company, update_application_status,
     get_all_open_job_requests, express_interest_in_request,
     get_messages_between_company_and_employee, send_message_from_company,
     add_job, get_company_by_email, add_notification,
     get_job_count_for_company, get_application_count_for_company,
     get_interview_count_for_company, get_open_request_count,
-    upsert_interview, mark_company_messages_read, get_company_conversations
+    upsert_interview, mark_company_messages_read, get_company_conversations,
+    delete_job, get_company_jobs_all
 )
 import random
+from database import update_expired_jobs
+update_expired_jobs()   
 
 # --- Page config ---
 st.set_page_config(
@@ -33,7 +36,6 @@ if "employer_authenticated" not in st.session_state or not st.session_state.empl
     st.stop()
 
 # --- Ensure database tables exist ---
-create_tables()
 
 # --- Helper functions ---
 def get_resume_download_link(resume_path, text="Download Resume"):
@@ -174,43 +176,93 @@ if selected == "Dashboard":
 
 # --- Post a Job Tab (unchanged) ---
 elif selected == "Post a Job":
-    st.markdown("## 📝 Post a New Job")
-    with st.form("post_job_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            title = st.text_input("Job Title")
-            category = st.text_input("Category (e.g., Technology)")
-            location = st.text_input("Location")
-            job_type = st.selectbox("Job Type", ["Full-time", "Part-time", "Remote", "Hybrid", "Contract"])
-        with col2:
-            salary_min = st.number_input("Min Salary (in $1000s)", min_value=0, step=5)
-            salary_max = st.number_input("Max Salary (in $1000s)", min_value=0, step=5)
-            experience = st.selectbox("Experience Level", ["Entry", "Junior", "Mid", "Senior", "Lead"])
-            deadline = st.date_input("Application Deadline")
+    # Mark expired jobs
+    update_expired_jobs()
 
-        description = st.text_area("Job Description", height=150)
-        requirements = st.text_area("Requirements", height=100)
-        skills_required = st.text_input("Skills Required (comma separated)")
+    tab1, tab2 = st.tabs(["📝 Post New Job", "📋 Manage Jobs"])
 
-        submitted = st.form_submit_button("Post Job")
-        if submitted:
-            salary_range = f"${salary_min}k - ${salary_max}k"
-            add_job(
-                company_id=st.session_state.company_id,
-                company_name=st.session_state.employer_name,
-                title=title,
-                category=category,
-                description=description,
-                requirements=requirements,
-                location=location,
-                job_type=job_type,
-                salary_range=salary_range,
-                experience_level=experience,
-                skills_required=skills_required,
-                deadline=deadline
-            )
-            st.success("Job posted successfully!")
-            st.rerun()
+    with tab1:
+        st.markdown("## 📝 Post a New Job")
+        with st.form("post_job_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                title = st.text_input("Job Title")
+                category = st.text_input("Category (e.g., Technology)")
+                location = st.text_input("Location")
+                job_type = st.selectbox("Job Type", ["Full-time", "Part-time", "Remote", "Hybrid", "Contract"])
+            with col2:
+                salary_min = st.number_input("Min Salary (in $1000s)", min_value=0, step=5)
+                salary_max = st.number_input("Max Salary (in $1000s)", min_value=0, step=5)
+                experience = st.selectbox("Experience Level", ["Entry", "Junior", "Mid", "Senior", "Lead"])
+                deadline = st.date_input("Application Deadline")
+
+            description = st.text_area("Job Description", height=150)
+            requirements = st.text_area("Requirements", height=100)
+            skills_required = st.text_input("Skills Required (comma separated)")
+
+            submitted = st.form_submit_button("Post Job")
+            if submitted:
+                salary_range = f"${salary_min}k - ${salary_max}k"
+                add_job(
+                    company_id=st.session_state.company_id,
+                    company_name=st.session_state.employer_name,
+                    title=title,
+                    category=category,
+                    description=description,
+                    requirements=requirements,
+                    location=location,
+                    job_type=job_type,
+                    salary_range=salary_range,
+                    experience_level=experience,
+                    skills_required=skills_required,
+                    deadline=deadline
+                )
+                st.success("Job posted successfully!")
+                st.rerun()
+
+    with tab2:
+        st.markdown("## 📋 Your Job Postings")
+        jobs = get_company_jobs_all(st.session_state.company_id)
+        if not jobs:
+            st.info("You haven't posted any jobs yet.")
+        else:
+            for job in jobs:
+                with st.expander(f"{job['title']} - {job['status'].upper()}"):
+                    st.markdown(f"**Category:** {job.get('category', 'N/A')}")
+                    st.markdown(f"**Location:** {job.get('location', 'N/A')}")
+                    st.markdown(f"**Type:** {job.get('job_type', 'N/A')}")
+                    st.markdown(f"**Salary:** {job.get('salary_range', 'N/A')}")
+                    st.markdown(f"**Experience:** {job.get('experience_level', 'N/A')}")
+                    st.markdown(f"**Description:** {job.get('description', 'N/A')}")
+                    st.markdown(f"**Requirements:** {job.get('requirements', 'N/A')}")
+                    st.markdown(f"**Skills Required:** {job.get('skills_required', 'N/A')}")
+                    deadline_str = job['deadline'].strftime('%Y-%m-%d') if job.get('deadline') else 'Not set'
+                    st.markdown(f"**Deadline:** {deadline_str}")
+                    st.markdown(f"**Posted:** {job['created_at'].strftime('%Y-%m-%d') if job.get('created_at') else 'Unknown'}")
+
+                    # Delete button
+                    # Delete button – sets a session state for confirmation
+                    if st.button(f"🗑️ Delete Job", key=f"delete_job_{job['id']}"):
+                        st.session_state.job_to_delete = job['id']
+                        st.session_state.job_title_to_delete = job['title']
+                        st.rerun()
+
+                    # If this job is pending deletion, show confirmation
+                    if st.session_state.get("job_to_delete") == job['id']:
+                        st.warning("Are you sure you want to delete this job? This action cannot be undone.")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("✅ Yes, Delete", key=f"confirm_yes_{job['id']}"):
+                                delete_job(job['id'])
+                                del st.session_state.job_to_delete
+                                del st.session_state.job_title_to_delete
+                                st.success("Job deleted!")
+                                st.rerun()
+                        with col2:
+                            if st.button("❌ Cancel", key=f"confirm_no_{job['id']}"):
+                                del st.session_state.job_to_delete
+                                del st.session_state.job_title_to_delete
+                                st.rerun()
 
 # --- Applications Tab (unchanged) ---
 elif selected == "Applications":
@@ -220,7 +272,7 @@ elif selected == "Applications":
     # If a chat is open, show it
     if "chat_employee_id" in st.session_state:
         # Auto-refresh every 5 seconds while chat is open
-        st_autorefresh(interval=5000, key="employer_chat_autorefresh")
+        st_autorefresh(interval=10000, key="employer_chat_autorefresh")
 
         col1, col2 = st.columns([3, 1])
         with col1:
@@ -237,18 +289,20 @@ elif selected == "Applications":
 
         for msg in msgs:
             if msg[2] == 'company':
+                msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
                 st.markdown(f"""
                 <div style="text-align: right; margin: 0.5rem 0;">
                     <div style="background: var(--primary); color: white; padding: 0.75rem; border-radius: 12px 12px 0 12px; display: inline-block; max-width: 70%;">
-                        {msg[6]}<br><span style="font-size:0.7rem;">{msg[9][:16]}</span>
+                        {msg[6]}<br><span style="font-size:0.7rem;">{msg_time}</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
             else:
+                msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
                 st.markdown(f"""
                 <div style="text-align: left; margin: 0.5rem 0;">
                     <div style="background: #F1F5F9; padding: 0.75rem; border-radius: 12px 12px 12px 0; display: inline-block; max-width: 70%;">
-                        <strong>{st.session_state.chat_employee_name}</strong><br>{msg[6]}<br><span style="font-size:0.7rem;">{msg[9][:16]}</span>
+                        <strong>{st.session_state.chat_employee_name}</strong><br>{msg[6]}<br><span style="font-size:0.7rem;">{msg_time}</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -269,14 +323,14 @@ elif selected == "Applications":
                     st.markdown(f"**Email:** {app[12]}")
                     st.markdown(f"**Location:** {app[14]}")
                     st.markdown(f"**Phone:** {app[15]}")
-                    st.markdown(f"**Skills:** {app[13]}")
+                    st.markdown(f"**Skills:** {app[14]}")
                     st.markdown(f"**Cover Letter:** {app[6]}")
                     st.markdown(f"**Applied:** {app[7]}")
                     st.markdown(f"**Match Score:** {app[5]}%")
 
                     # Resume download
-                    if app[14]:
-                        st.markdown(get_resume_download_link(app[14], "📄 Download Resume"), unsafe_allow_html=True)
+                    if app[13]:
+                        st.markdown(get_resume_download_link(app[13], "📄 Download Resume"), unsafe_allow_html=True)
 
                     # ATS Review
                     if st.button("🔍 Run ATS Review", key=f"ats_{app[0]}_{i}"):
@@ -346,11 +400,8 @@ elif selected == "Job Requests":
 elif selected == "Messages":
     st.markdown("## 💬 Conversations")
 
-    # If a specific chat is open, show it
     if "chat_employee_id" in st.session_state:
-        # Auto-refresh every 5 seconds
-        from streamlit_autorefresh import st_autorefresh
-        st_autorefresh(interval=5000, key="employer_chat_autorefresh")
+        st_autorefresh(interval=10000, key="employer_chat_autorefresh")
 
         col1, col2 = st.columns([3, 1])
         with col1:
@@ -362,15 +413,15 @@ elif selected == "Messages":
                 st.rerun()
 
         msgs = get_messages_between_company_and_employee(st.session_state.company_id, st.session_state.chat_employee_id)
-        # Mark messages from employee as read
         mark_company_messages_read(st.session_state.company_id, st.session_state.chat_employee_id)
 
         for msg in msgs:
             if msg[2] == 'company':
+                msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
                 st.markdown(f"""
                 <div style="text-align: right; margin: 0.5rem 0;">
                     <div style="background: var(--primary); color: white; padding: 0.75rem; border-radius: 12px 12px 0 12px; display: inline-block; max-width: 70%;">
-                        {msg[6]}<br><span style="font-size:0.7rem;">{msg[9][:16]}</span>
+                        {msg[6]}<br><span style="font-size:0.7rem;">{msg_time}</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -378,7 +429,7 @@ elif selected == "Messages":
                 st.markdown(f"""
                 <div style="text-align: left; margin: 0.5rem 0;">
                     <div style="background: #F1F5F9; padding: 0.75rem; border-radius: 12px 12px 12px 0; display: inline-block; max-width: 70%;">
-                        <strong>{st.session_state.chat_employee_name}</strong><br>{msg[6]}<br><span style="font-size:0.7rem;">{msg[9][:16]}</span>
+                        <strong>{st.session_state.chat_employee_name}</strong><br>{msg[6]}<br><span style="font-size:0.7rem;">{msg_time}</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -410,7 +461,8 @@ elif selected == "Messages":
                     </div>
                     """, unsafe_allow_html=True)
                 with col2:
-                    st.markdown(f"<p style='font-size: 0.8rem; color: var(--text-secondary);'>{conv[3][:10] if conv[3] else ''}</p>", unsafe_allow_html=True)
+                    time_str = conv[3].strftime('%Y-%m-%d') if conv[3] else ''
+                    st.markdown(f"<p style='font-size: 0.8rem; color: var(--text-secondary);'>{time_str}</p>", unsafe_allow_html=True)
                 with col3:
                     if st.button("Open Chat", key=f"open_chat_{conv[0]}"):
                         st.session_state.chat_employee_id = conv[0]

@@ -9,7 +9,7 @@ from datetime import datetime
 from streamlit_option_menu import option_menu
 from auth_utils import send_email  
 from database import (
-    create_tables, get_user_by_id, get_or_create_profile, update_profile,
+    get_user_by_id, get_or_create_profile, update_profile,
     update_user_name, get_all_companies, get_company_jobs, search_jobs, get_job_by_id,
     add_application, get_user_applications, save_job, unsave_job, get_saved_jobs,
     add_notification, get_user_notifications, mark_notifications_read,
@@ -18,6 +18,9 @@ from database import (
     get_application_stats, get_applications_over_time, get_interview_count,
     delete_job_request, update_job_request
 )
+from database import update_expired_jobs
+
+update_expired_jobs()   
 
 # --- EMAIL FUNCTION (place in auth_utils.py, but included here for completeness) ---
 from email.message import EmailMessage
@@ -56,10 +59,6 @@ if "authenticated" not in st.session_state or not st.session_state.authenticated
     st.switch_page("pages/login_employee.py")
     st.stop()
 
-# --- Initialize database tables ---
-create_tables()
-
-# --- Helper functions ---
 def calculate_match_score(job_skills, employee_skills):
     if not job_skills or not employee_skills:
         return 0
@@ -82,11 +81,6 @@ def get_resume_download_link(resume_path, text="Download Resume"):
 # --- Custom CSS (same as before, keep it) ---
 st.markdown("""
 <style>
-        /* Hide Streamlit default UI */
-    #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
-
     /* Main container styling */
     .block-container {
         padding-top: 2rem;
@@ -448,7 +442,7 @@ def companies_section():
                         st.rerun()
 
                 if submitted:
-                    if not profile[5]:
+                    if not profile[4]:
                         st.error("Please upload your resume first")
                     else:
                         add_application(job_dict['id'], st.session_state.user_id, job_dict['company_id'], match_score, cover_letter)
@@ -794,12 +788,14 @@ def my_applications_section():
         }.get(app[4], "info")
 
         with st.container():
+            applied_at_str = app[7].strftime('%Y-%m-%d') if app[7] else ''
+
             st.markdown(f"""
             <div class="job-card">
                 <h3>{app[9]}</h3>                <!-- job_title -->
                 <p style="color: var(--primary);">{app[10]}</p>  <!-- company_name -->
                 <p>📍 {app[11]} | 💰 {app[12]}</p> <!-- location, salary_range -->
-                <p><strong>Applied:</strong> {app[7][:10]}</p>  <!-- applied_at -->
+                <p><strong>Applied:</strong> {applied_at_str}</p>  <!-- applied_at -->
                 <p><strong>Status:</strong> <span class="badge-{status_color}">{app[4].upper()}</span></p>
                 {f'<p><strong>Match Score:</strong> <span style="color: #10B981;">{app[5]}%</span></p>' if app[5] else ''}
             """, unsafe_allow_html=True)
@@ -869,13 +865,13 @@ def job_requests_section():
             st.info("You haven't posted any job requests yet. Go to 'Post a New Request' to create one.")
         else:
             for req in my_requests:
-                # req columns: id, user_id, title, description, category, location, budget, status, created_at, assigned_to
                 with st.expander(f"{req[2]} ({req[7].upper()}) - {req[5]}"):
                     st.markdown(f"**Description:** {req[3]}")
                     st.markdown(f"**Category:** {req[4]}")
                     st.markdown(f"**Location:** {req[5]}")
                     st.markdown(f"**Budget/Compensation:** {req[6]}")
-                    st.markdown(f"**Posted on:** {req[8][:10]}")
+                    posted_at_str = req[8].strftime('%Y-%m-%d') if req[8] else ''
+                    st.markdown(f"**Posted on:** {posted_at_str}")
 
                     col1, col2, col3, col4 = st.columns([1,1,1,2])
                     with col1:
@@ -968,9 +964,11 @@ def messages_section():
         st.info("No messages yet. Apply to jobs to start conversations!")
         return
 
-    for conv in conversations:
+    for i, conv in enumerate(conversations):
         col1, col2, col3 = st.columns([3, 1, 1])
         with col1:
+            # Format last message time
+            last_time_str = conv[8].strftime('%Y-%m-%d %H:%M') if conv[8] else ''
             st.markdown(f"""
             <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
                 <div style="display: flex; justify-content: space-between;">
@@ -978,22 +976,23 @@ def messages_section():
                         <h4>{conv[5]}</h4>
                         <p style="color: var(--text-secondary);">{conv[6]}</p>
                         <p style="font-size: 0.9rem;">{conv[7][:100] if conv[7] else 'No messages'}...</p>
+                        <p style="font-size:0.7rem; color:var(--text-secondary);">{last_time_str}</p>
                     </div>
                     {f'<span class="badge-danger" style="align-self: center;">{conv[9]} new</span>' if conv[9] > 0 else ''}
                 </div>
             </div>
             """, unsafe_allow_html=True)
         with col2:
-            st.markdown(f"<p style='font-size: 0.8rem; color: var(--text-secondary);'>{conv[8][:10] if conv[8] else ''}</p>", unsafe_allow_html=True)
+            # This column can be empty or removed; keeping it for layout but not using it.
+            pass
         with col3:
-            if st.button("Open Chat", key=f"open_chat_{conv[4]}"):
+            if st.button("Open Chat", key=f"open_chat_{conv[4]}_{i}"):
                 st.session_state.chat_company_id = conv[4]
                 st.session_state.chat_company_name = conv[5]
                 st.rerun()
 
     if "chat_company_id" in st.session_state:
-        # Auto-refresh every 5 seconds while chat is open
-        st_autorefresh(interval=5000, key="chat_autorefresh")
+        st_autorefresh(interval=10000, key="chat_autorefresh")
 
         st.markdown("---")
         col1, col2 = st.columns([3, 1])
@@ -1009,39 +1008,44 @@ def messages_section():
         mark_messages_read(st.session_state.user_id, st.session_state.chat_company_id)
 
         for msg in messages:
+            msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
             if msg[2] == "employee":
-                # Your messages – blue background, white text, right‑aligned
                 st.markdown(f"""
                 <div style="text-align: right; margin: 0.5rem 0;">
                     <div style="background-color: #2563EB; color: white; padding: 0.75rem; border-radius: 12px 12px 0 12px; display: inline-block; max-width: 70%;">
                         {msg[6]}<br>
-                        <span style="font-size:0.7rem; opacity:0.8;">{msg[9][:16]}</span>
+                        <span style="font-size:0.7rem; opacity:0.8;">{msg_time}</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
             else:
-                # Company messages – light gray, left‑aligned
                 st.markdown(f"""
                 <div style="text-align: left; margin: 0.5rem 0;">
                     <div style="background: #F1F5F9; color: #1e293b; padding: 0.75rem; border-radius: 12px 12px 12px 0; display: inline-block; max-width: 70%;">
                         <strong>{st.session_state.chat_company_name}</strong><br>
                         {msg[6]}<br>
-                        <span style="font-size:0.7rem; color: var(--text-secondary);">{msg[9][:16]}</span>
+                        <span style="font-size:0.7rem; color: var(--text-secondary);">{msg_time}</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
 
-        with st.form("send_message_form"):
-            message = st.text_area("Type your message", height=100, key="chat_message")
-            col_a, col_b = st.columns([3, 1])
-            with col_b:
-                send = st.form_submit_button("📤 Send", use_container_width=True)
-
-            if send and message:
-                send_message(st.session_state.user_id, "employee",
-                           st.session_state.chat_company_id, "company",
-                           message, application_id=None)
-                st.rerun()
+        # Message input and send button (no form)
+        message = st.text_area("Type your message", height=100, key="chat_message_input")
+        if st.button("📤 Send", key="send_message_btn"):
+            if message:
+                try:
+                    send_message(st.session_state.user_id, "employee",
+                            st.session_state.chat_company_id, "company",
+                            message, application_id=None)
+                    st.success("Message sent!")
+                    # Clear the input by resetting the widget key
+                    st.session_state["chat_message_input"] = ""
+                    time.sleep(0.5)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to send message: {e}")
+            else:
+                st.warning("Please enter a message.")
 
 # --- Saved Jobs Section ---
 def saved_jobs_section():
@@ -1172,10 +1176,11 @@ if selected == "Dashboard":
         recent = get_user_applications(st.session_state.user_id)[:5]
         if recent:
             for app in recent:
+                applied_at_str = app[7].strftime('%Y-%m-%d') if app[7] else ''
                 st.markdown(f"""
                 <div style="background: white; padding: 1rem; border-radius: 8px; margin:0.5rem 0; border:1px solid var(--border-color);">
                     <p><strong>{app[10]}</strong> at {app[11]}</p>
-                    <p style="font-size:0.9rem;">Applied: {app[7][:10]}</p>
+                    <p style="font-size:0.9rem;">Applied: {applied_at_str}</p>
                     <span class="badge-{app[4]}">{app[4].upper()}</span>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1189,11 +1194,13 @@ if selected == "Dashboard":
             for n in notifs:
                 is_read = n[6]
                 badge = "🆕 " if not is_read else ""
+                # Format the timestamp
+                created_at_str = n[7].strftime('%Y-%m-%d %H:%M') if n[7] else ''
                 st.markdown(f"""
                 <div style="background: white; padding: 1rem; border-radius: 8px; margin:0.5rem 0; border:1px solid var(--border-color); {'' if is_read else 'border-left: 4px solid var(--primary);'}">
-                    <p><strong>{badge}{n[3]}</strong></p>  <!-- title -->
-                    <p>{n[4]}</p>  <!-- message -->
-                    <p style="font-size:0.8rem;">{n[7][:16]}</p>  <!-- created_at -->
+                    <p><strong>{badge}{n[3]}</strong></p>
+                    <p>{n[4]}</p>
+                    <p style="font-size:0.8rem;">{created_at_str}</p>
                 </div>
                 """, unsafe_allow_html=True)
             

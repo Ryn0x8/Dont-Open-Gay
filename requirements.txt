@@ -8,3 +8,4 @@ pandas
 plotly
 streamlit-option-menu
 streamlit-autorefresh
+firebase-admin

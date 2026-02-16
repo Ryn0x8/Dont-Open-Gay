@@ -1,7 +1,9 @@
 import streamlit as st
 from PIL import Image
 import base64
-from database import connect, add_user, get_user, create_tables
+from database import update_expired_jobs
+
+update_expired_jobs()   
 
 st.set_page_config(
     page_title="Anvaya",
@@ -10,7 +12,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-create_tables()
 
 # -------- FORCE LIGHT BACKGROUND --------
 st.markdown("""
