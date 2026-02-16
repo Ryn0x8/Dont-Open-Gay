@@ -23,8 +23,8 @@ db = firestore.client()
 # ===== EMAIL =====
 def send_email(to_email: str, subject: str, body: str) -> bool:
     """Sends an email using configured SMTP."""
-    sender_email = os.getenv("EMAIL_ADDRESS")
-    app_password = os.getenv("EMAIL_APP_PASSWORD")
+    sender_email = st.secrets["EMAIL_ADDRESS"]
+    app_password = st.secrets["EMAIL_APP_PASSWORD"]
     if not sender_email or not app_password:
         print("Email credentials are not configured.")
         return False
