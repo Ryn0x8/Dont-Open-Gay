@@ -34,7 +34,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- Authentication check ---
 if "employer_authenticated" not in st.session_state or not st.session_state.employer_authenticated:
     st.switch_page("pages/login_employer.py")
     st.stop()

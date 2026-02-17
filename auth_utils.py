@@ -207,7 +207,7 @@ def verify_face(email):
     score = np.mean(diff)
     st.write(f"Face difference score: {score:.2f}")
 
-    if score < 30:  # threshold can be tuned
+    if score < 50:  # threshold can be tuned
         st.success("✅ Face verified successfully!")
         st.session_state.verify_face_img = None
         return True
