@@ -10,8 +10,14 @@ import PyPDF2
 
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
+def sanitize_text(text):
+    """Remove any characters that cannot be encoded in UTF‑8 (e.g., emoji surrogates)."""
+    if text is None:
+        return ""
+    return text.encode('utf-8', errors='ignore').decode('utf-8')
+
 def extract_text_from_pdf(uploaded_file):
-    """Extract text from all pages of a PDF."""
+    """Extract text from all pages of a PDF and sanitize it."""
     text = ""
     try:
         pdf_reader = PyPDF2.PdfReader(uploaded_file)
@@ -21,7 +27,7 @@ def extract_text_from_pdf(uploaded_file):
                 text += page_text + "\n"
     except Exception as e:
         st.warning(f"Text extraction failed: {e}. Falling back to image only.")
-    return text.strip()
+    return sanitize_text(text)
 
 def input_pdf_setup(uploaded_file, max_pages=3):
     """
@@ -45,16 +51,9 @@ def evaluate_candidate(resume_file, job_description, job_skills):
     Evaluate a resume against a job description and required skills using Gemini.
     Returns a dict with 'score' (int) and 'explanation' (str), or None.
     """
-    # Sanitize inputs to remove problematic Unicode characters (like emojis)
-    if job_description:
-        job_description = job_description.encode('utf-8', errors='ignore').decode('utf-8')
-    else:
-        job_description = ""
-    
-    if job_skills:
-        job_skills = job_skills.encode('utf-8', errors='ignore').decode('utf-8')
-    else:
-        job_skills = ""
+    # Sanitize job details
+    job_description = sanitize_text(job_description)
+    job_skills = sanitize_text(job_skills)
 
     prompt = f"""
 You are an experienced Technical HR Manager. Evaluate the provided resume against the job description and required skills below.
@@ -76,10 +75,11 @@ You are an experienced Technical HR Manager. Evaluate the provided resume agains
     # Prepare content
     content_parts = []
     
-    # Try text extraction first
+    # Try text extraction first (resume_file may have been read, so reset pointer)
     resume_file.seek(0)
     resume_text = extract_text_from_pdf(resume_file)
     if resume_text:
+        # resume_text is already sanitized
         content_parts.append(resume_text)
     else:
         # Fallback to images
@@ -91,8 +91,8 @@ You are an experienced Technical HR Manager. Evaluate the provided resume agains
         model = genai.GenerativeModel("gemini-2.0-flash")
         response = model.generate_content([prompt] + content_parts)
         
-        # Parse JSON from response
-        result_text = response.text.strip()
+        # Sanitize the response text before parsing
+        result_text = sanitize_text(response.text)
         # Remove possible markdown code fences
         if result_text.startswith("```json"):
             result_text = result_text[7:]
@@ -102,6 +102,8 @@ You are an experienced Technical HR Manager. Evaluate the provided resume agains
         
         result = json.loads(result_text)
         if "score" in result and "explanation" in result:
+            # Sanitize explanation before returning (for display)
+            result["explanation"] = sanitize_text(result["explanation"])
             return result
         else:
             st.error("Gemini response missing required fields.")
