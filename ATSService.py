@@ -45,6 +45,17 @@ def evaluate_candidate(resume_file, job_description, job_skills):
     Evaluate a resume against a job description and required skills using Gemini.
     Returns a dict with 'score' (int) and 'explanation' (str), or None.
     """
+    # Sanitize inputs to remove problematic Unicode characters (like emojis)
+    if job_description:
+        job_description = job_description.encode('utf-8', errors='ignore').decode('utf-8')
+    else:
+        job_description = ""
+    
+    if job_skills:
+        job_skills = job_skills.encode('utf-8', errors='ignore').decode('utf-8')
+    else:
+        job_skills = ""
+
     prompt = f"""
 You are an experienced Technical HR Manager. Evaluate the provided resume against the job description and required skills below.
 
@@ -66,6 +77,7 @@ You are an experienced Technical HR Manager. Evaluate the provided resume agains
     content_parts = []
     
     # Try text extraction first
+    resume_file.seek(0)
     resume_text = extract_text_from_pdf(resume_file)
     if resume_text:
         content_parts.append(resume_text)
