@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import base64
 import plotly.express as px
-from datetime import datetime
+from datetime import datetime, timedelta
 from streamlit_option_menu import option_menu
 from auth_utils import send_email
 from streamlit_autorefresh import st_autorefresh
@@ -16,7 +16,11 @@ from database import (
     get_job_count_for_company, get_application_count_for_company,
     get_interview_count_for_company, get_open_request_count,
     upsert_interview, mark_company_messages_read, get_company_conversations,
-    delete_job, get_company_jobs_all
+    delete_job, get_company_jobs_all,
+    # NEW functions (implement these in database.py)
+    get_new_applications_count,
+    get_unread_messages_count,
+    get_recent_activities
 )
 import random
 from database import update_expired_jobs
@@ -27,7 +31,7 @@ update_expired_jobs()
 st.set_page_config(
     page_title="Employer Dashboard - Anvaya",
     layout="wide",
-    initial_sidebar_state="collapsed"  # Keep sidebar hidden
+    initial_sidebar_state="collapsed"
 )
 
 # --- Authentication check ---
@@ -53,104 +57,201 @@ def ats_review(resume_path, cover_letter, required_skills):
     feedback = f"Match score: {match_score}%. AI detection: {'Likely AI' if is_ai else 'Human'} (confidence {confidence}%)."
     return match_score, is_ai, confidence, feedback
 
-# --- Custom CSS (modern design) ---
+# --- Custom CSS (ultra‑modern, classy) ---
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    * {
+        font-family: 'Inter', sans-serif;
+    }
+
     :root {
         --primary: #4F46E5;
         --primary-light: #818CF8;
         --primary-dark: #3730A3;
         --secondary: #0EA5E9;
         --accent: #10B981;
-        --bg: #F9FAFB;
-        --card-bg: #FFFFFF;
-        --text: #1F2937;
-        --text-light: #6B7280;
-        --border: #E5E7EB;
-        --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+        --bg: #F8FAFC;
+        --card-bg: rgba(255,255,255,0.9);
+        --text: #0F172A;
+        --text-light: #475569;
+        --border: #E2E8F0;
+        --shadow-sm: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+        --shadow-lg: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.02);
+        --glass-bg: rgba(255,255,255,0.7);
+        --glass-border: 1px solid rgba(255,255,255,0.5);
     }
 
     .stApp {
-        background-color: var(--bg);
+        background: linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%);
     }
 
-    /* Top navigation menu */
-    .nav-menu {
-        background: white;
+    /* Top navigation bar */
+    .nav-container {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         border-radius: 60px;
         padding: 0.5rem;
-        box-shadow: var(--shadow);
         margin-bottom: 2rem;
+        box-shadow: var(--shadow-lg);
+        border: var(--glass-border);
         display: flex;
         justify-content: center;
         gap: 0.5rem;
+        flex-wrap: wrap;
     }
+
     .nav-item {
+        position: relative;
         padding: 0.75rem 1.5rem;
         border-radius: 40px;
         font-weight: 500;
-        cursor: pointer;
         transition: all 0.2s;
         color: var(--text-light);
         text-decoration: none;
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 0.95rem;
     }
+
     .nav-item:hover {
-        background: #F3F4F6;
+        background: rgba(79, 70, 229, 0.1);
         color: var(--primary);
+        transform: translateY(-2px);
     }
+
     .nav-item.active {
         background: var(--primary);
         color: white;
-        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        box-shadow: 0 8px 16px -4px rgba(79, 70, 229, 0.4);
     }
 
-    /* Header */
+    .badge-count {
+        background: #EF4444;
+        color: white;
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0.2rem 0.5rem;
+        border-radius: 40px;
+        margin-left: 0.25rem;
+        line-height: 1;
+    }
+
+    /* Hero header */
     .hero-header {
         background: linear-gradient(135deg, var(--primary), var(--secondary));
         padding: 2rem 2.5rem;
-        border-radius: 30px;
+        border-radius: 40px;
         color: white;
         margin-bottom: 2rem;
+        box-shadow: var(--shadow-lg);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        box-shadow: var(--shadow);
+        backdrop-filter: blur(5px);
     }
+
     .hero-header h1 {
         margin: 0;
         font-size: 2.2rem;
         font-weight: 700;
+        letter-spacing: -0.02em;
     }
+
     .hero-header p {
         margin: 0.5rem 0 0;
         opacity: 0.9;
         font-size: 1.1rem;
     }
-    .hero-header .date {
+
+    .date-badge {
         background: rgba(255,255,255,0.2);
         padding: 0.5rem 1.5rem;
         border-radius: 40px;
         font-weight: 500;
         backdrop-filter: blur(5px);
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    /* Notification center */
+    .notification-center {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-radius: 30px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border: var(--glass-border);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .notification-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        border-radius: 20px;
+        transition: background 0.2s;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .notification-item:last-child {
+        border-bottom: none;
+    }
+
+    .notification-item:hover {
+        background: rgba(79, 70, 229, 0.05);
+    }
+
+    .notification-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+
+    .notification-content {
+        flex: 1;
+    }
+
+    .notification-title {
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 0.25rem;
+    }
+
+    .notification-time {
+        font-size: 0.8rem;
+        color: var(--text-light);
     }
 
     /* Cards */
     .stat-card {
-        background: var(--card-bg);
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         padding: 1.5rem;
-        border-radius: 24px;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-        border: 1px solid var(--border);
+        border-radius: 30px;
+        border: var(--glass-border);
+        box-shadow: var(--shadow-sm);
         transition: transform 0.2s, box-shadow 0.2s;
         text-align: center;
     }
+
     .stat-card:hover {
         transform: translateY(-5px);
-        box-shadow: var(--shadow);
+        box-shadow: var(--shadow-lg);
     }
+
     .stat-card h3 {
         color: var(--text-light);
         font-size: 0.9rem;
@@ -158,6 +259,7 @@ st.markdown("""
         letter-spacing: 0.05em;
         margin-bottom: 0.5rem;
     }
+
     .stat-card p {
         font-size: 2.5rem;
         font-weight: 700;
@@ -165,31 +267,13 @@ st.markdown("""
         margin: 0;
     }
 
-    .job-card, .applicant-card, .conversation-card {
-        background: var(--card-bg);
-        padding: 1.5rem;
-        border-radius: 24px;
-        margin-bottom: 1rem;
-        border: 1px solid var(--border);
-        transition: all 0.2s;
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text);
+        margin: 2rem 0 1rem;
+        letter-spacing: -0.01em;
     }
-    .job-card:hover, .applicant-card:hover, .conversation-card:hover {
-        box-shadow: var(--shadow);
-    }
-
-    /* Badges */
-    .badge {
-        padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 500;
-        display: inline-block;
-    }
-    .badge-success { background: #D1FAE5; color: #065F46; }
-    .badge-warning { background: #FEF3C7; color: #92400E; }
-    .badge-danger { background: #FEE2E2; color: #991B1B; }
-    .badge-info { background: #DBEAFE; color: #1E40AF; }
-    .badge-primary { background: #EEF2FF; color: var(--primary-dark); }
 
     /* Buttons */
     .stButton > button {
@@ -198,18 +282,25 @@ st.markdown("""
         transition: all 0.2s;
         border: none;
         padding: 0.5rem 1.5rem;
+        background: var(--primary);
+        color: white;
+        box-shadow: var(--shadow-sm);
     }
+
     .stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        box-shadow: 0 8px 16px -4px rgba(79, 70, 229, 0.4);
     }
 
     /* Form inputs */
     .stTextInput > div > div > input, .stTextArea > div > textarea, .stSelectbox > div > div > select {
-        border-radius: 20px;
+        border-radius: 30px;
         border: 1px solid var(--border);
-        padding: 0.75rem 1rem;
+        padding: 0.75rem 1.5rem;
+        background: white;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
     }
+
     .stTextInput > div > div > input:focus, .stTextArea > div > textarea:focus {
         border-color: var(--primary);
         box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
@@ -220,11 +311,14 @@ st.markdown("""
         max-height: 400px;
         overflow-y: auto;
         padding: 1rem;
-        border: 1px solid var(--border);
-        border-radius: 24px;
-        background: white;
+        border-radius: 30px;
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: var(--glass-border);
         margin-bottom: 1rem;
     }
+
     .chat-bubble-company {
         background: var(--primary);
         color: white;
@@ -234,9 +328,11 @@ st.markdown("""
         display: inline-block;
         margin: 0.5rem 0;
         text-align: left;
+        box-shadow: var(--shadow-sm);
     }
+
     .chat-bubble-employee {
-        background: #F3F4F6;
+        background: white;
         color: var(--text);
         padding: 0.75rem 1rem;
         border-radius: 20px 20px 20px 0;
@@ -244,7 +340,10 @@ st.markdown("""
         display: inline-block;
         margin: 0.5rem 0;
         text-align: left;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border);
     }
+
     .chat-timestamp {
         font-size: 0.7rem;
         opacity: 0.7;
@@ -256,31 +355,74 @@ st.markdown("""
         border: 0;
         border-top: 1px solid var(--border);
     }
+
+    /* Logout button */
+    .logout-btn {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text-light);
+        border-radius: 40px;
+        padding: 0.5rem 1.5rem;
+        transition: all 0.2s;
+    }
+    .logout-btn:hover {
+        background: #FEE2E2;
+        border-color: #EF4444;
+        color: #EF4444;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- Top Navigation (no sidebar) ---
-menu_options = ["Dashboard", "Post a Job", "Applications", "Job Requests", "Messages", "Company Profile"]
-menu_icons = ["house", "briefcase", "file-text", "clipboard", "chat", "building"]
+# --- Fetch counts for badges ---
+company_id = st.session_state.company_id
+new_apps_count = get_new_applications_count(company_id)          # need to implement
+unread_msgs_count = get_unread_messages_count(company_id)        # need to implement
+open_requests_count = get_open_request_count()
+active_jobs_count = get_job_count_for_company(company_id)
 
-# Create a horizontal menu using columns
-cols = st.columns(len(menu_options))
-selected = None
-for i, (option, icon) in enumerate(zip(menu_options, menu_icons)):
-    with cols[i]:
-        # Use a button to simulate menu item; highlight if active
-        if st.button(f"{icon} {option}", key=f"nav_{option}", use_container_width=True,
-                     type="primary" if st.session_state.get("nav_selected") == option else "secondary"):
-            st.session_state.nav_selected = option
-            st.rerun()
-        # Check session state for active
-        if st.session_state.get("nav_selected") == option:
-            selected = option
+# --- Top Navigation with Badges ---
+menu_items = [
+    {"label": "Dashboard", "icon": "📊", "badge": None},
+    {"label": "Post a Job", "icon": "📝", "badge": None},
+    {"label": "Applications", "icon": "📋", "badge": new_apps_count if new_apps_count > 0 else None},
+    {"label": "Job Requests", "icon": "👥", "badge": open_requests_count if open_requests_count > 0 else None},
+    {"label": "Messages", "icon": "💬", "badge": unread_msgs_count if unread_msgs_count > 0 else None},
+    {"label": "Company Profile", "icon": "🏢", "badge": None},
+]
 
-# Default selection
+# Determine active tab
 if "nav_selected" not in st.session_state:
     st.session_state.nav_selected = "Dashboard"
-    selected = "Dashboard"
+
+# Render nav bar
+cols = st.columns([1,1,1,1,1,1,1])  # extra column for logout
+nav_cols = cols[:6]
+logout_col = cols[6]
+
+with st.container():
+    st.markdown('<div class="nav-container">', unsafe_allow_html=True)
+    nav_cols = st.columns(6)
+    for i, item in enumerate(menu_items):
+        with nav_cols[i]:
+            active_class = "active" if st.session_state.nav_selected == item["label"] else ""
+            badge_html = f'<span class="badge-count">{item["badge"]}</span>' if item["badge"] else ""
+            # Use a button to simulate menu click
+            if st.button(f"{item['icon']} {item['label']}{badge_html}", key=f"nav_{item['label']}", 
+                         help=item["label"], use_container_width=True,
+                         type="primary" if active_class else "secondary"):
+                st.session_state.nav_selected = item["label"]
+                st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Logout button in the last column
+with logout_col:
+    if st.button("🚪 Logout", key="logout_top", use_container_width=True):
+        for key in ['employer_authenticated', 'company_id', 'employer_name', 'employer_email', 'nav_selected']:
+            if key in st.session_state:
+                del st.session_state[key]
+        st.switch_page("app.py")
+
+selected = st.session_state.nav_selected
 
 # --- Hero Header (welcome + date) ---
 st.markdown(f"""
@@ -289,36 +431,48 @@ st.markdown(f"""
         <h1>👋 Welcome back, {st.session_state.employer_name}!</h1>
         <p>Manage your job postings and applicants from one place.</p>
     </div>
-    <div class="date">
+    <div class="date-badge">
         {datetime.now().strftime('%B %d, %Y')}
     </div>
 </div>
 """, unsafe_allow_html=True)
 
+# --- Notification Center (visible on all pages) ---
+with st.expander("🔔 Recent Notifications", expanded=False):
+    activities = get_recent_activities(company_id, limit=5)  # need to implement
+    if activities:
+        for act in activities:
+            icon = "📝" if act['type'] == 'application' else "💬"
+            st.markdown(f"""
+            <div class="notification-item">
+                <div class="notification-icon" style="background: { '#DCFCE7' if act['type']=='application' else '#DBEAFE' };">{icon}</div>
+                <div class="notification-content">
+                    <div class="notification-title">{act['content']}</div>
+                    <div class="notification-time">{act['time'].strftime('%Y-%m-%d %H:%M')}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("No recent notifications.")
+
 # --- DASHBOARD TAB ---
 if selected == "Dashboard":
     st.markdown("## 📊 Overview")
-    company_id = st.session_state.company_id
-
-    active_jobs = get_job_count_for_company(company_id)
-    total_apps = get_application_count_for_company(company_id)
-    interview_count = get_interview_count_for_company(company_id)
-    open_requests = get_open_request_count()
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.markdown(f'<div class="stat-card"><h3>📋 Active Jobs</h3><p>{active_jobs}</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stat-card"><h3>📋 Active Jobs</h3><p>{active_jobs_count}</p></div>', unsafe_allow_html=True)
     with col2:
-        st.markdown(f'<div class="stat-card"><h3>📝 Applications</h3><p>{total_apps}</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stat-card"><h3>📝 Applications</h3><p>{get_application_count_for_company(company_id)}</p></div>', unsafe_allow_html=True)
     with col3:
-        st.markdown(f'<div class="stat-card"><h3>🗓️ Interviews</h3><p>{interview_count}</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stat-card"><h3>🗓️ Interviews</h3><p>{get_interview_count_for_company(company_id)}</p></div>', unsafe_allow_html=True)
     with col4:
-        st.markdown(f'<div class="stat-card"><h3>👥 Job Requests</h3><p>{open_requests}</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stat-card"><h3>👥 Job Requests</h3><p>{open_requests_count}</p></div>', unsafe_allow_html=True)
 
     # Recent activity chart
-    if total_apps > 0:
-        apps = get_applications_for_company(company_id)
-        dates = [app[7] for app in apps]  # applied_at is index 7
+    apps = get_applications_for_company(company_id)
+    if apps:
+        dates = [app[7] for app in apps]
         df = pd.DataFrame({'applied_at': pd.to_datetime(dates)})
         df['date'] = df['applied_at'].dt.date
         daily_apps = df.groupby('date').size().reset_index(name='count')
@@ -415,7 +569,6 @@ elif selected == "Post a Job":
 # --- APPLICATIONS TAB ---
 elif selected == "Applications":
     st.markdown("## 📋 Applications Received")
-    company_id = st.session_state.company_id
 
     if "chat_employee_id" in st.session_state:
         st_autorefresh(interval=10000, key="employer_chat_autorefresh")
@@ -428,10 +581,9 @@ elif selected == "Applications":
                     if key in st.session_state: del st.session_state[key]
                 st.rerun()
 
-        msgs = get_messages_between_company_and_employee(st.session_state.company_id, st.session_state.chat_employee_id)
-        mark_company_messages_read(st.session_state.company_id, st.session_state.chat_employee_id)
+        msgs = get_messages_between_company_and_employee(company_id, st.session_state.chat_employee_id)
+        mark_company_messages_read(company_id, st.session_state.chat_employee_id)
 
-        # Chat container
         st.markdown('<div class="chat-container" id="chat-container">', unsafe_allow_html=True)
         for msg in msgs:
             sender = 'company' if msg[2] == 'company' else 'employee'
@@ -450,7 +602,6 @@ elif selected == "Applications":
                 """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Auto-scroll JavaScript
         st.markdown("""
         <script>
             var chatContainer = document.getElementById('chat-container');
@@ -461,7 +612,7 @@ elif selected == "Applications":
         with st.form("send_message_employer"):
             message = st.text_area("Type message", key="employer_chat_message")
             if st.form_submit_button("Send", use_container_width=True):
-                send_message_from_company(st.session_state.company_id, st.session_state.chat_employee_id, message, st.session_state.chat_application_id)
+                send_message_from_company(company_id, st.session_state.chat_employee_id, message, st.session_state.chat_application_id)
                 st.rerun()
     else:
         apps = get_applications_for_company(company_id)
@@ -560,8 +711,8 @@ elif selected == "Messages":
                     if key in st.session_state: del st.session_state[key]
                 st.rerun()
 
-        msgs = get_messages_between_company_and_employee(st.session_state.company_id, st.session_state.chat_employee_id)
-        mark_company_messages_read(st.session_state.company_id, st.session_state.chat_employee_id)
+        msgs = get_messages_between_company_and_employee(company_id, st.session_state.chat_employee_id)
+        mark_company_messages_read(company_id, st.session_state.chat_employee_id)
 
         st.markdown('<div class="chat-container" id="chat-container-msg">', unsafe_allow_html=True)
         for msg in msgs:
@@ -591,10 +742,10 @@ elif selected == "Messages":
         with st.form("send_message_employer"):
             message = st.text_area("Type message", key="employer_chat_message")
             if st.form_submit_button("Send", use_container_width=True):
-                send_message_from_company(st.session_state.company_id, st.session_state.chat_employee_id, message, application_id=None)
+                send_message_from_company(company_id, st.session_state.chat_employee_id, message, application_id=None)
                 st.rerun()
     else:
-        convos = get_company_conversations(st.session_state.company_id)
+        convos = get_company_conversations(company_id)
         if not convos:
             st.info("No conversations yet. Express interest in job requests to start chatting!")
         else:
@@ -622,7 +773,6 @@ elif selected == "Messages":
 # --- COMPANY PROFILE TAB ---
 elif selected == "Company Profile":
     st.markdown("## 🏢 Edit Company Profile")
-    company_id = st.session_state.company_id
     company = get_company_by_id(company_id)
 
     with st.form("company_profile_form"):
@@ -654,7 +804,7 @@ elif selected == "Company Profile":
             st.success("Profile updated!")
             st.rerun()
         if logout:
-            for key in ['employer_authenticated', 'company_id', 'employer_name', 'employer_email']:
+            for key in ['employer_authenticated', 'company_id', 'employer_name', 'employer_email', 'nav_selected']:
                 if key in st.session_state:
                     del st.session_state[key]
             st.switch_page("app.py")

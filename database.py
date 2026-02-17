@@ -989,3 +989,48 @@ def delete_job(job_id):
 
     # Finally, delete the job itself
     db.collection('jobs').document(job_id).delete()
+
+def get_new_applications_count(company_id):
+    """Count applications with status 'pending' or 'new' (adjust as needed)"""
+    from google.cloud import firestore
+    db = firestore.Client()
+    apps_ref = db.collection('applications').where('company_id', '==', company_id).where('status', 'in', ['pending', 'new'])
+    return len(list(apps_ref.stream()))
+
+def get_unread_messages_count(company_id):
+    """Count messages from employees to company that are unread"""
+    db = firestore.Client()
+    msgs_ref = db.collection('messages').where('receiver_id', '==', company_id).where('receiver_type', '==', 'company').where('is_read', '==', False)
+    return len(list(msgs_ref.stream()))
+
+def get_recent_activities(company_id, limit=5):
+    """
+    Return list of recent activities: applications and messages, sorted by time descending.
+    Each item: {'type': 'application'/'message', 'content': str, 'time': datetime}
+    """
+    db = firestore.Client()
+    activities = []
+
+    # Get recent applications
+    apps_ref = db.collection('applications').where('company_id', '==', company_id).order_by('applied_at', direction=firestore.Query.DESCENDING).limit(limit)
+    for app in apps_ref.stream():
+        data = app.to_dict()
+        activities.append({
+            'type': 'application',
+            'content': f"{data.get('employee_name')} applied for {data.get('job_title')}",
+            'time': data.get('applied_at')
+        })
+
+    # Get recent messages
+    msgs_ref = db.collection('messages').where('receiver_id', '==', company_id).where('receiver_type', '==', 'company').order_by('timestamp', direction=firestore.Query.DESCENDING).limit(limit)
+    for msg in msgs_ref.stream():
+        data = msg.to_dict()
+        activities.append({
+            'type': 'message',
+            'content': f"New message from {data.get('sender_name')}: {data.get('content')[:50]}...",
+            'time': data.get('timestamp')
+        })
+
+    # Sort all by time descending and return top `limit`
+    activities.sort(key=lambda x: x['time'], reverse=True)
+    return activities[:limit]
