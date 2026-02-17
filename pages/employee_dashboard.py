@@ -945,7 +945,7 @@ def job_requests_section():
                 send_email(
                     st.session_state.user_email,
                     "Job Request Posted",
-                    f"Your request '{title}' has been posted successfully.\n\nEmployers will be able to see it (once employer dashboard is ready)."
+                    f"Your request '{title}' has been posted successfully.\n\nEmployers will be able to see it"
                 )
                 st.success("Request posted!")
                 # Switch to My Requests tab after successful post
@@ -967,7 +967,6 @@ def messages_section():
     for i, conv in enumerate(conversations):
         col1, col2, col3 = st.columns([3, 1, 1])
         with col1:
-            # Format last message time
             last_time_str = conv[8].strftime('%Y-%m-%d %H:%M') if conv[8] else ''
             st.markdown(f"""
             <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
