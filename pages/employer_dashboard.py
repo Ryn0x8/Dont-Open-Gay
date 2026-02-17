@@ -17,10 +17,13 @@ from database import (
     get_interview_count_for_company, get_open_request_count,
     upsert_interview, mark_company_messages_read, get_company_conversations,
     delete_job, get_company_jobs_all,
-    get_new_applications_count, get_unread_messages_count, get_recent_activities
+    get_new_applications_count, get_unread_messages_count, get_recent_activities,
+    get_job_by_id
 )
 import random
 from database import update_expired_jobs
+from ATSService import evaluate_candidate
+import io
 
 update_expired_jobs()
 
@@ -697,9 +700,40 @@ elif selected == "Applications":
                             st.markdown(get_resume_download_link(app[13], "📄 Download Resume"), unsafe_allow_html=True)
                     with col2:
                         if st.button("🔍 Run ATS Review", key=f"ats_{app[0]}_{i}"):
-                            with st.spinner("Analyzing..."):
-                                match, is_ai, conf, feedback = ats_review(app[13], app[6], app[13])
-                                st.info(feedback)
+                            with st.spinner("Analyzing resume with AI..."):
+                                job_id = app[3] 
+                                job_details = get_job_by_id(job_id)
+                                if not job_details:
+                                    st.error("Could not fetch job details.")
+                                else:
+                                    job_desc = job_details[5]
+                                    job_skills = job_details[11]
+                                    
+                                    resume_path = app[13]
+                                    if not resume_path or not os.path.exists(resume_path):
+                                        st.error("Resume file not found.")
+                                    else:
+                                        with open(resume_path, "rb") as f:
+                                            resume_file = io.BytesIO(f.read())  
+                                        result = evaluate_candidate(resume_file, job_desc, job_skills)
+                                        if result:
+                                            score = result['score']
+                                            explanation = result['explanation']
+                                            if score >= 70:
+                                                colour = "#10B981"  
+                                            elif score >= 40:
+                                                colour = "#F59E0B"  
+                                            else:
+                                                colour = "#EF4444"  
+                                            st.markdown(f"""
+                                            <div style="background: white; padding:1rem; border-radius:16px; border:1px solid var(--border); margin:0.5rem 0;">
+                                                <h4 style="margin:0 0 0.5rem 0;">ATS Evaluation Result</h4>
+                                                <p><strong>Match Score:</strong> <span style="color:{colour}; font-size:1.5rem; font-weight:600;">{score}%</span></p>
+                                                <p><strong>Explanation:</strong> {explanation}</p>
+                                            </div>
+                                            """, unsafe_allow_html=True)
+                                        else:
+                                            st.error("Evaluation failed. Please try again.")
 
                         new_status = st.selectbox("Update Status", ["pending", "reviewed", "interview", "accepted", "rejected"],
                                                   index=["pending", "reviewed", "interview", "accepted", "rejected"].index(app[4]),
