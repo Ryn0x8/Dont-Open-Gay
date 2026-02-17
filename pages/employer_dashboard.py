@@ -701,30 +701,34 @@ elif selected == "Applications":
                     with col2:
                         if st.button("🔍 Run ATS Review", key=f"ats_{app[0]}_{i}"):
                             with st.spinner("Analyzing resume with AI..."):
-                                job_id = app[3] 
+                                job_id = app[3]  # job_id is index 3 in the application tuple
                                 job_details = get_job_by_id(job_id)
                                 if not job_details:
                                     st.error("Could not fetch job details.")
                                 else:
+                                    # job_details indices: description=5, requirements=6, skills_required=11
                                     job_desc = job_details[5]
                                     job_skills = job_details[11]
                                     
+                                    # Get resume file path (app[13] is resume_path)
                                     resume_path = app[13]
                                     if not resume_path or not os.path.exists(resume_path):
                                         st.error("Resume file not found.")
                                     else:
                                         with open(resume_path, "rb") as f:
-                                            resume_file = io.BytesIO(f.read())  
+                                            resume_file = io.BytesIO(f.read())
+                                        # Now call with three arguments
                                         result = evaluate_candidate(resume_file, job_desc, job_skills)
                                         if result:
                                             score = result['score']
                                             explanation = result['explanation']
+                                            # Determine colour based on score
                                             if score >= 70:
-                                                colour = "#10B981"  
+                                                colour = "#10B981"  # green
                                             elif score >= 40:
-                                                colour = "#F59E0B"  
+                                                colour = "#F59E0B"  # orange
                                             else:
-                                                colour = "#EF4444"  
+                                                colour = "#EF4444"  # red
                                             st.markdown(f"""
                                             <div style="background: white; padding:1rem; border-radius:16px; border:1px solid var(--border); margin:0.5rem 0;">
                                                 <h4 style="margin:0 0 0.5rem 0;">ATS Evaluation Result</h4>

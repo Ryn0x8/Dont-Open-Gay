@@ -6,7 +6,7 @@ from PIL import Image
 import pdf2image
 import google.generativeai as genai
 import streamlit as st
-import PyPDF2  # or pdfplumber
+import PyPDF2
 
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
@@ -30,7 +30,7 @@ def input_pdf_setup(uploaded_file, max_pages=3):
     """
     images = pdf2image.convert_from_bytes(uploaded_file.read())
     pdf_parts = []
-    for i, img in enumerate(images[:max_pages]):  # limit pages to avoid token overflow
+    for i, img in enumerate(images[:max_pages]):
         img_byte_arr = io.BytesIO()
         img.save(img_byte_arr, format='JPEG')
         img_byte_arr = img_byte_arr.getvalue()
@@ -40,48 +40,48 @@ def input_pdf_setup(uploaded_file, max_pages=3):
         })
     return pdf_parts
 
-def evaluate_candidate(resume_file, job_description):
+def evaluate_candidate(resume_file, job_description, job_skills):
     """
-    Evaluate a resume against a job description using Gemini.
+    Evaluate a resume against a job description and required skills using Gemini.
     Returns a dict with 'score' (int) and 'explanation' (str), or None.
     """
-    prompt = """
-You are an experienced Technical HR Manager. Evaluate the provided resume against the job description.
-
-**Instructions:**
-- Score the match from 0 to 100 (100 = perfect fit).
-- Base your evaluation **only** on the content of the resume and job description.
-- Do not use any external knowledge or make assumptions.
-- Respond **only** with a valid JSON object containing two keys: "score" (integer) and "explanation" (string).
+    prompt = f"""
+You are an experienced Technical HR Manager. Evaluate the provided resume against the job description and required skills below.
 
 **Job Description:**
 {job_description}
+
+**Required Skills:**
+{job_skills}
+
+**Instructions:**
+- Score the match from 0 to 100 (100 = perfect fit).
+- Base your evaluation **only** on the content of the resume and the job description/skills.
+- Do not use any external knowledge or make assumptions.
+- Respond **only** with a valid JSON object containing two keys: "score" (integer) and "explanation" (string). The explanation should briefly summarise the fit and, if the score is low, point out the key missing skills or mismatches.
 
 **Resume:"""
     
     # Prepare content
     content_parts = []
     
-    # Try to extract text first (more reliable)
+    # Try text extraction first
     resume_text = extract_text_from_pdf(resume_file)
     if resume_text:
         content_parts.append(resume_text)
     else:
         # Fallback to images
-        resume_file.seek(0)  # reset file pointer
+        resume_file.seek(0)
         image_parts = input_pdf_setup(resume_file)
         content_parts.extend(image_parts)
     
-    # Build the full prompt with job description embedded
-    full_prompt = prompt.format(job_description=job_description)
-    
     try:
         model = genai.GenerativeModel("gemini-2.0-flash")
-        response = model.generate_content([full_prompt] + content_parts)
+        response = model.generate_content([prompt] + content_parts)
         
         # Parse JSON from response
         result_text = response.text.strip()
-        # Sometimes the model wraps JSON in ```json ... ```
+        # Remove possible markdown code fences
         if result_text.startswith("```json"):
             result_text = result_text[7:]
         if result_text.endswith("```"):
@@ -89,7 +89,6 @@ You are an experienced Technical HR Manager. Evaluate the provided resume agains
         result_text = result_text.strip()
         
         result = json.loads(result_text)
-        # Validate structure
         if "score" in result and "explanation" in result:
             return result
         else:
