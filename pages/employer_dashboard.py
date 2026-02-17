@@ -35,8 +35,6 @@ if "employer_authenticated" not in st.session_state or not st.session_state.empl
     st.switch_page("pages/login_employer.py")
     st.stop()
 
-# --- Ensure database tables exist ---
-
 # --- Helper functions ---
 def get_resume_download_link(resume_path, text="Download Resume"):
     if resume_path and os.path.exists(resume_path):
@@ -55,10 +53,9 @@ def ats_review(resume_path, cover_letter, required_skills):
     feedback = f"Match score: {match_score}%. AI detection: {'Likely AI' if is_ai else 'Human'} (confidence {confidence}%)."
     return match_score, is_ai, confidence, feedback
 
-# --- Custom CSS (new modern design) ---
+# --- Custom CSS (modern design) ---
 st.markdown("""
 <style>
-    /* Global styles */
     :root {
         --primary: #4F46E5;
         --primary-light: #818CF8;
@@ -77,13 +74,6 @@ st.markdown("""
         background-color: var(--bg);
     }
 
-    /* Sidebar styling */
-    .css-1d391kg, .css-1wrcr25 {
-        background-color: white;
-        border-right: 1px solid var(--border);
-    }
-
-    /* Company header in sidebar */
     .sidebar-header {
         padding: 1.5rem 1rem;
         background: linear-gradient(135deg, var(--primary), var(--secondary));
@@ -102,7 +92,6 @@ st.markdown("""
         font-size: 0.9rem;
     }
 
-    /* Main header area */
     .main-header {
         background: white;
         padding: 1.5rem 2rem;
@@ -124,7 +113,6 @@ st.markdown("""
         color: var(--text-light);
     }
 
-    /* Cards */
     .stat-card {
         background: var(--card-bg);
         padding: 1.5rem;
@@ -163,7 +151,6 @@ st.markdown("""
         box-shadow: var(--shadow);
     }
 
-    /* Badges */
     .badge {
         padding: 0.25rem 0.75rem;
         border-radius: 9999px;
@@ -177,7 +164,6 @@ st.markdown("""
     .badge-info { background: #DBEAFE; color: #1E40AF; }
     .badge-primary { background: #EEF2FF; color: var(--primary-dark); }
 
-    /* Buttons */
     .stButton > button {
         border-radius: 12px;
         font-weight: 500;
@@ -190,7 +176,6 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
     }
 
-    /* Form inputs */
     .stTextInput > div > div > input, .stTextArea > div > textarea, .stSelectbox > div > div > select {
         border-radius: 12px;
         border: 1px solid var(--border);
@@ -201,7 +186,16 @@ st.markdown("""
         box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
     }
 
-    /* Chat bubbles */
+    /* Chat container with scroll */
+    .chat-container {
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 1rem;
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        background: white;
+        margin-bottom: 1rem;
+    }
     .chat-bubble-company {
         background: var(--primary);
         color: white;
@@ -210,6 +204,7 @@ st.markdown("""
         max-width: 70%;
         display: inline-block;
         margin: 0.5rem 0;
+        text-align: left;
     }
     .chat-bubble-employee {
         background: #F3F4F6;
@@ -219,6 +214,7 @@ st.markdown("""
         max-width: 70%;
         display: inline-block;
         margin: 0.5rem 0;
+        text-align: left;
     }
     .chat-timestamp {
         font-size: 0.7rem;
@@ -226,7 +222,6 @@ st.markdown("""
         margin-top: 0.25rem;
     }
 
-    /* Dividers */
     hr {
         margin: 2rem 0;
         border: 0;
@@ -278,7 +273,6 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # --- Dashboard Tab with Real Counts ---
-# --- Dashboard Tab with Real Counts ---
 if selected == "Dashboard":
     st.markdown("## 📊 Overview")
     company_id = st.session_state.company_id
@@ -301,7 +295,7 @@ if selected == "Dashboard":
     # Optional: recent activity chart
     if total_apps > 0:
         apps = get_applications_for_company(company_id)
-        # Extract applied_at from index 7 (as used in the original expander)
+        # Extract applied_at from index 7
         dates = [app[7] for app in apps]
         df = pd.DataFrame({'applied_at': pd.to_datetime(dates)})
         df['date'] = df['applied_at'].dt.date
@@ -314,6 +308,7 @@ if selected == "Dashboard":
                 font_color='var(--text)'
             )
             st.plotly_chart(fig, use_container_width=True)
+
 # --- Post a Job Tab ---
 elif selected == "Post a Job":
     update_expired_jobs()
@@ -366,7 +361,8 @@ elif selected == "Post a Job":
             st.info("You haven't posted any jobs yet.")
         else:
             for job in jobs:
-                with st.expander(f"{job['title']} - <span class='badge badge-primary'>{job['status'].upper()}</span>", unsafe_allow_html=True):
+                # Expander label without HTML
+                with st.expander(f"{job['title']} - {job['status'].upper()}"):
                     col1, col2 = st.columns([3, 1])
                     with col1:
                         st.markdown(f"**Category:** {job.get('category', 'N/A')}")
@@ -381,7 +377,6 @@ elif selected == "Post a Job":
                         st.markdown(f"**Deadline:** {deadline_str}")
                         st.markdown(f"**Posted:** {job['created_at'].strftime('%Y-%m-%d') if job.get('created_at') else 'Unknown'}")
                     with col2:
-                        # Delete button with confirmation
                         if st.button(f"🗑️ Delete Job", key=f"delete_job_{job['id']}"):
                             st.session_state.job_to_delete = job['id']
                             st.session_state.job_title_to_delete = job['title']
@@ -421,6 +416,8 @@ elif selected == "Applications":
         msgs = get_messages_between_company_and_employee(st.session_state.company_id, st.session_state.chat_employee_id)
         mark_company_messages_read(st.session_state.company_id, st.session_state.chat_employee_id)
 
+        # Chat container with auto-scroll
+        st.markdown('<div class="chat-container" id="chat-container">', unsafe_allow_html=True)
         for msg in msgs:
             if msg[2] == 'company':
                 msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
@@ -443,6 +440,17 @@ elif selected == "Applications":
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # JavaScript to auto-scroll to bottom
+        st.markdown("""
+        <script>
+            var chatContainer = document.getElementById('chat-container');
+            if (chatContainer) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        </script>
+        """, unsafe_allow_html=True)
 
         with st.form("send_message_employer"):
             message = st.text_area("Type message", key="employer_chat_message")
@@ -455,7 +463,11 @@ elif selected == "Applications":
             st.info("No applications yet.")
         else:
             for i, app in enumerate(apps):
-                with st.expander(f"{app[10]} for {app[9]} - <span class='badge badge-{ 'success' if app[4]=='accepted' else 'warning' if app[4]=='interview' else 'danger' if app[4]=='rejected' else 'info' }'>{app[4].upper()}</span>", unsafe_allow_html=True):
+                # Determine badge class based on status
+                status = app[4]
+                badge_class = "success" if status == "accepted" else "warning" if status == "interview" else "danger" if status == "rejected" else "info"
+                # Expander label without HTML
+                with st.expander(f"{app[10]} for {app[9]} - {status.upper()}"):
                     col1, col2 = st.columns([2, 1])
                     with col1:
                         st.markdown(f"**Applicant:** {app[11]}")
@@ -549,6 +561,8 @@ elif selected == "Messages":
         msgs = get_messages_between_company_and_employee(st.session_state.company_id, st.session_state.chat_employee_id)
         mark_company_messages_read(st.session_state.company_id, st.session_state.chat_employee_id)
 
+        # Chat container with auto-scroll
+        st.markdown('<div class="chat-container" id="chat-container-msg">', unsafe_allow_html=True)
         for msg in msgs:
             if msg[2] == 'company':
                 msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
@@ -571,6 +585,16 @@ elif selected == "Messages":
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown("""
+        <script>
+            var chatContainer = document.getElementById('chat-container-msg');
+            if (chatContainer) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        </script>
+        """, unsafe_allow_html=True)
 
         with st.form("send_message_employer"):
             message = st.text_area("Type message", key="employer_chat_message")
