@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import os
 import base64
-import time
 import plotly.express as px
 from datetime import datetime
 from streamlit_option_menu import option_menu
@@ -13,7 +12,7 @@ from database import (
     get_applications_for_company, update_application_status,
     get_all_open_job_requests, express_interest_in_request,
     get_messages_between_company_and_employee, send_message_from_company,
-    add_job, get_company_by_email, add_notification,
+    add_job, add_notification,
     get_job_count_for_company, get_application_count_for_company,
     get_interview_count_for_company, get_open_request_count,
     upsert_interview, mark_company_messages_read, get_company_conversations,
@@ -21,13 +20,14 @@ from database import (
 )
 import random
 from database import update_expired_jobs
-update_expired_jobs()   
+
+update_expired_jobs()
 
 # --- Page config ---
 st.set_page_config(
     page_title="Employer Dashboard - Anvaya",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"  # Keep sidebar hidden
 )
 
 # --- Authentication check ---
@@ -74,52 +74,78 @@ st.markdown("""
         background-color: var(--bg);
     }
 
-    .sidebar-header {
-        padding: 1.5rem 1rem;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        border-radius: 0 0 20px 20px;
-        margin-bottom: 1rem;
+    /* Top navigation menu */
+    .nav-menu {
+        background: white;
+        border-radius: 60px;
+        padding: 0.5rem;
+        box-shadow: var(--shadow);
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    .nav-item {
+        padding: 0.75rem 1.5rem;
+        border-radius: 40px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: var(--text-light);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .nav-item:hover {
+        background: #F3F4F6;
+        color: var(--primary);
+    }
+    .nav-item.active {
+        background: var(--primary);
         color: white;
-        text-align: center;
-    }
-    .sidebar-header h3 {
-        margin: 0;
-        font-weight: 600;
-    }
-    .sidebar-header p {
-        margin: 0.25rem 0 0;
-        opacity: 0.9;
-        font-size: 0.9rem;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
     }
 
-    .main-header {
-        background: white;
-        padding: 1.5rem 2rem;
-        border-radius: 20px;
-        box-shadow: var(--shadow);
+    /* Header */
+    .hero-header {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        padding: 2rem 2.5rem;
+        border-radius: 30px;
+        color: white;
         margin-bottom: 2rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        box-shadow: var(--shadow);
     }
-    .main-header h1 {
+    .hero-header h1 {
         margin: 0;
-        color: var(--text);
+        font-size: 2.2rem;
         font-weight: 700;
-        font-size: 1.8rem;
     }
-    .main-header p {
-        margin: 0;
-        color: var(--text-light);
+    .hero-header p {
+        margin: 0.5rem 0 0;
+        opacity: 0.9;
+        font-size: 1.1rem;
+    }
+    .hero-header .date {
+        background: rgba(255,255,255,0.2);
+        padding: 0.5rem 1.5rem;
+        border-radius: 40px;
+        font-weight: 500;
+        backdrop-filter: blur(5px);
     }
 
+    /* Cards */
     .stat-card {
         background: var(--card-bg);
         padding: 1.5rem;
-        border-radius: 20px;
+        border-radius: 24px;
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
         border: 1px solid var(--border);
         transition: transform 0.2s, box-shadow 0.2s;
+        text-align: center;
     }
     .stat-card:hover {
         transform: translateY(-5px);
@@ -142,7 +168,7 @@ st.markdown("""
     .job-card, .applicant-card, .conversation-card {
         background: var(--card-bg);
         padding: 1.5rem;
-        border-radius: 20px;
+        border-radius: 24px;
         margin-bottom: 1rem;
         border: 1px solid var(--border);
         transition: all 0.2s;
@@ -151,6 +177,7 @@ st.markdown("""
         box-shadow: var(--shadow);
     }
 
+    /* Badges */
     .badge {
         padding: 0.25rem 0.75rem;
         border-radius: 9999px;
@@ -164,20 +191,22 @@ st.markdown("""
     .badge-info { background: #DBEAFE; color: #1E40AF; }
     .badge-primary { background: #EEF2FF; color: var(--primary-dark); }
 
+    /* Buttons */
     .stButton > button {
-        border-radius: 12px;
+        border-radius: 40px;
         font-weight: 500;
         transition: all 0.2s;
         border: none;
-        padding: 0.5rem 1rem;
+        padding: 0.5rem 1.5rem;
     }
     .stButton > button:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
     }
 
+    /* Form inputs */
     .stTextInput > div > div > input, .stTextArea > div > textarea, .stSelectbox > div > div > select {
-        border-radius: 12px;
+        border-radius: 20px;
         border: 1px solid var(--border);
         padding: 0.75rem 1rem;
     }
@@ -186,13 +215,13 @@ st.markdown("""
         box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
     }
 
-    /* Chat container with scroll */
+    /* Chat container */
     .chat-container {
         max-height: 400px;
         overflow-y: auto;
         padding: 1rem;
         border: 1px solid var(--border);
-        border-radius: 20px;
+        border-radius: 24px;
         background: white;
         margin-bottom: 1rem;
     }
@@ -230,49 +259,43 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- Sidebar Navigation ---
-with st.sidebar:
-    st.markdown(f"""
-    <div class="sidebar-header">
-        <h3>{st.session_state.employer_name}</h3>
-        <p>{st.session_state.employer_email}</p>
-    </div>
-    """, unsafe_allow_html=True)
+# --- Top Navigation (no sidebar) ---
+menu_options = ["Dashboard", "Post a Job", "Applications", "Job Requests", "Messages", "Company Profile"]
+menu_icons = ["house", "briefcase", "file-text", "clipboard", "chat", "building"]
 
-    selected = option_menu(
-        menu_title="Navigation",
-        options=["Dashboard", "Post a Job", "Applications", "Job Requests", "Messages", "Company Profile"],
-        icons=["house", "briefcase", "file-text", "clipboard", "chat", "building"],
-        default_index=0,
-        styles={
-            "container": {"padding": "0!important", "background-color": "transparent"},
-            "icon": {"color": "var(--primary)", "font-size": "1.2rem"},
-            "nav-link": {"font-size": "1rem", "text-align": "left", "margin": "0.25rem 0", "border-radius": "12px"},
-            "nav-link-selected": {"background-color": "var(--primary)", "color": "white", "font-weight": "500"},
-        }
-    )
+# Create a horizontal menu using columns
+cols = st.columns(len(menu_options))
+selected = None
+for i, (option, icon) in enumerate(zip(menu_options, menu_icons)):
+    with cols[i]:
+        # Use a button to simulate menu item; highlight if active
+        if st.button(f"{icon} {option}", key=f"nav_{option}", use_container_width=True,
+                     type="primary" if st.session_state.get("nav_selected") == option else "secondary"):
+            st.session_state.nav_selected = option
+            st.rerun()
+        # Check session state for active
+        if st.session_state.get("nav_selected") == option:
+            selected = option
 
-    st.markdown("---")
-    if st.button("🚪 Logout", use_container_width=True):
-        for key in ['employer_authenticated', 'company_id', 'employer_name', 'employer_email']:
-            if key in st.session_state:
-                del st.session_state[key]
-        st.switch_page("app.py")
+# Default selection
+if "nav_selected" not in st.session_state:
+    st.session_state.nav_selected = "Dashboard"
+    selected = "Dashboard"
 
-# --- Main Header (welcome and date) ---
+# --- Hero Header (welcome + date) ---
 st.markdown(f"""
-<div class="main-header">
+<div class="hero-header">
     <div>
         <h1>👋 Welcome back, {st.session_state.employer_name}!</h1>
-        <p>Here's what's happening with your job postings today.</p>
+        <p>Manage your job postings and applicants from one place.</p>
     </div>
-    <div>
-        <p style="font-size: 1.1rem; font-weight: 500;">{datetime.now().strftime('%B %d, %Y')}</p>
+    <div class="date">
+        {datetime.now().strftime('%B %d, %Y')}
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- Dashboard Tab with Real Counts ---
+# --- DASHBOARD TAB ---
 if selected == "Dashboard":
     st.markdown("## 📊 Overview")
     company_id = st.session_state.company_id
@@ -292,11 +315,10 @@ if selected == "Dashboard":
     with col4:
         st.markdown(f'<div class="stat-card"><h3>👥 Job Requests</h3><p>{open_requests}</p></div>', unsafe_allow_html=True)
 
-    # Optional: recent activity chart
+    # Recent activity chart
     if total_apps > 0:
         apps = get_applications_for_company(company_id)
-        # Extract applied_at from index 7
-        dates = [app[7] for app in apps]
+        dates = [app[7] for app in apps]  # applied_at is index 7
         df = pd.DataFrame({'applied_at': pd.to_datetime(dates)})
         df['date'] = df['applied_at'].dt.date
         daily_apps = df.groupby('date').size().reset_index(name='count')
@@ -309,10 +331,9 @@ if selected == "Dashboard":
             )
             st.plotly_chart(fig, use_container_width=True)
 
-# --- Post a Job Tab ---
+# --- POST A JOB TAB ---
 elif selected == "Post a Job":
     update_expired_jobs()
-
     tab1, tab2 = st.tabs(["📝 Post New Job", "📋 Manage Jobs"])
 
     with tab1:
@@ -361,7 +382,6 @@ elif selected == "Post a Job":
             st.info("You haven't posted any jobs yet.")
         else:
             for job in jobs:
-                # Expander label without HTML
                 with st.expander(f"{job['title']} - {job['status'].upper()}"):
                     col1, col2 = st.columns([3, 1])
                     with col1:
@@ -379,76 +399,62 @@ elif selected == "Post a Job":
                     with col2:
                         if st.button(f"🗑️ Delete Job", key=f"delete_job_{job['id']}"):
                             st.session_state.job_to_delete = job['id']
-                            st.session_state.job_title_to_delete = job['title']
                             st.rerun()
 
                         if st.session_state.get("job_to_delete") == job['id']:
                             st.warning("Are you sure?")
-                            if st.button("✅ Yes, Delete", key=f"confirm_yes_{job['id']}"):
+                            if st.button("✅ Yes", key=f"confirm_yes_{job['id']}"):
                                 delete_job(job['id'])
                                 del st.session_state.job_to_delete
-                                del st.session_state.job_title_to_delete
                                 st.success("Job deleted!")
                                 st.rerun()
-                            if st.button("❌ Cancel", key=f"confirm_no_{job['id']}"):
+                            if st.button("❌ No", key=f"confirm_no_{job['id']}"):
                                 del st.session_state.job_to_delete
-                                del st.session_state.job_title_to_delete
                                 st.rerun()
 
-# --- Applications Tab ---
+# --- APPLICATIONS TAB ---
 elif selected == "Applications":
     st.markdown("## 📋 Applications Received")
     company_id = st.session_state.company_id
 
     if "chat_employee_id" in st.session_state:
         st_autorefresh(interval=10000, key="employer_chat_autorefresh")
-
         col1, col2 = st.columns([3, 1])
         with col1:
             st.markdown(f"### 💬 Chat with {st.session_state.chat_employee_name}")
         with col2:
             if st.button("← Back to Applications"):
-                del st.session_state.chat_employee_id
-                del st.session_state.chat_employee_name
-                del st.session_state.chat_application_id
+                for key in ['chat_employee_id', 'chat_employee_name', 'chat_application_id']:
+                    if key in st.session_state: del st.session_state[key]
                 st.rerun()
 
         msgs = get_messages_between_company_and_employee(st.session_state.company_id, st.session_state.chat_employee_id)
         mark_company_messages_read(st.session_state.company_id, st.session_state.chat_employee_id)
 
-        # Chat container with auto-scroll
+        # Chat container
         st.markdown('<div class="chat-container" id="chat-container">', unsafe_allow_html=True)
         for msg in msgs:
-            if msg[2] == 'company':
-                msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
+            sender = 'company' if msg[2] == 'company' else 'employee'
+            msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
+            if sender == 'company':
                 st.markdown(f"""
                 <div style="text-align: right; margin: 0.5rem 0;">
-                    <div class="chat-bubble-company">
-                        {msg[6]}<br>
-                        <span class="chat-timestamp">{msg_time}</span>
-                    </div>
+                    <div class="chat-bubble-company">{msg[6]}<br><span class="chat-timestamp">{msg_time}</span></div>
                 </div>
                 """, unsafe_allow_html=True)
             else:
-                msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
                 st.markdown(f"""
                 <div style="text-align: left; margin: 0.5rem 0;">
-                    <div class="chat-bubble-employee">
-                        <strong>{st.session_state.chat_employee_name}</strong><br>
-                        {msg[6]}<br>
-                        <span class="chat-timestamp">{msg_time}</span>
-                    </div>
+                    <div class="chat-bubble-employee"><strong>{st.session_state.chat_employee_name}</strong><br>{msg[6]}<br><span class="chat-timestamp">{msg_time}</span></div>
                 </div>
                 """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # JavaScript to auto-scroll to bottom
+        # Auto-scroll JavaScript
         st.markdown("""
         <script>
             var chatContainer = document.getElementById('chat-container');
-            if (chatContainer) {
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
+            if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
         </script>
         """, unsafe_allow_html=True)
 
@@ -463,10 +469,7 @@ elif selected == "Applications":
             st.info("No applications yet.")
         else:
             for i, app in enumerate(apps):
-                # Determine badge class based on status
                 status = app[4]
-                badge_class = "success" if status == "accepted" else "warning" if status == "interview" else "danger" if status == "rejected" else "info"
-                # Expander label without HTML
                 with st.expander(f"{app[10]} for {app[9]} - {status.upper()}"):
                     col1, col2 = st.columns([2, 1])
                     with col1:
@@ -515,7 +518,7 @@ elif selected == "Applications":
                             st.session_state.chat_application_id = app[0]
                             st.rerun()
 
-# --- Job Requests Tab ---
+# --- JOB REQUESTS TAB ---
 elif selected == "Job Requests":
     st.markdown("## 👥 Employee Job Requests")
     requests = get_all_open_job_requests()
@@ -542,47 +545,38 @@ elif selected == "Job Requests":
                             st.success("Interest expressed! The employee will be notified.")
                             st.rerun()
 
-# --- Messages Tab ---
+# --- MESSAGES TAB ---
 elif selected == "Messages":
     st.markdown("## 💬 Conversations")
 
     if "chat_employee_id" in st.session_state:
         st_autorefresh(interval=10000, key="employer_chat_autorefresh")
-
         col1, col2 = st.columns([3, 1])
         with col1:
             st.markdown(f"### 💬 Chat with {st.session_state.chat_employee_name}")
         with col2:
             if st.button("← Back to Conversations"):
-                del st.session_state.chat_employee_id
-                del st.session_state.chat_employee_name
+                for key in ['chat_employee_id', 'chat_employee_name']:
+                    if key in st.session_state: del st.session_state[key]
                 st.rerun()
 
         msgs = get_messages_between_company_and_employee(st.session_state.company_id, st.session_state.chat_employee_id)
         mark_company_messages_read(st.session_state.company_id, st.session_state.chat_employee_id)
 
-        # Chat container with auto-scroll
         st.markdown('<div class="chat-container" id="chat-container-msg">', unsafe_allow_html=True)
         for msg in msgs:
             if msg[2] == 'company':
                 msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
                 st.markdown(f"""
                 <div style="text-align: right; margin: 0.5rem 0;">
-                    <div class="chat-bubble-company">
-                        {msg[6]}<br>
-                        <span class="chat-timestamp">{msg_time}</span>
-                    </div>
+                    <div class="chat-bubble-company">{msg[6]}<br><span class="chat-timestamp">{msg_time}</span></div>
                 </div>
                 """, unsafe_allow_html=True)
             else:
                 msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
                 st.markdown(f"""
                 <div style="text-align: left; margin: 0.5rem 0;">
-                    <div class="chat-bubble-employee">
-                        <strong>{st.session_state.chat_employee_name}</strong><br>
-                        {msg[6]}<br>
-                        <span class="chat-timestamp">{msg_time}</span>
-                    </div>
+                    <div class="chat-bubble-employee"><strong>{st.session_state.chat_employee_name}</strong><br>{msg[6]}<br><span class="chat-timestamp">{msg_time}</span></div>
                 </div>
                 """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
@@ -590,9 +584,7 @@ elif selected == "Messages":
         st.markdown("""
         <script>
             var chatContainer = document.getElementById('chat-container-msg');
-            if (chatContainer) {
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
+            if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
         </script>
         """, unsafe_allow_html=True)
 
@@ -607,28 +599,27 @@ elif selected == "Messages":
             st.info("No conversations yet. Express interest in job requests to start chatting!")
         else:
             for conv in convos:
-                with st.container():
-                    st.markdown(f"""
-                    <div class="conversation-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <h4 style="margin: 0;">{conv[1]}</h4>
-                                <p style="margin: 0.25rem 0 0; color: var(--text-light);">{conv[2][:100] if conv[2] else 'No messages'}...</p>
-                            </div>
-                            <div style="text-align: right;">
-                                <span class="badge badge-danger" style="margin-right: 0.5rem;">{conv[4]} new</span>
-                                <span style="font-size: 0.8rem; color: var(--text-light);">{conv[3].strftime('%Y-%m-%d') if conv[3] else ''}</span>
-                            </div>
+                st.markdown(f"""
+                <div class="conversation-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h4 style="margin: 0;">{conv[1]}</h4>
+                            <p style="margin: 0.25rem 0 0; color: var(--text-light);">{conv[2][:100] if conv[2] else 'No messages'}...</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <span class="badge badge-danger" style="margin-right: 0.5rem;">{conv[4]} new</span>
+                            <span style="font-size: 0.8rem; color: var(--text-light);">{conv[3].strftime('%Y-%m-%d') if conv[3] else ''}</span>
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
-                    if st.button("Open Chat", key=f"open_chat_{conv[0]}"):
-                        st.session_state.chat_employee_id = conv[0]
-                        st.session_state.chat_employee_name = conv[1]
-                        st.rerun()
-                    st.markdown("<br>", unsafe_allow_html=True)
+                </div>
+                """, unsafe_allow_html=True)
+                if st.button("Open Chat", key=f"open_chat_{conv[0]}"):
+                    st.session_state.chat_employee_id = conv[0]
+                    st.session_state.chat_employee_name = conv[1]
+                    st.rerun()
+                st.markdown("<br>", unsafe_allow_html=True)
 
-# --- Company Profile Tab ---
+# --- COMPANY PROFILE TAB ---
 elif selected == "Company Profile":
     st.markdown("## 🏢 Edit Company Profile")
     company_id = st.session_state.company_id
