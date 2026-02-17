@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import base64
 import plotly.express as px
+import plotly.graph_objects as go
 from datetime import datetime
 from auth_utils import send_email
 from streamlit_autorefresh import st_autorefresh
@@ -53,7 +54,7 @@ def ats_review(resume_path, cover_letter, required_skills):
     feedback = f"Match score: {match_score}%. AI detection: {'Likely AI' if is_ai else 'Human'} (confidence {confidence}%)."
     return match_score, is_ai, confidence, feedback
 
-# --- Custom CSS (ultra‑modern, classy) ---
+# --- Custom CSS (ultra‑classy) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -83,60 +84,24 @@ st.markdown("""
         background: radial-gradient(circle at 10% 30%, rgba(255,255,255,0.95) 0%, #f1f5f9 100%);
     }
 
-    /* Top navigation bar */
-    .nav-container {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border-radius: 60px;
-        padding: 0.5rem;
-        margin-bottom: 2rem;
-        box-shadow: var(--shadow-lg);
-        border: var(--glass-border);
-        display: flex;
-        justify-content: center;
-        gap: 0.5rem;
-        flex-wrap: wrap;
+    /* Two‑row navigation */
+    .nav-badge-row {
+        margin-bottom: 0px;
     }
-
-    .nav-item {
-        position: relative;
-        padding: 0.75rem 1.5rem;
-        border-radius: 40px;
-        font-weight: 500;
-        transition: all 0.2s;
-        color: var(--text-light);
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        font-size: 0.95rem;
-    }
-
-    .nav-item:hover {
-        background: rgba(79, 70, 229, 0.1);
-        color: var(--primary);
-        transform: translateY(-2px);
-    }
-
-    .nav-item.active {
-        background: var(--primary);
-        color: white;
-        box-shadow: 0 8px 16px -4px rgba(79, 70, 229, 0.4);
+    .nav-button-row {
+        margin-top: 0px;
     }
 
     .badge-count {
         background: #EF4444;
         color: white;
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         font-weight: 600;
-        padding: 0.2rem 0.5rem;
+        padding: 0.25rem 0.6rem;
         border-radius: 40px;
-        margin-left: 0.25rem;
         line-height: 1;
+        display: inline-block;
+        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
     }
 
     /* Hero header */
@@ -145,7 +110,7 @@ st.markdown("""
         padding: 2rem 2.5rem;
         border-radius: 40px;
         color: white;
-        margin-bottom: 2rem;
+        margin: 1.5rem 0 2rem 0;
         box-shadow: var(--shadow-lg);
         display: flex;
         justify-content: space-between;
@@ -219,7 +184,7 @@ st.markdown("""
         margin-top: auto;
     }
 
-    /* Cards for stats */
+    /* Stat cards */
     .stat-card {
         background: var(--glass-bg);
         backdrop-filter: blur(10px);
@@ -250,6 +215,36 @@ st.markdown("""
         font-weight: 700;
         color: var(--primary);
         margin: 0;
+    }
+
+    .metric-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        padding: 1rem 1.5rem;
+        border-radius: 30px;
+        border: var(--glass-border);
+        box-shadow: var(--shadow-sm);
+        text-align: center;
+    }
+
+    .metric-card .label {
+        color: var(--text-light);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .metric-card .value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--primary);
+        line-height: 1.2;
+    }
+
+    .metric-card .delta {
+        font-size: 0.8rem;
+        color: var(--accent);
     }
 
     .section-title {
@@ -349,40 +344,44 @@ new_apps_count = get_new_applications_count(company_id)
 unread_msgs_count = get_unread_messages_count(company_id)
 open_requests_count = get_open_request_count()
 active_jobs_count = get_job_count_for_company(company_id)
+total_apps = get_application_count_for_company(company_id)
+interview_count = get_interview_count_for_company(company_id)
 
-# --- Top Navigation with Badges (pure Streamlit) ---
+# --- Two‑row navigation with badges ---
 menu_items = [
     {"label": "Dashboard", "icon": "📊", "badge": None},
     {"label": "Post a Job", "icon": "📝", "badge": None},
-    {"label": "Applications", "icon": "📋", "badge": new_apps_count if new_apps_count > 0 else None},
-    {"label": "Job Requests", "icon": "👥", "badge": open_requests_count if open_requests_count > 0 else None},
-    {"label": "Messages", "icon": "💬", "badge": unread_msgs_count if unread_msgs_count > 0 else None},
+    {"label": "Applications", "icon": "📋", "badge": new_apps_count},
+    {"label": "Job Requests", "icon": "👥", "badge": open_requests_count},
+    {"label": "Messages", "icon": "💬", "badge": unread_msgs_count},
     {"label": "Company Profile", "icon": "🏢", "badge": None},
 ]
 
-cols = st.columns([1,1,1,1,1,1,0.8])  # 6 nav + logout
-
+# Row 1: badges
+badge_cols = st.columns([1,1,1,1,1,1,0.8])
 for i, item in enumerate(menu_items):
-    with cols[i]:
-        # Badge above button
-        if item["badge"]:
+    with badge_cols[i]:
+        if item["badge"] and item["badge"] > 0:
             st.markdown(
-                f"<div style='text-align: center; margin-bottom: -8px;'>"
+                f"<div style='text-align: center; margin-bottom: 5px;'>"
                 f"<span class='badge-count'>{item['badge']}</span>"
                 f"</div>",
                 unsafe_allow_html=True
             )
         else:
-            st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+with badge_cols[-1]:
+    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
 
-        # Button
+# Row 2: buttons
+button_cols = st.columns([1,1,1,1,1,1,0.8])
+for i, item in enumerate(menu_items):
+    with button_cols[i]:
         active = "primary" if st.session_state.get("nav_selected") == item["label"] else "secondary"
         if st.button(f"{item['icon']} {item['label']}", key=f"nav_{item['label']}", use_container_width=True, type=active):
             st.session_state.nav_selected = item["label"]
             st.rerun()
-
-with cols[-1]:
-    st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
+with button_cols[-1]:
     if st.button("🚪 Logout", key="logout_top", use_container_width=True):
         for key in ['employer_authenticated', 'company_id', 'employer_name', 'employer_email', 'nav_selected']:
             if key in st.session_state:
@@ -406,21 +405,20 @@ st.markdown(f"""
 
 # --- Notification Cards (always visible) ---
 st.markdown("## 🔔 Recent Notifications")
-activities = get_recent_activities(company_id, limit=6)  # fetch up to 6
+activities = get_recent_activities(company_id, limit=6)
 
 if activities:
-    # Display in a grid of 3 cards per row
     for i in range(0, len(activities), 3):
-        row_activities = activities[i:i+3]
-        card_cols = st.columns(3)
-        for j, act in enumerate(row_activities):
-            with card_cols[j]:
+        row = activities[i:i+3]
+        cols = st.columns(3)
+        for j, act in enumerate(row):
+            with cols[j]:
                 icon = "📝" if act['type'] == 'application' else "💬"
-                bg_color = "#DCFCE7" if act['type'] == 'application' else "#DBEAFE"
+                bg = "#DCFCE7" if act['type'] == 'application' else "#DBEAFE"
                 time_str = act['time'].strftime('%Y-%m-%d %H:%M') if act['time'] else ''
                 st.markdown(f"""
                 <div class="notification-card">
-                    <div class="notification-icon" style="background: {bg_color};">{icon}</div>
+                    <div class="notification-icon" style="background: {bg};">{icon}</div>
                     <div class="notification-title">{act['content']}</div>
                     <div class="notification-time">{time_str}</div>
                 </div>
@@ -428,37 +426,126 @@ if activities:
 else:
     st.info("No recent notifications.")
 
-# --- Dashboard Tab ---
+# --- Dashboard Tab (enhanced) ---
 if selected == "Dashboard":
     st.markdown("## 📊 Overview")
 
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
+    # Top KPI row
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    with kpi1:
         st.markdown(f'<div class="stat-card"><h3>📋 Active Jobs</h3><p>{active_jobs_count}</p></div>', unsafe_allow_html=True)
-    with col2:
-        st.markdown(f'<div class="stat-card"><h3>📝 Applications</h3><p>{get_application_count_for_company(company_id)}</p></div>', unsafe_allow_html=True)
-    with col3:
-        st.markdown(f'<div class="stat-card"><h3>🗓️ Interviews</h3><p>{get_interview_count_for_company(company_id)}</p></div>', unsafe_allow_html=True)
-    with col4:
-        st.markdown(f'<div class="stat-card"><h3>👥 Job Requests</h3><p>{open_requests_count}</p></div>', unsafe_allow_html=True)
+    with kpi2:
+        st.markdown(f'<div class="stat-card"><h3>📝 Total Applications</h3><p>{total_apps}</p></div>', unsafe_allow_html=True)
+    with kpi3:
+        st.markdown(f'<div class="stat-card"><h3>🗓️ Interviews</h3><p>{interview_count}</p></div>', unsafe_allow_html=True)
+    with kpi4:
+        st.markdown(f'<div class="stat-card"><h3>👥 Open Requests</h3><p>{open_requests_count}</p></div>', unsafe_allow_html=True)
 
-    # Recent activity chart
-    apps = get_applications_for_company(company_id)
-    if apps:
-        dates = [app[7] for app in apps]  # applied_at index
-        df = pd.DataFrame({'applied_at': pd.to_datetime(dates)})
-        df['date'] = df['applied_at'].dt.date
-        daily_apps = df.groupby('date').size().reset_index(name='count')
-        if not daily_apps.empty:
-            fig = px.line(daily_apps, x='date', y='count', title='Applications Over Time', markers=True)
+    # Additional metrics row
+    if total_apps > 0:
+        interview_rate = (interview_count / total_apps) * 100
+        pending_rate = (new_apps_count / total_apps) * 100 if total_apps else 0
+    else:
+        interview_rate = pending_rate = 0
+
+    m1, m2, m3 = st.columns(3)
+    with m1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="label">Interview Conversion</div>
+            <div class="value">{interview_rate:.1f}%</div>
+            <div class="delta">of all applications</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with m2:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="label">Pending Applications</div>
+            <div class="value">{new_apps_count}</div>
+            <div class="delta">{pending_rate:.1f}% of total</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with m3:
+        # Average applications per job
+        if active_jobs_count > 0:
+            avg_per_job = total_apps / active_jobs_count
+        else:
+            avg_per_job = 0
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="label">Avg. Apps / Job</div>
+            <div class="value">{avg_per_job:.1f}</div>
+            <div class="delta">across active jobs</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Charts row
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Applications over time
+        apps = get_applications_for_company(company_id)
+        if apps:
+            dates = [app[7] for app in apps]  # applied_at index
+            df = pd.DataFrame({'applied_at': pd.to_datetime(dates)})
+            df['date'] = df['applied_at'].dt.date
+            daily = df.groupby('date').size().reset_index(name='count')
+            fig = px.line(daily, x='date', y='count', title='📈 Applications Over Time',
+                          markers=True, line_shape='linear')
             fig.update_layout(
                 plot_bgcolor='rgba(0,0,0,0)',
                 paper_bgcolor='rgba(0,0,0,0)',
-                font_color='var(--text)'
+                font_color='var(--text)',
+                margin=dict(l=20, r=20, t=40, b=20)
             )
             st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No application data yet.")
 
-# --- Post a Job Tab ---
+    with col2:
+        # Applications by status (pie chart)
+        if apps:
+            status_counts = {}
+            for app in apps:
+                status = app[4]
+                status_counts[status] = status_counts.get(status, 0) + 1
+            status_df = pd.DataFrame(list(status_counts.items()), columns=['Status', 'Count'])
+            fig = px.pie(status_df, values='Count', names='Status', title='🥧 Applications by Status',
+                         color_discrete_sequence=px.colors.qualitative.Set3)
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font_color='var(--text)',
+                margin=dict(l=20, r=20, t=40, b=20)
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No status data.")
+
+    # Second row: Top jobs by applications
+    if apps:
+        # Count applications per job
+        job_apps = {}
+        for app in apps:
+            job_title = app[9]  # job title
+            job_apps[job_title] = job_apps.get(job_title, 0) + 1
+        job_df = pd.DataFrame(list(job_apps.items()), columns=['Job Title', 'Applications'])
+        job_df = job_df.sort_values('Applications', ascending=True).tail(5)  # top 5
+        fig = px.bar(job_df, x='Applications', y='Job Title', orientation='h',
+                     title='🏆 Top Jobs by Applications',
+                     color='Applications', color_continuous_scale='Blues')
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font_color='var(--text)',
+            margin=dict(l=20, r=20, t=40, b=20),
+            yaxis={'categoryorder':'total ascending'}
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+# --- All other tabs (Post a Job, Applications, Job Requests, Messages, Company Profile) remain exactly as before ---
+# (We'll include them here for completeness, but they are unchanged from the previous version)
+
 elif selected == "Post a Job":
     update_expired_jobs()
     tab1, tab2 = st.tabs(["📝 Post New Job", "📋 Manage Jobs"])
@@ -539,9 +626,10 @@ elif selected == "Post a Job":
                                 del st.session_state.job_to_delete
                                 st.rerun()
 
-# --- Applications Tab ---
 elif selected == "Applications":
-    st.markdown("## 📋 Applications Received")
+    st.markdown(f"## 📋 Applications Received  "
+                f"<span class='badge-count' style='font-size: 0.9rem; margin-left: 10px;'>{new_apps_count} pending</span>",
+                unsafe_allow_html=True)
 
     if "chat_employee_id" in st.session_state:
         st_autorefresh(interval=10000, key="employer_chat_autorefresh")
@@ -642,9 +730,11 @@ elif selected == "Applications":
                             st.session_state.chat_application_id = app[0]
                             st.rerun()
 
-# --- Job Requests Tab ---
 elif selected == "Job Requests":
-    st.markdown("## 👥 Employee Job Requests")
+    st.markdown(f"## 👥 Employee Job Requests  "
+                f"<span class='badge-count' style='font-size: 0.9rem; margin-left: 10px;'>{open_requests_count} open</span>",
+                unsafe_allow_html=True)
+
     requests = get_all_open_job_requests()
     if not requests:
         st.info("No open job requests.")
@@ -669,7 +759,6 @@ elif selected == "Job Requests":
                             st.success("Interest expressed! The employee will be notified.")
                             st.rerun()
 
-# --- Messages Tab ---
 elif selected == "Messages":
     st.markdown("## 💬 Conversations")
 
@@ -743,7 +832,6 @@ elif selected == "Messages":
                     st.rerun()
                 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- Company Profile Tab ---
 elif selected == "Company Profile":
     st.markdown("## 🏢 Edit Company Profile")
     company = get_company_by_id(company_id)
