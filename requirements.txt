@@ -9,3 +9,6 @@ plotly
 streamlit-option-menu
 streamlit-autorefresh
 firebase-admin
+pdf2image
+pypdf2
+google-generativeai
