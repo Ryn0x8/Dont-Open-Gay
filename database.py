@@ -1077,3 +1077,11 @@ def get_recent_activities(company_id, limit=5):
     # Sort combined list by time (newest first) and return top `limit`
     activities.sort(key=lambda x: x['time'], reverse=True)
     return activities[:limit]
+
+def get_unread_messages_count_employee(employee_id):
+    """Count unread messages from companies to this employee."""
+    msgs_ref = db.collection('messages')\
+                 .where('receiver_id', '==', employee_id)\
+                 .where('receiver_type', '==', 'employee')\
+                 .where('is_read', '==', False)
+    return len(list(msgs_ref.stream()))
