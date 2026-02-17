@@ -88,7 +88,7 @@ You are an experienced Technical HR Manager. Evaluate the provided resume agains
         content_parts.extend(image_parts)
     
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash-latest")
+        model = genai.GenerativeModel("gemini-2.0-flash")
         response = model.generate_content([prompt] + content_parts)
         
         # Sanitize the response text before parsing
