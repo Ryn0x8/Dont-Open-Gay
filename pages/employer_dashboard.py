@@ -3,8 +3,7 @@ import pandas as pd
 import os
 import base64
 import plotly.express as px
-from datetime import datetime, timedelta
-from streamlit_option_menu import option_menu
+from datetime import datetime
 from auth_utils import send_email
 from streamlit_autorefresh import st_autorefresh
 from database import (
@@ -17,10 +16,7 @@ from database import (
     get_interview_count_for_company, get_open_request_count,
     upsert_interview, mark_company_messages_read, get_company_conversations,
     delete_job, get_company_jobs_all,
-    # NEW functions (implement these in database.py)
-    get_new_applications_count,
-    get_unread_messages_count,
-    get_recent_activities
+    get_new_applications_count, get_unread_messages_count, get_recent_activities
 )
 import random
 from database import update_expired_jobs
@@ -34,6 +30,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# --- Authentication check ---
 if "employer_authenticated" not in st.session_state or not st.session_state.employer_authenticated:
     st.switch_page("pages/login_employer.py")
     st.stop()
@@ -83,7 +80,7 @@ st.markdown("""
     }
 
     .stApp {
-        background: linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%);
+        background: radial-gradient(circle at 10% 30%, rgba(255,255,255,0.95) 0%, #f1f5f9 100%);
     }
 
     /* Top navigation bar */
@@ -178,34 +175,24 @@ st.markdown("""
         border: 1px solid rgba(255,255,255,0.3);
     }
 
-    /* Notification center */
-    .notification-center {
+    /* Notification card */
+    .notification-card {
         background: var(--glass-bg);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
-        border-radius: 30px;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
+        border-radius: 24px;
+        padding: 1rem;
         border: var(--glass-border);
         box-shadow: var(--shadow-sm);
-    }
-
-    .notification-item {
+        transition: transform 0.2s, box-shadow 0.2s;
+        height: 100%;
         display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1rem;
-        border-radius: 20px;
-        transition: background 0.2s;
-        border-bottom: 1px solid var(--border);
+        flex-direction: column;
     }
 
-    .notification-item:last-child {
-        border-bottom: none;
-    }
-
-    .notification-item:hover {
-        background: rgba(79, 70, 229, 0.05);
+    .notification-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-lg);
     }
 
     .notification-icon {
@@ -216,24 +203,23 @@ st.markdown("""
         align-items: center;
         justify-content: center;
         font-size: 1.2rem;
-    }
-
-    .notification-content {
-        flex: 1;
+        margin-bottom: 0.75rem;
     }
 
     .notification-title {
         font-weight: 600;
         color: var(--text);
         margin-bottom: 0.25rem;
+        font-size: 0.95rem;
     }
 
     .notification-time {
-        font-size: 0.8rem;
+        font-size: 0.7rem;
         color: var(--text-light);
+        margin-top: auto;
     }
 
-    /* Cards */
+    /* Cards for stats */
     .stat-card {
         background: var(--glass-bg);
         backdrop-filter: blur(10px);
@@ -354,32 +340,17 @@ st.markdown("""
         border: 0;
         border-top: 1px solid var(--border);
     }
-
-    /* Logout button */
-    .logout-btn {
-        background: transparent;
-        border: 1px solid var(--border);
-        color: var(--text-light);
-        border-radius: 40px;
-        padding: 0.5rem 1.5rem;
-        transition: all 0.2s;
-    }
-    .logout-btn:hover {
-        background: #FEE2E2;
-        border-color: #EF4444;
-        color: #EF4444;
-    }
 </style>
 """, unsafe_allow_html=True)
 
 # --- Fetch counts for badges ---
 company_id = st.session_state.company_id
-new_apps_count = get_new_applications_count(company_id)          # need to implement
-unread_msgs_count = get_unread_messages_count(company_id)        # need to implement
+new_apps_count = get_new_applications_count(company_id)
+unread_msgs_count = get_unread_messages_count(company_id)
 open_requests_count = get_open_request_count()
 active_jobs_count = get_job_count_for_company(company_id)
 
-# --- Top Navigation with Badges ---
+# --- Top Navigation with Badges (pure Streamlit) ---
 menu_items = [
     {"label": "Dashboard", "icon": "📊", "badge": None},
     {"label": "Post a Job", "icon": "📝", "badge": None},
@@ -389,41 +360,38 @@ menu_items = [
     {"label": "Company Profile", "icon": "🏢", "badge": None},
 ]
 
-# Determine active tab
-if "nav_selected" not in st.session_state:
-    st.session_state.nav_selected = "Dashboard"
+cols = st.columns([1,1,1,1,1,1,0.8])  # 6 nav + logout
 
-# Render nav bar
-cols = st.columns([1,1,1,1,1,1,1])  # extra column for logout
-nav_cols = cols[:6]
-logout_col = cols[6]
+for i, item in enumerate(menu_items):
+    with cols[i]:
+        # Badge above button
+        if item["badge"]:
+            st.markdown(
+                f"<div style='text-align: center; margin-bottom: -8px;'>"
+                f"<span class='badge-count'>{item['badge']}</span>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
 
-with st.container():
-    st.markdown('<div class="nav-container">', unsafe_allow_html=True)
-    nav_cols = st.columns(6)
-    for i, item in enumerate(menu_items):
-        with nav_cols[i]:
-            active_class = "active" if st.session_state.nav_selected == item["label"] else ""
-            badge_html = f'<span class="badge-count">{item["badge"]}</span>' if item["badge"] else ""
-            # Use a button to simulate menu click
-            if st.button(f"{item['icon']} {item['label']}{badge_html}", key=f"nav_{item['label']}", 
-                         help=item["label"], use_container_width=True,
-                         type="primary" if active_class else "secondary"):
-                st.session_state.nav_selected = item["label"]
-                st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+        # Button
+        active = "primary" if st.session_state.get("nav_selected") == item["label"] else "secondary"
+        if st.button(f"{item['icon']} {item['label']}", key=f"nav_{item['label']}", use_container_width=True, type=active):
+            st.session_state.nav_selected = item["label"]
+            st.rerun()
 
-# Logout button in the last column
-with logout_col:
+with cols[-1]:
+    st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
     if st.button("🚪 Logout", key="logout_top", use_container_width=True):
         for key in ['employer_authenticated', 'company_id', 'employer_name', 'employer_email', 'nav_selected']:
             if key in st.session_state:
                 del st.session_state[key]
         st.switch_page("app.py")
 
-selected = st.session_state.nav_selected
+selected = st.session_state.get("nav_selected", "Dashboard")
 
-# --- Hero Header (welcome + date) ---
+# --- Hero Header ---
 st.markdown(f"""
 <div class="hero-header">
     <div>
@@ -436,25 +404,31 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- Notification Center (visible on all pages) ---
-with st.expander("🔔 Recent Notifications", expanded=False):
-    activities = get_recent_activities(company_id, limit=5)  # need to implement
-    if activities:
-        for act in activities:
-            icon = "📝" if act['type'] == 'application' else "💬"
-            st.markdown(f"""
-            <div class="notification-item">
-                <div class="notification-icon" style="background: { '#DCFCE7' if act['type']=='application' else '#DBEAFE' };">{icon}</div>
-                <div class="notification-content">
-                    <div class="notification-title">{act['content']}</div>
-                    <div class="notification-time">{act['time'].strftime('%Y-%m-%d %H:%M')}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.info("No recent notifications.")
+# --- Notification Cards (always visible) ---
+st.markdown("## 🔔 Recent Notifications")
+activities = get_recent_activities(company_id, limit=6)  # fetch up to 6
 
-# --- DASHBOARD TAB ---
+if activities:
+    # Display in a grid of 3 cards per row
+    for i in range(0, len(activities), 3):
+        row_activities = activities[i:i+3]
+        card_cols = st.columns(3)
+        for j, act in enumerate(row_activities):
+            with card_cols[j]:
+                icon = "📝" if act['type'] == 'application' else "💬"
+                bg_color = "#DCFCE7" if act['type'] == 'application' else "#DBEAFE"
+                time_str = act['time'].strftime('%Y-%m-%d %H:%M') if act['time'] else ''
+                st.markdown(f"""
+                <div class="notification-card">
+                    <div class="notification-icon" style="background: {bg_color};">{icon}</div>
+                    <div class="notification-title">{act['content']}</div>
+                    <div class="notification-time">{time_str}</div>
+                </div>
+                """, unsafe_allow_html=True)
+else:
+    st.info("No recent notifications.")
+
+# --- Dashboard Tab ---
 if selected == "Dashboard":
     st.markdown("## 📊 Overview")
 
@@ -471,7 +445,7 @@ if selected == "Dashboard":
     # Recent activity chart
     apps = get_applications_for_company(company_id)
     if apps:
-        dates = [app[7] for app in apps]
+        dates = [app[7] for app in apps]  # applied_at index
         df = pd.DataFrame({'applied_at': pd.to_datetime(dates)})
         df['date'] = df['applied_at'].dt.date
         daily_apps = df.groupby('date').size().reset_index(name='count')
@@ -484,7 +458,7 @@ if selected == "Dashboard":
             )
             st.plotly_chart(fig, use_container_width=True)
 
-# --- POST A JOB TAB ---
+# --- Post a Job Tab ---
 elif selected == "Post a Job":
     update_expired_jobs()
     tab1, tab2 = st.tabs(["📝 Post New Job", "📋 Manage Jobs"])
@@ -565,7 +539,7 @@ elif selected == "Post a Job":
                                 del st.session_state.job_to_delete
                                 st.rerun()
 
-# --- APPLICATIONS TAB ---
+# --- Applications Tab ---
 elif selected == "Applications":
     st.markdown("## 📋 Applications Received")
 
@@ -627,7 +601,7 @@ elif selected == "Applications":
                         st.markdown(f"**Email:** {app[12]}")
                         st.markdown(f"**Location:** {app[14]}")
                         st.markdown(f"**Phone:** {app[15]}")
-                        st.markdown(f"**Skills:** {app[14]}")
+                        st.markdown(f"**Skills:** {app[13]}")
                         st.markdown(f"**Cover Letter:** {app[6]}")
                         st.markdown(f"**Applied:** {app[7]}")
                         st.markdown(f"**Match Score:** {app[5]}%")
@@ -636,7 +610,7 @@ elif selected == "Applications":
                     with col2:
                         if st.button("🔍 Run ATS Review", key=f"ats_{app[0]}_{i}"):
                             with st.spinner("Analyzing..."):
-                                match, is_ai, conf, feedback = ats_review(app[14], app[6], app[13])
+                                match, is_ai, conf, feedback = ats_review(app[13], app[6], app[13])
                                 st.info(feedback)
 
                         new_status = st.selectbox("Update Status", ["pending", "reviewed", "interview", "accepted", "rejected"],
@@ -668,7 +642,7 @@ elif selected == "Applications":
                             st.session_state.chat_application_id = app[0]
                             st.rerun()
 
-# --- JOB REQUESTS TAB ---
+# --- Job Requests Tab ---
 elif selected == "Job Requests":
     st.markdown("## 👥 Employee Job Requests")
     requests = get_all_open_job_requests()
@@ -695,7 +669,7 @@ elif selected == "Job Requests":
                             st.success("Interest expressed! The employee will be notified.")
                             st.rerun()
 
-# --- MESSAGES TAB ---
+# --- Messages Tab ---
 elif selected == "Messages":
     st.markdown("## 💬 Conversations")
 
@@ -769,7 +743,7 @@ elif selected == "Messages":
                     st.rerun()
                 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- COMPANY PROFILE TAB ---
+# --- Company Profile Tab ---
 elif selected == "Company Profile":
     st.markdown("## 🏢 Edit Company Profile")
     company = get_company_by_id(company_id)

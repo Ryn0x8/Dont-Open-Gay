@@ -991,51 +991,89 @@ def delete_job(job_id):
     db.collection('jobs').document(job_id).delete()
 
 def get_new_applications_count(company_id):
-    """Count applications with status 'pending' or 'new'"""
+    """Count applications with status 'pending' (new applications)."""
     apps_ref = db.collection('applications')\
                  .where('company_id', '==', company_id)\
-                 .where('status', 'in', ['pending', 'new'])
+                 .where('status', '==', 'pending')  # only count pending as "new"
     return len(list(apps_ref.stream()))
 
+
 def get_unread_messages_count(company_id):
-    """Count unread messages from employees to this company"""
+    """Count unread messages from employees to this company."""
     msgs_ref = db.collection('messages')\
                  .where('receiver_id', '==', company_id)\
                  .where('receiver_type', '==', 'company')\
                  .where('is_read', '==', False)
     return len(list(msgs_ref.stream()))
 
+
 def get_recent_activities(company_id, limit=5):
-    """Return list of recent applications and messages"""
+    """
+    Return a list of recent activities (applications + messages)
+    sorted by time descending. Each item is a dict:
+        'type': 'application' or 'message'
+        'content': short description
+        'time': datetime
+    """
     activities = []
 
-    # Recent applications
+    # --- Recent applications ---
     apps_ref = db.collection('applications')\
                  .where('company_id', '==', company_id)\
                  .order_by('applied_at', direction=firestore.Query.DESCENDING)\
                  .limit(limit)
     for app in apps_ref.stream():
         data = app.to_dict()
+        employee_id = data.get('employee_id')
+        job_id = data.get('job_id')
+        applied_at = data.get('applied_at')
+
+        # Get employee name from users collection
+        employee_name = "Someone"
+        if employee_id:
+            user_doc = db.collection('users').document(employee_id).get()
+            if user_doc.exists:
+                employee_name = user_doc.to_dict().get('name', 'Someone')
+
+        # Get job title from jobs collection
+        job_title = "a position"
+        if job_id:
+            job_doc = db.collection('jobs').document(job_id).get()
+            if job_doc.exists:
+                job_title = job_doc.to_dict().get('title', 'a position')
+
         activities.append({
             'type': 'application',
-            'content': f"{data.get('employee_name')} applied for {data.get('job_title')}",
-            'time': data.get('applied_at')
+            'content': f"{employee_name} applied for {job_title}",
+            'time': applied_at
         })
 
-    # Recent messages
+    # --- Recent messages ---
     msgs_ref = db.collection('messages')\
                  .where('receiver_id', '==', company_id)\
                  .where('receiver_type', '==', 'company')\
-                 .order_by('timestamp', direction=firestore.Query.DESCENDING)\
+                 .order_by('created_at', direction=firestore.Query.DESCENDING)\
                  .limit(limit)
     for msg in msgs_ref.stream():
         data = msg.to_dict()
+        sender_id = data.get('sender_id')
+        msg_content = data.get('message', '')
+        created_at = data.get('created_at')
+
+        sender_name = "Someone"
+        if data.get('sender_type') == 'employee' and sender_id:
+            user_doc = db.collection('users').document(sender_id).get()
+            if user_doc.exists:
+                sender_name = user_doc.to_dict().get('name', 'Someone')
+        elif data.get('sender_type') == 'company':
+            pass
+
         activities.append({
             'type': 'message',
-            'content': f"Message from {data.get('sender_name')}: {data.get('content')[:50]}...",
-            'time': data.get('timestamp')
+            'content': f"Message from {sender_name}: {msg_content[:50]}...",
+            'time': created_at
         })
 
-    # Sort combined list by time descending and return top `limit`
+    # Sort combined list by time (newest first) and return top `limit`
     activities.sort(key=lambda x: x['time'], reverse=True)
     return activities[:limit]
