@@ -278,6 +278,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # --- Dashboard Tab with Real Counts ---
+# --- Dashboard Tab with Real Counts ---
 if selected == "Dashboard":
     st.markdown("## 📊 Overview")
     company_id = st.session_state.company_id
@@ -300,8 +301,9 @@ if selected == "Dashboard":
     # Optional: recent activity chart
     if total_apps > 0:
         apps = get_applications_for_company(company_id)
-        df = pd.DataFrame(apps, columns=["id", "employee_id", "company_id", "job_id", "status", "match_score", "cover_letter", "applied_at", "updated_at", "job_title", "employee_name", "employee_email", "resume_path", "skills", "location", "phone"])
-        df['applied_at'] = pd.to_datetime(df['applied_at'])
+        # Extract applied_at from index 7 (as used in the original expander)
+        dates = [app[7] for app in apps]
+        df = pd.DataFrame({'applied_at': pd.to_datetime(dates)})
         df['date'] = df['applied_at'].dt.date
         daily_apps = df.groupby('date').size().reset_index(name='count')
         if not daily_apps.empty:
@@ -312,7 +314,6 @@ if selected == "Dashboard":
                 font_color='var(--text)'
             )
             st.plotly_chart(fig, use_container_width=True)
-
 # --- Post a Job Tab ---
 elif selected == "Post a Job":
     update_expired_jobs()
