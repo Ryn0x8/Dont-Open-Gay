@@ -685,11 +685,11 @@ elif selected == "Applications":
                 with st.expander(f"{app[10]} for {app[9]} - {status.upper()}"):
                     col1, col2 = st.columns([2, 1])
                     with col1:
-                        st.markdown(f"**Applicant:** {app[11]}")
-                        st.markdown(f"**Email:** {app[12]}")
+                        st.markdown(f"**Applicant:** {app[10]}")
+                        st.markdown(f"**Email:** {app[11]}")
                         st.markdown(f"**Location:** {app[14]}")
                         st.markdown(f"**Phone:** {app[15]}")
-                        st.markdown(f"**Skills:** {app[13]}")
+                        st.markdown(f"**Skills:** {app[12]}")
                         st.markdown(f"**Cover Letter:** {app[6]}")
                         st.markdown(f"**Applied:** {app[7]}")
                         st.markdown(f"**Match Score:** {app[5]}%")
