@@ -1,159 +1,225 @@
 import streamlit as st
-from PIL import Image
 import base64
-from database import update_expired_jobs
+from PIL import Image
 
 st.set_page_config(
-    page_title="Anvaya",
+    page_title="Anvaya – The Future of Hiring",
     page_icon="💼",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-
-# -------- FORCE LIGHT BACKGROUND --------
+# --- Custom CSS (glass‑morphism, modern) ---
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* Force white background everywhere */
-html, body, [data-testid="stApp"] {
-    background-color: #F4F6F8 !important;
-}
+    * {
+        font-family: 'Inter', sans-serif;
+    }
 
-/* Remove header/footer */
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
+    :root {
+        --primary: #4F46E5;
+        --primary-light: #818CF8;
+        --primary-dark: #3730A3;
+        --secondary: #0EA5E9;
+        --accent: #10B981;
+        --bg: #F8FAFC;
+        --card-bg: rgba(255,255,255,0.9);
+        --text: #0F172A;
+        --text-light: #475569;
+        --border: #E2E8F0;
+        --shadow-sm: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+        --shadow-lg: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.02);
+        --glass-bg: rgba(255,255,255,0.7);
+        --glass-border: 1px solid rgba(255,255,255,0.5);
+    }
 
-/* Main container spacing */
-.block-container {
-    padding-top: 0.9rem;
-    padding-bottom: 4rem;
-    padding-left: 6rem;
-    padding-right: 6rem;
-}
+    .stApp {
+        background: radial-gradient(circle at 10% 30%, rgba(255,255,255,0.95) 0%, #f1f5f9 100%);
+    }
 
-/* Title */
-.main-title {
-    font-size: 52px;
-    font-weight: 700;
-    color: #1F2937;
-    line-height: 1.2;
-}
+    /* Remove default header/footer */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
 
-/* Sub line */
-.sub-line {
-    font-size: 22px;
-    color: #4B5563;
-    margin-top: 10px;
-}
+    /* Main container */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 4rem;
+        padding-left: 6rem;
+        padding-right: 6rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
 
-/* Tagline */
-.tagline {
-    font-size: 28px;
-    font-weight: 600;
-    color: #111827;
-    margin-top: 30px;
-}
+    /* Hero section */
+    .hero-section {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        padding: 3rem 4rem;
+        border-radius: 60px;
+        color: white;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow-lg);
+        backdrop-filter: blur(5px);
+        text-align: center;
+    }
 
-/* Description */
-.description {
-    font-size: 18px;
-    color: #374151;
-    margin-top: 15px;
-    max-width: 550px;
-    line-height: 1.6;
-}
+    .hero-section h1 {
+        font-size: 4rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 1rem;
+        line-height: 1.2;
+    }
 
-/* Accent text */
-.accent {
-    color: #2563EB;
-    font-weight: 600;
-}
+    .hero-section p {
+        font-size: 1.5rem;
+        opacity: 0.9;
+        max-width: 700px;
+        margin: 0 auto;
+    }
 
-/* Buttons */
-.stButton > button {
-    background-color: #2563EB;
-    color: white;
-    font-size: 17px;
-    padding: 12px 30px;
-    border-radius: 8px;
-    border: none;
-    transition: all 0.3s ease;
-}
+    /* Logo styling */
+    .logo-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 2rem 0;
+    }
 
-.stButton > button:hover {
-    background-color: #1D4ED8;
-    transform: translateY(-2px);
-}
+    .logo-img {
+        width: 240px;
+        height: 240px;
+        border-radius: 50%;
+        object-fit: cover;
+        box-shadow: var(--shadow-lg);
+        border: 4px solid white;
+    }
 
-/* Logo styling */
-.logo-img {
-    border-radius: 50%;
-    width: 200px;
-    height: 200px;
-    object-fit: cover;
-    box-shadow: 0px 10px 25px rgba(0,0,0,0.08);
-    margin-top: 60px;
-}
+    /* Tagline card */
+    .tagline-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-radius: 40px;
+        padding: 2.5rem 3rem;
+        border: var(--glass-border);
+        box-shadow: var(--shadow-lg);
+        text-align: center;
+        margin: 2rem 0 3rem;
+    }
 
+    .tagline-card h2 {
+        font-size: 2.5rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 1rem;
+    }
+
+    .tagline-card p {
+        font-size: 1.2rem;
+        color: var(--text-light);
+        max-width: 600px;
+        margin: 0 auto 1.5rem;
+        line-height: 1.6;
+    }
+
+    .accent {
+        color: var(--primary);
+        font-weight: 600;
+    }
+
+    /* Buttons */
+    .stButton > button {
+        border-radius: 60px;
+        font-weight: 600;
+        font-size: 1.2rem;
+        padding: 1rem 2.5rem;
+        transition: all 0.2s;
+        border: none;
+        background: var(--primary);
+        color: white;
+        box-shadow: var(--shadow-sm);
+        width: 100%;
+    }
+
+    .stButton > button:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 20px -8px rgba(79, 70, 229, 0.4);
+        background: var(--primary-dark);
+    }
+
+    /* Footer */
+    .footer {
+        text-align: center;
+        color: var(--text-light);
+        font-size: 1rem;
+        margin-top: 4rem;
+        opacity: 0.8;
+    }
+
+    hr {
+        border: 0;
+        border-top: 1px solid var(--border);
+        margin: 2rem 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# -------- LAYOUT --------
-col1, col2 = st.columns([2, 1])
-
-with col1:
-    st.markdown('<div class="main-title">Still Unemployed or Looking for Employees?</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-line">We got you covered.</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="tagline">The Future of Hiring</div>', unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="description">
-    <span class="accent">Anvaya</span> is a smart bridge between talent and hiring. 
-    We simplify recruitment by connecting skilled individuals with 
-    companies that truly value their potential.
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("<br><br>", unsafe_allow_html=True)
-
-    btn1, btn2 = st.columns(2)
-
-    with btn1:
-        if st.button("Hire Talent"):
-            st.switch_page("pages/login_employer.py")
-
-    with btn2:
-        if st.button("Find Job"):
-            st.switch_page("pages/login_employee.py")
-
-import base64
-
+# --- Helper to load logo ---
 def get_base64(img_path):
     with open(img_path, "rb") as f:
         return base64.b64encode(f.read()).decode()
 
-logo_base64 = get_base64("logo.jpg")
+# --- Layout ---
+# Hero section
+st.markdown("""
+<div class="hero-section">
+    <h1>Still Unemployed or Looking for Employees?</h1>
+    <p>We got you covered.</p>
+</div>
+""", unsafe_allow_html=True)
+
+# Two columns for logo and tagline
+col1, col2 = st.columns([1, 1])
+
+with col1:
+    # Logo
+    try:
+        logo_base64 = get_base64("logo.jpg")  # make sure logo.jpg exists
+        st.markdown(f"""
+        <div class="logo-container">
+            <img src="data:image/png;base64,{logo_base64}" class="logo-img">
+        </div>
+        """, unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.warning("Logo file not found. Please place logo.jpg in the root directory.")
 
 with col2:
-    st.markdown(f"""
-        <div style="display:flex; justify-content:center; align-items:center; margin-top:60px;">
-            <img src="data:image/png;base64,{logo_base64}"
-                 style="
-                    width:220px;
-                    height:220px;
-                    object-fit:cover;
-                    border-radius:50%;
-                    box-shadow:0px 10px 30px rgba(0,0,0,0.08);
-                    margin-top:60px;
-                 ">
-        </div>
+    # Tagline card
+    st.markdown("""
+    <div class="tagline-card">
+        <h2>The Future of Hiring</h2>
+        <p><span class="accent">Anvaya</span> is a smart bridge between talent and hiring. We simplify recruitment by connecting skilled individuals with companies that truly value their potential.</p>
+    </div>
     """, unsafe_allow_html=True)
 
+# Buttons row
+btn1, btn2, btn3 = st.columns([1, 1, 1])
+with btn1:
+    if st.button("🌟 Hire Talent", use_container_width=True):
+        st.switch_page("pages/login_employer.py")
+with btn2:
+    if st.button("🔍 Find Job", use_container_width=True):
+        st.switch_page("pages/login_employee.py")
+with btn3:
+    # Empty column for balance
+    pass
 
+# Divider
+st.markdown("<hr>", unsafe_allow_html=True)
 
-
-st.markdown("<br><br>", unsafe_allow_html=True)
-st.markdown('<center style="color:#6B7280; font-size:16px;">Register in Anvaya Today</center>', unsafe_allow_html=True)
+# Footer
+st.markdown('<div class="footer">✨ Register in Anvaya Today – Your Future Starts Here</div>', unsafe_allow_html=True)
