@@ -49,13 +49,13 @@ def get_resume_download_link(resume_path, text="Download Resume"):
         return href
     return None
 
-def ats_review(resume_path, cover_letter, required_skills):
-    match_score = random.randint(30, 100)
-    ai_score = random.uniform(0, 1)
-    is_ai = ai_score > 0.7
-    confidence = random.randint(60, 99)
-    feedback = f"Match score: {match_score}%. AI detection: {'Likely AI' if is_ai else 'Human'} (confidence {confidence}%)."
-    return match_score, is_ai, confidence, feedback
+# def ats_review(resume_path, cover_letter, required_skills):
+#     match_score = random.randint(30, 100)
+#     ai_score = random.uniform(0, 1)
+#     is_ai = ai_score > 0.7
+#     confidence = random.randint(60, 99)
+#     feedback = f"Match score: {match_score}%. AI detection: {'Likely AI' if is_ai else 'Human'} (confidence {confidence}%)."
+#     return match_score, is_ai, confidence, feedback
 
 # --- Custom CSS (ultra‑classy) ---
 st.markdown("""
@@ -390,6 +390,11 @@ with button_cols[-1]:
             if key in st.session_state:
                 del st.session_state[key]
         st.switch_page("app.py")
+
+    if st.session_state.get("user_role") == "admin" or st.session_state.get("employer_role") == "admin":
+        if st.button("🛡️ Admin Panel", key="goto_admin"):
+            st.session_state.previous_page = "pages/employee_dashboard.py"
+            st.switch_page("pages/admin_dashboard.py")
 
 selected = st.session_state.get("nav_selected", "Dashboard")
 
