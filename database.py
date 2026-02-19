@@ -1085,3 +1085,284 @@ def get_unread_messages_count_employee(employee_id):
                  .where('receiver_type', '==', 'employee')\
                  .where('is_read', '==', False)
     return len(list(msgs_ref.stream()))
+
+    # ========== ADMIN FUNCTIONS ==========
+
+def get_all_users():
+    """Retrieve all users with their details."""
+    users_ref = db.collection('users').stream()
+    users = []
+    for doc in users_ref:
+        data = doc.to_dict()
+        data['id'] = doc.id
+        # Get profile if exists
+        profile = get_or_create_profile(doc.id)  # returns tuple
+        users.append((
+            data['id'],                # email
+            data.get('name'),
+            data.get('email'),
+            data.get('role'),
+            data.get('created_at'),
+            profile[1],  # phone
+            profile[2],  # location
+            profile[5],  # skills
+            profile[4],  # resume_path
+        ))
+    return users
+
+def get_user_by_id_admin(user_id):
+    """Get full user details (including profile) for admin."""
+    user_doc = db.collection('users').document(user_id).get()
+    if not user_doc.exists:
+        return None
+    user_data = user_doc.to_dict()
+    user_data['id'] = user_doc.id
+    profile = get_or_create_profile(user_id)
+    user_data.update({
+        'phone': profile[1],
+        'location': profile[2],
+        'profile_pic': profile[3],
+        'resume_path': profile[4],
+        'skills': profile[5],
+        'experience_level': profile[6],
+        'preferred_job_type': profile[7],
+        'expected_salary': profile[8],
+        'bio': profile[9],
+        'linkedin_url': profile[10],
+        'github_url': profile[11],
+        'portfolio_url': profile[12],
+        'profile_created_at': profile[13],
+        'profile_updated_at': profile[14]
+    })
+    return user_data
+
+def update_user_role(user_id, new_role):
+    """Change a user's role (employee, employer, admin)."""
+    db.collection('users').document(user_id).update({'role': new_role})
+
+def delete_user(user_id):
+    """Completely remove a user and all associated data."""
+    # Delete profile
+    db.collection('employee_profiles').document(user_id).delete()
+    # Delete applications (and cascade interviews/messages for them)
+    apps = db.collection('applications').where('employee_id', '==', user_id).stream()
+    for app in apps:
+        # Delete interviews for this application
+        interviews = db.collection('interviews').where('application_id', '==', app.id).stream()
+        for iv in interviews:
+            iv.reference.delete()
+        # Delete messages for this application
+        msgs = db.collection('messages').where('application_id', '==', app.id).stream()
+        for msg in msgs:
+            msg.reference.delete()
+        app.reference.delete()
+    # Delete saved jobs
+    saved = db.collection('saved_jobs').where('employee_id', '==', user_id).stream()
+    for s in saved:
+        s.reference.delete()
+    # Delete notifications
+    notifs = db.collection('notifications').where('employee_id', '==', user_id).stream()
+    for n in notifs:
+        n.reference.delete()
+    # Delete job requests (if user is employee)
+    reqs = db.collection('job_requests').where('user_id', '==', user_id).stream()
+    for r in reqs:
+        r.reference.delete()
+    # If user is a company owner (employer), handle company data
+    user_doc = db.collection('users').document(user_id).get()
+    if user_doc.exists and user_doc.to_dict().get('company_id'):
+        company_id = user_doc.to_dict()['company_id']
+        # Delete company (will cascade to its jobs etc.)
+        delete_company(company_id)
+    # Finally delete the user
+    db.collection('users').document(user_id).delete()
+
+def add_user_admin(name, email, password_hash, role):
+    """Admin creates a new user (bypasses normal signup)."""
+    user_ref = db.collection('users').document(email)
+    user_ref.set({
+        'name': name,
+        'email': email,
+        'password': password_hash,
+        'role': role,
+        'created_at': firestore.SERVER_TIMESTAMP
+    })
+    # If role is employee, create empty profile
+    if role == 'employee':
+        get_or_create_profile(email)  # creates if not exists
+
+def get_all_companies_admin():
+    """Retrieve all companies with full details."""
+    companies_ref = db.collection('companies').stream()
+    companies = []
+    for doc in companies_ref:
+        data = doc.to_dict()
+        data['id'] = doc.id
+        companies.append(data)
+    return companies
+
+def delete_company(company_id):
+    """Delete a company and all its associated data."""
+    # Delete all jobs of this company (and cascade)
+    jobs = db.collection('jobs').where('company_id', '==', company_id).stream()
+    for job in jobs:
+        delete_job(job.id)  # reuses existing delete_job which handles applications etc.
+    # Delete messages where company is sender/receiver
+    msgs_as_sender = db.collection('messages').where('sender_id', '==', company_id).where('sender_type', '==', 'company').stream()
+    for msg in msgs_as_sender:
+        msg.reference.delete()
+    msgs_as_receiver = db.collection('messages').where('receiver_id', '==', company_id).where('receiver_type', '==', 'company').stream()
+    for msg in msgs_as_receiver:
+        msg.reference.delete()
+    # Unlink company from employer users (set company_id to None)
+    employers = db.collection('users').where('company_id', '==', company_id).stream()
+    for emp in employers:
+        emp.reference.update({'company_id': None})
+    # Finally delete the company document
+    db.collection('companies').document(company_id).delete()
+
+def update_company_admin(company_id, **kwargs):
+    """Update any company field (admin version)."""
+    kwargs['updated_at'] = firestore.SERVER_TIMESTAMP
+    db.collection('companies').document(company_id).update(kwargs)
+
+def get_all_jobs_admin():
+    """Retrieve all jobs with company name and status."""
+    jobs_ref = db.collection('jobs').stream()
+    jobs = []
+    for job in jobs_ref:
+        data = job.to_dict()
+        data['id'] = job.id
+        # Add company name for convenience
+        if data.get('company_id'):
+            comp_doc = db.collection('companies').document(data['company_id']).get()
+            data['company_name'] = comp_doc.to_dict().get('name', '') if comp_doc.exists else ''
+        jobs.append(data)
+    return jobs
+
+def update_job_admin(job_id, **kwargs):
+    """Update any job field (admin version)."""
+    if 'deadline' in kwargs and isinstance(kwargs['deadline'], dt.date) and not isinstance(kwargs['deadline'], datetime):
+        kwargs['deadline'] = datetime.combine(kwargs['deadline'], datetime.min.time()).replace(tzinfo=timezone.utc)
+    db.collection('jobs').document(job_id).update(kwargs)
+
+def delete_application_admin(application_id):
+    """Delete an application and cascade interviews/messages."""
+    # Get application to know employee/job (for potential cleanup)
+    app_doc = db.collection('applications').document(application_id).get()
+    if not app_doc.exists:
+        return
+    # Delete interviews
+    interviews = db.collection('interviews').where('application_id', '==', application_id).stream()
+    for iv in interviews:
+        iv.reference.delete()
+    # Delete messages linked to this application
+    msgs = db.collection('messages').where('application_id', '==', application_id).stream()
+    for msg in msgs:
+        msg.reference.delete()
+    # Delete the application
+    app_doc.reference.delete()
+
+def get_all_job_requests_admin():
+    """Retrieve all job requests with employee details."""
+    reqs_ref = db.collection('job_requests').order_by('created_at', direction=firestore.Query.DESCENDING).stream()
+    reqs = []
+    for req in reqs_ref:
+        data = req.to_dict()
+        data['id'] = req.id
+        # Add employee details
+        if data.get('user_id'):
+            user_doc = db.collection('users').document(data['user_id']).get()
+            data['employee_name'] = user_doc.to_dict().get('name', '') if user_doc.exists else ''
+            data['employee_email'] = user_doc.to_dict().get('email', '') if user_doc.exists else ''
+        reqs.append(data)
+    return reqs
+
+def delete_job_request_admin(request_id):
+    """Delete a job request (admin only)."""
+    db.collection('job_requests').document(request_id).delete()
+
+def get_system_stats():
+    """Return dictionary of key counts for admin dashboard."""
+    users_count = len(list(db.collection('users').stream()))
+    employees_count = len(list(db.collection('users').where('role', '==', 'employee').stream()))
+    employers_count = len(list(db.collection('users').where('role', '==', 'employer').stream()))
+    admins_count = len(list(db.collection('users').where('role', '==', 'admin').stream()))
+    companies_count = len(list(db.collection('companies').stream()))
+    jobs_count = len(list(db.collection('jobs').stream()))
+    active_jobs_count = len(list(db.collection('jobs').where('status', '==', 'active').stream()))
+    applications_count = len(list(db.collection('applications').stream()))
+    job_requests_count = len(list(db.collection('job_requests').stream()))
+    open_requests_count = len(list(db.collection('job_requests').where('status', '==', 'open').stream()))
+    messages_count = len(list(db.collection('messages').stream()))
+    return {
+        'users': users_count,
+        'employees': employees_count,
+        'employers': employers_count,
+        'admins': admins_count,
+        'companies': companies_count,
+        'jobs': jobs_count,
+        'active_jobs': active_jobs_count,
+        'applications': applications_count,
+        'job_requests': job_requests_count,
+        'open_requests': open_requests_count,
+        'messages': messages_count
+    }
+
+def get_users_by_role(role):
+    """Get all users with a specific role."""
+    users_ref = db.collection('users').where('role', '==', role).stream()
+    users = []
+    for doc in users_ref:
+        data = doc.to_dict()
+        data['id'] = doc.id
+        users.append(data)
+    return users
+
+def get_recent_activities_admin(limit=20):
+    """Return combined list of recent actions (user registrations, job posts, applications, messages) for admin feed."""
+    activities = []
+    # Recent users
+    users = db.collection('users').order_by('created_at', direction=firestore.Query.DESCENDING).limit(5).stream()
+    for u in users:
+        data = u.to_dict()
+        activities.append({
+            'type': 'user',
+            'content': f"New user registered: {data.get('name')} ({data.get('role')})",
+            'time': data.get('created_at')
+        })
+    # Recent jobs
+    jobs = db.collection('jobs').order_by('created_at', direction=firestore.Query.DESCENDING).limit(5).stream()
+    for j in jobs:
+        data = j.to_dict()
+        activities.append({
+            'type': 'job',
+            'content': f"New job posted: {data.get('title')} by {data.get('company_name')}",
+            'time': data.get('created_at')
+        })
+    # Recent applications
+    apps = db.collection('applications').order_by('applied_at', direction=firestore.Query.DESCENDING).limit(5).stream()
+    for a in apps:
+        data = a.to_dict()
+        # Get employee name
+        emp_name = ''
+        if data.get('employee_id'):
+            emp_doc = db.collection('users').document(data['employee_id']).get()
+            emp_name = emp_doc.to_dict().get('name', '') if emp_doc.exists else ''
+        activities.append({
+            'type': 'application',
+            'content': f"Application from {emp_name} for job {data.get('job_id')}",
+            'time': data.get('applied_at')
+        })
+    # Sort all by time descending
+    activities.sort(key=lambda x: x['time'] if x['time'] else datetime.min, reverse=True)
+    return activities[:limit]
+
+def get_resume_download_link(resume_path, text="Download Resume"):
+    if resume_path and os.path.exists(resume_path):
+        with open(resume_path, "rb") as f:
+            bytes_data = f.read()
+        b64 = base64.b64encode(bytes_data).decode()
+        href = f'<a href="data:application/octet-stream;base64,{b64}" download="{os.path.basename(resume_path)}" class="badge badge-info">{text}</a>'
+        return href
+    return None

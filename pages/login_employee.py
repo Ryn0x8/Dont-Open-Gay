@@ -226,7 +226,8 @@ if st.session_state.login_step == "credentials":
                 stored_password = user[3]
                 stored_role = user[4]
 
-                if stored_role != "employee":
+                # ✅ Allow both employees and admins
+                if stored_role not in ["employee", "admin"]:
                     st.error("❌ This account is not registered as an employee.")
                 elif check_password(password, stored_password):
                     # Move to face verification
@@ -252,6 +253,8 @@ if st.session_state.login_step == "verifying":
         st.session_state.user_id = user[0]
         st.session_state.user_name = user[1]
         st.session_state.user_email = user[2]
+        # ✅ Store the user's role
+        st.session_state.user_role = user[4]
 
         st.success("✅ Login successful! Welcome back.")
         st.balloons()

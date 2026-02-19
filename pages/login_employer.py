@@ -229,7 +229,8 @@ if not st.session_state.otp_verified:
                 stored_password = user[3]  
                 stored_role = user[4]     
 
-                if stored_role != "employer":
+                # ✅ Allow both employers and admins
+                if stored_role not in ["employer", "admin"]:
                     st.error("❌ This account is not registered as an employer.")
                 elif check_password(password, stored_password):
                     otp = generate_otp()
@@ -282,6 +283,8 @@ if st.session_state.otp_sent and not st.session_state.otp_verified:
                         st.session_state.company_id = company[0]
                         st.session_state.employer_name = company[1]  # company name
                         st.session_state.employer_email = user[2]
+                        # ✅ Store the user's role
+                        st.session_state.employer_role = user[4]  # store role
                         
                         st.success("✅ Login successful! Welcome back.")
                         st.balloons()

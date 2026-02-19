@@ -455,27 +455,34 @@ cols2 = st.columns([1,1,1,1,1])  # 4 nav + logout
 badge_cols2 = cols2[:4]
 logout_col = cols2[4]
 
-# Second row badges
+
 for i, item in enumerate(second_group):
     with badge_cols2[i]:
+
+        # Badge (top)
         if item["badge"] and item["badge"] > 0:
             st.markdown(
-                f"<div style='text-align: center; margin-bottom: 5px;'>"
-                f"<span class='badge-count'>{item['badge']}</span>"
-                f"</div>",
+                f"""
+                <div style="display:flex; justify-content:center; margin-bottom:5px;">
+                    <span class='badge-count'>{item['badge']}</span>
+                </div>
+                """,
                 unsafe_allow_html=True
             )
         else:
-            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height:28px;'></div>", unsafe_allow_html=True)
 
-# Second row buttons
-button_cols2 = st.columns([1,1,1,1,1])
-for i, item in enumerate(second_group):
-    with button_cols2[i]:
+        # Button
         active = "primary" if st.session_state.get("nav_selected") == item["label"] else "secondary"
-        if st.button(f"{item['icon']} {item['label']}", key=f"nav2_{item['label']}", use_container_width=True, type=active):
+        if st.button(
+            f"{item['icon']} {item['label']}",
+            key=f"nav2_{item['label']}",
+            use_container_width=True,
+            type=active
+        ):
             st.session_state.nav_selected = item["label"]
             st.rerun()
+
 
 # Logout button in the last column of second row
 with logout_col:
@@ -484,6 +491,11 @@ with logout_col:
             if key in st.session_state:
                 del st.session_state[key]
         st.switch_page("app.py")
+
+    if st.session_state.get("user_role") == "admin" or st.session_state.get("employer_role") == "admin":
+        if st.button("🛡️ Admin Panel", key="goto_admin"):
+            st.session_state.previous_page = "pages/employee_dashboard.py"
+            st.switch_page("pages/admin_dashboard.py")
 
 selected = st.session_state.get("nav_selected", "Dashboard")
 
