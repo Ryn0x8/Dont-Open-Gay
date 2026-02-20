@@ -215,3 +215,9 @@ def verify_face(email):
         st.error("❌ Face does not match the registered one.")
         st.session_state.verify_face_img = None
         return False
+    
+def has_face_registered(email):
+
+    face_ref = db.collection('faces').document(email)
+    face_doc = face_ref.get()
+    return face_doc.exists

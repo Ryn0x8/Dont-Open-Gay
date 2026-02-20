@@ -1,5 +1,5 @@
 import streamlit as st
-from auth_utils import check_password, verify_face
+from auth_utils import check_password, verify_face, capture_face, has_face_registered
 from database import get_user
 import base64
 import time
@@ -208,7 +208,6 @@ if st.session_state.login_step == "credentials":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Navigation buttons
     col1, col2, col3, col4 = st.columns([1, 0.5, 0.6, 1])
     with col2:
         if st.button("← Back to Home", key="home_btn", use_container_width=True):
@@ -226,12 +225,17 @@ if st.session_state.login_step == "credentials":
                 stored_password = user[3]
                 stored_role = user[4]
 
-                # ✅ Allow both employees and admins
+                # Allow employees and admins (admins have is_admin flag)
                 if stored_role not in ["employee"]:
                     st.error("❌ This account is not registered as an employee.")
                 elif check_password(password, stored_password):
                     st.session_state.user_data = user
-                    st.session_state.login_step = "verifying"
+                    
+                    # Check if face is already registered
+                    if has_face_registered(email):
+                        st.session_state.login_step = "verifying"
+                    else:
+                        st.session_state.login_step = "register_face"
                     st.rerun()
                 else:
                     st.error("❌ Incorrect password. Please try again.")
@@ -239,41 +243,73 @@ if st.session_state.login_step == "credentials":
                 st.error("❌ No account found with this email.")
                 st.info("Don't have an account? Click 'Create an account' below.")
 
-# --- Step 2: Face Verification ---
-if st.session_state.login_step == "verifying":
+# --- Step 2: Face Registration (for users without a face) ---
+if st.session_state.login_step == "register_face":
     user = st.session_state.user_data
-    st.markdown("### 📸 Face Verification")
-    st.write("Please look at the camera and take a photo for verification.")
+    st.markdown("### 📸 Face Registration")
+    st.write("It looks like you haven't registered your face yet. Please look at the camera to capture your face.")
 
-    # Call verify_face – it now uses st.camera_input and returns True/False
-    if verify_face(user[2]):  # user[2] is email
-        # Success
+    # Call capture_face – it returns True when successful
+    if capture_face(user[2]):   # user[2] is email
+        # Face captured successfully – log them in directly
         st.session_state.authenticated = True
         st.session_state.user_id = user[0]
         st.session_state.user_name = user[1]
         st.session_state.user_email = user[2]
-        # ✅ Store the user's role
         st.session_state.user_role = user[4]
-        print(user)
-        st.session_state.is_admin = user[5]  
+        st.session_state.is_admin = user[5]
+
+        st.success("✅ Face registered! Login successful.")
+        st.balloons()
+        st.markdown(f"""
+        <div style="text-align:center; padding:20px; background-color:#f0fdf4; border-radius:10px; margin-top:20px;">
+            <h4 style="color:#166534; margin-bottom:5px;">Welcome, {user[1]}!</h4>
+            <p style="color:#166534;">Your face has been registered and you are now logged in.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Clean up and redirect
+        st.session_state.login_step = "credentials"
+        st.session_state.user_data = None
+        time.sleep(2)
+        st.switch_page("pages/employee_dashboard.py")
+    else:
+        # capture_face shows its own error messages; user can retry
+        if st.button("Try Again"):
+            st.rerun()
+        if st.button("Back to Login"):
+            st.session_state.login_step = "credentials"
+            st.session_state.user_data = None
+            st.rerun()
+
+# --- Step 3: Face Verification (for users with existing face) ---
+if st.session_state.login_step == "verifying":
+    user = st.session_state.user_data
+    st.markdown("### 📸 Face Verification")
+    st.write("Please look at the camera to verify your identity.")
+
+    if verify_face(user[2]):   # user[2] is email
+        st.session_state.authenticated = True
+        st.session_state.user_id = user[0]
+        st.session_state.user_name = user[1]
+        st.session_state.user_email = user[2]
+        st.session_state.user_role = user[4]
+        st.session_state.is_admin = user[5]
 
         st.success("✅ Login successful! Welcome back.")
         st.balloons()
         st.markdown(f"""
         <div style="text-align:center; padding:20px; background-color:#f0fdf4; border-radius:10px; margin-top:20px;">
             <h4 style="color:#166534; margin-bottom:5px;">Welcome, {user[1]}!</h4>
-            <p style="color:#166534;">You have successfully logged in as an employee.</p>
+            <p style="color:#166534;">You have successfully logged in.</p>
         </div>
         """, unsafe_allow_html=True)
 
-        # Clean up session and redirect
         st.session_state.login_step = "credentials"
         st.session_state.user_data = None
-        st.info("Redirecting to your dashboard...")
         time.sleep(2)
         st.switch_page("pages/employee_dashboard.py")
     else:
-        # Verification failed – stay in this step (user can retry)
         if st.button("Try Again"):
             st.rerun()
         if st.button("Back to Login"):
