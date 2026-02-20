@@ -69,15 +69,25 @@ if "authenticated" not in st.session_state or not st.session_state.authenticated
     st.switch_page("pages/login_employee.py")
     st.stop()
 
-def calculate_match_score(job_skills, employee_skills):
+from rapidfuzz import fuzz
+
+def calculate_match_score(job_skills, employee_skills, threshold=70):
     if not job_skills or not employee_skills:
         return 0
-    job_set = set(s.strip().lower() for s in job_skills.split(','))
-    emp_set = set(s.strip().lower() for s in employee_skills.split(','))
-    if not job_set:
-        return 0
-    matches = len(job_set & emp_set)
-    return int((matches / len(job_set)) * 100)
+
+    job_list = [s.strip().lower() for s in job_skills.split(',')]
+    emp_list = [s.strip().lower() for s in employee_skills.split(',')]
+
+    matched = 0
+
+    for job_skill in job_list:
+        for emp_skill in emp_list:
+            similarity = fuzz.token_sort_ratio(job_skill, emp_skill)
+            if similarity >= threshold:
+                matched += 1
+                break
+
+    return int((matched / len(job_list)) * 100)
 
 def get_resume_download_link(resume_path, text="Download Resume"):
     if resume_path and os.path.exists(resume_path):

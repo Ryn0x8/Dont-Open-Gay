@@ -13,3 +13,4 @@ pdf2image
 pypdf2
 google-generativeai
 PyMuPDF
+rapidfuzz
