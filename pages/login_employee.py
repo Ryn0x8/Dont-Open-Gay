@@ -254,7 +254,8 @@ if st.session_state.login_step == "verifying":
         st.session_state.user_email = user[2]
         # ✅ Store the user's role
         st.session_state.user_role = user[4]
-        st.session_state.is_admin = user[5]  # store is_admin flag
+        print(user)
+        st.session_state.is_admin = user[5]  
 
         st.success("✅ Login successful! Welcome back.")
         st.balloons()
