@@ -21,31 +21,44 @@ if not firebase_admin._apps:
 db = firestore.client()
 
 # ===== EMAIL =====
-def send_email(to_email: str, subject: str, body: str) -> bool:
+def send_email(to_email: str, subject: str, body: str, is_html: bool = False) -> bool:
     """Sends an email using configured SMTP."""
     sender_email = st.secrets["EMAIL_ADDRESS"]
     app_password = st.secrets["EMAIL_APP_PASSWORD"]
+
     if not sender_email or not app_password:
         print("Email credentials are not configured.")
         return False
+
     try:
         msg = EmailMessage()
         msg["From"] = sender_email
         msg["To"] = to_email
         msg["Subject"] = subject
-        msg.set_content(body)
+
+        if is_html:
+            msg.set_content("Your email client does not support HTML.")
+            msg.add_alternative(body, subtype="html")
+        else:
+            msg.set_content(body)
+
         with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls()
             server.login(sender_email, app_password)
             server.send_message(msg)
+
         return True
+
     except Exception as e:
         print(f"Failed to send email: {e}")
         return False
 
-def send_job_alert_email(to_email, job_title, company_name, description, requirements, location, job_type, salary_range):
+def send_job_alert_email(to_email, job_title, company_name, description,
+                         requirements, location, job_type, salary_range):
     """Send a job alert email to a matching candidate."""
+
     subject = f"New Job Match: {job_title} at {company_name}"
+
     body = f"""
     <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6;">
@@ -56,12 +69,21 @@ def send_job_alert_email(to_email, job_title, company_name, description, require
             <p><strong>💰 Salary:</strong> {salary_range}</p>
             <p><strong>📝 Description:</strong><br>{description}</p>
             <p><strong>📋 Requirements:</strong><br>{requirements}</p>
-            <p>👉 <a href="https://your-app-url.com" style="background-color: #2563EB; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px;">Log in to apply</a></p>
-            <p style="color: #6B7280; font-size: 0.9em;">This is an automated alert from Anvaya.</p>
+            <p>
+                👉 <a href="https://your-app-url.com"
+                style="background-color: #2563EB; color: white; padding: 10px 20px;
+                text-decoration: none; border-radius: 8px;">
+                Log in to apply
+                </a>
+            </p>
+            <p style="color: #6B7280; font-size: 0.9em;">
+                This is an automated alert from Anvaya.
+            </p>
         </body>
     </html>
     """
-    return send_email(to_email, subject, body)
+
+    return send_email(to_email, subject, body, is_html=True)
 
 def calculate_match_score(job_skills, employee_skills, threshold=70):
     if not job_skills or not employee_skills:

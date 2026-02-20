@@ -24,6 +24,7 @@ import random
 from database import update_expired_jobs
 from ATSService import evaluate_candidate
 import io
+import time
 
 update_expired_jobs()
 
@@ -552,30 +553,37 @@ if selected == "Dashboard":
         st.plotly_chart(fig, use_container_width=True)
 
 
+
 elif selected == "Post a Job":
     update_expired_jobs()
     tab1, tab2 = st.tabs(["📝 Post New Job", "📋 Manage Jobs"])
-
+    if "job_form_counter" not in st.session_state:
+        st.session_state.job_form_counter = 0
     with tab1:
         st.markdown("## 📝 Post a New Job")
+        
+        # Use the counter to create unique keys for each form field
+        counter = st.session_state.job_form_counter
+        
         with st.form("post_job_form"):
             col1, col2 = st.columns(2)
             with col1:
-                title = st.text_input("Job Title")
-                category = st.text_input("Category (e.g., Technology)")
-                location = st.text_input("Location")
-                job_type = st.selectbox("Job Type", ["Full-time", "Part-time", "Remote", "Hybrid", "Contract"])
+                title = st.text_input("Job Title", key=f"title_{counter}")
+                category = st.text_input("Category (e.g., Technology)", key=f"category_{counter}")
+                location = st.text_input("Location", key=f"location_{counter}")
+                job_type = st.selectbox("Job Type", ["Full-time", "Part-time", "Remote", "Hybrid", "Contract"], key=f"job_type_{counter}")
             with col2:
-                salary_min = st.number_input("Min Salary (in $1000s)", min_value=0, step=5)
-                salary_max = st.number_input("Max Salary (in $1000s)", min_value=0, step=5)
-                experience = st.selectbox("Experience Level", ["Entry", "Junior", "Mid", "Senior", "Lead"])
-                deadline = st.date_input("Application Deadline")
+                salary_min = st.number_input("Min Salary (in $1000s)", min_value=0, step=5, key=f"salary_min_{counter}")
+                salary_max = st.number_input("Max Salary (in $1000s)", min_value=0, step=5, key=f"salary_max_{counter}")
+                experience = st.selectbox("Experience Level", ["Entry", "Junior", "Mid", "Senior", "Lead"], key=f"exp_{counter}")
+                deadline = st.date_input("Application Deadline", key=f"deadline_{counter}")
 
-            description = st.text_area("Job Description", height=150)
-            requirements = st.text_area("Requirements", height=100)
-            skills_required = st.text_input("Skills Required (comma separated)")
+            description = st.text_area("Job Description", height=150, key=f"desc_{counter}")
+            requirements = st.text_area("Requirements", height=100, key=f"reqs_{counter}")
+            skills_required = st.text_input("Skills Required (comma separated)", key=f"skills_{counter}")
 
             submitted = st.form_submit_button("Post Job", use_container_width=True)
+            
             if submitted:
                 # Validate inputs
                 if not title or not category or not location or not description or not requirements:
@@ -602,20 +610,17 @@ elif selected == "Post a Job":
 
                     # --- Notify matching employees ---
                     with st.spinner("🔍 Finding matching candidates and sending alerts..."):
-
                         employees = get_users_by_role('employee')
                         matched_count = 0
 
                         for emp in employees:
                             emp_email = emp['email']
-                            # Get employee skills from profile (index 5 in the tuple)
                             profile = get_or_create_profile(emp_email)
                             emp_skills = profile[5] if len(profile) > 5 else ''
                             
                             if emp_skills and skills_required:
                                 match_score = calculate_match_score(skills_required, emp_skills)
                                 if match_score >= 60:
-                                    # Send email alert
                                     success = send_job_alert_email(
                                         to_email=emp_email,
                                         job_title=title,
@@ -634,7 +639,12 @@ elif selected == "Post a Job":
                         else:
                             st.info("No candidates matched the required skills (score < 60%).")
 
+                        time.sleep(4)
+
+                    # Increment counter to clear the form on next rerun
+                    st.session_state.job_form_counter += 1
                     st.rerun()
+
 
     with tab2:
         st.markdown("## 📋 Your Job Postings")
