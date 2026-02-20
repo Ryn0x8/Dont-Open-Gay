@@ -70,7 +70,7 @@ def send_job_alert_email(to_email, job_title, company_name, description,
             <p><strong>📝 Description:</strong><br>{description}</p>
             <p><strong>📋 Requirements:</strong><br>{requirements}</p>
             <p>
-                👉 <a href="https://your-app-url.com"
+                👉 <a href="https://employeepro.streamlit.app/login_employee"
                 style="background-color: #2563EB; color: white; padding: 10px 20px;
                 text-decoration: none; border-radius: 8px;">
                 Log in to apply
