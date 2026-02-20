@@ -393,7 +393,7 @@ with button_cols[-1]:
 
     if st.session_state.get("user_role") == "admin" or st.session_state.get("employer_role") == "admin":
         if st.button("🛡️ Admin Panel", key="goto_admin"):
-            st.session_state.previous_page = "pages/employee_dashboard.py"
+            st.session_state.previous_page = "pages/employer_dashboard.py"
             st.switch_page("pages/admin_dashboard.py")
 
 selected = st.session_state.get("nav_selected", "Dashboard")

@@ -47,8 +47,15 @@ st.set_page_config(
 )
 
 # --- Authentication and Role Check ---
-if "authenticated" not in st.session_state or not st.session_state.authenticated:
-    st.switch_page("pages/login_employee.py")
+if "authenticated" not in st.session_state or not st.session_state.authenticated or  "employer_authenticated" not in st.session_state or st.session_state.employer_authenticated:
+    if st.session_state.previous_page == "pages/employer_dashboard.py":
+        st.switch_page("pages/login_employer.py")
+    elif st.session_state.previous_page == "pages/employee_dashboard.py":
+        st.switch_page("pages/login_employee.py")
+    else:
+        st.error("⛔ You must be logged in as an administrator to access this page.")
+        if st.button("← Go to Home"):
+            st.switch_page("app.py")
     st.stop()
 
 # Check if user is admin
