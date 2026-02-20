@@ -5,7 +5,7 @@ import base64
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
-from auth_utils import send_email
+from auth_utils import send_email, send_job_alert_email
 from streamlit_autorefresh import st_autorefresh
 from database import (
     get_company_by_id, update_company_profile,
@@ -18,7 +18,7 @@ from database import (
     upsert_interview, mark_company_messages_read, get_company_conversations,
     delete_job, get_company_jobs_all,
     get_new_applications_count, get_unread_messages_count, get_recent_activities,
-    get_job_by_id
+    get_job_by_id, get_users_by_role, get_or_create_profile
 )
 import random
 from database import update_expired_jobs
@@ -551,8 +551,6 @@ if selected == "Dashboard":
         )
         st.plotly_chart(fig, use_container_width=True)
 
-# --- All other tabs (Post a Job, Applications, Job Requests, Messages, Company Profile) remain exactly as before ---
-# (We'll include them here for completeness, but they are unchanged from the previous version)
 
 elif selected == "Post a Job":
     update_expired_jobs()
@@ -579,23 +577,65 @@ elif selected == "Post a Job":
 
             submitted = st.form_submit_button("Post Job", use_container_width=True)
             if submitted:
-                salary_range = f"${salary_min}k - ${salary_max}k"
-                add_job(
-                    company_id=st.session_state.company_id,
-                    company_name=st.session_state.employer_name,
-                    title=title,
-                    category=category,
-                    description=description,
-                    requirements=requirements,
-                    location=location,
-                    job_type=job_type,
-                    salary_range=salary_range,
-                    experience_level=experience,
-                    skills_required=skills_required,
-                    deadline=deadline
-                )
-                st.success("Job posted successfully!")
-                st.rerun()
+                # Validate inputs
+                if not title or not category or not location or not description or not requirements:
+                    st.error("Please fill all required fields.")
+                else:
+                    salary_range = f"${salary_min}k - ${salary_max}k"
+                    
+                    # Post the job
+                    add_job(
+                        company_id=st.session_state.company_id,
+                        company_name=st.session_state.employer_name,
+                        title=title,
+                        category=category,
+                        description=description,
+                        requirements=requirements,
+                        location=location,
+                        job_type=job_type,
+                        salary_range=salary_range,
+                        experience_level=experience,
+                        skills_required=skills_required,
+                        deadline=deadline
+                    )
+                    st.success("✅ Job posted successfully!")
+
+                    # --- Notify matching employees ---
+                    with st.spinner("🔍 Finding matching candidates and sending alerts..."):
+                        from employee_dashboard import calculate_match_score
+
+                        employees = get_users_by_role('employee')
+                        matched_count = 0
+
+                        for emp in employees:
+                            emp_email = emp['email']
+                            # Get employee skills from profile (index 5 in the tuple)
+                            profile = get_or_create_profile(emp_email)
+                            emp_skills = profile[5] if len(profile) > 5 else ''
+                            
+                            if emp_skills and skills_required:
+                                match_score = calculate_match_score(skills_required, emp_skills)
+                                if match_score >= 60:
+                                    # Send email alert
+                                    success = send_job_alert_email(
+                                        to_email=emp_email,
+                                        job_title=title,
+                                        company_name=st.session_state.employer_name,
+                                        description=description,
+                                        requirements=requirements,
+                                        location=location,
+                                        job_type=job_type,
+                                        salary_range=salary_range
+                                    )
+                                    if success:
+                                        matched_count += 1
+
+                        if matched_count > 0:
+                            st.info(f"📧 Job alerts sent to {matched_count} matching candidate(s).")
+                        else:
+                            st.info("No candidates matched the required skills (score < 60%).")
+
+                    st.rerun()
 
     with tab2:
         st.markdown("## 📋 Your Job Postings")

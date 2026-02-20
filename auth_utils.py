@@ -43,6 +43,27 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
         print(f"Failed to send email: {e}")
         return False
 
+def send_job_alert_email(to_email, job_title, company_name, description, requirements, location, job_type, salary_range):
+    """Send a job alert email to a matching candidate."""
+    subject = f"New Job Match: {job_title} at {company_name}"
+    body = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h2 style="color: #2563EB;">We found a job that matches your profile!</h2>
+            <p><strong style="font-size: 1.2em;">{job_title}</strong> at <strong>{company_name}</strong></p>
+            <p><strong>📍 Location:</strong> {location}</p>
+            <p><strong>💼 Job Type:</strong> {job_type}</p>
+            <p><strong>💰 Salary:</strong> {salary_range}</p>
+            <p><strong>📝 Description:</strong><br>{description}</p>
+            <p><strong>📋 Requirements:</strong><br>{requirements}</p>
+            <p>👉 <a href="https://your-app-url.com" style="background-color: #2563EB; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px;">Log in to apply</a></p>
+            <p style="color: #6B7280; font-size: 0.9em;">This is an automated alert from Anvaya.</p>
+        </body>
+    </html>
+    """
+    return send_email(to_email, subject, body)
+
+
 # ===== OTP =====
 def generate_otp():
     return str(random.randint(100000, 999999))
