@@ -502,7 +502,7 @@ with logout_col:
                 del st.session_state[key]
         st.switch_page("app.py")
 
-    if st.session_state.get("user_role") == "admin" or st.session_state.get("employer_role") == "admin":
+    if st.session_state.is_admin == True:
         if st.button("🛡️ Admin Panel", key="goto_admin"):
             st.session_state.previous_page = "pages/employee_dashboard.py"
             st.switch_page("pages/admin_dashboard.py")

@@ -22,7 +22,7 @@ def doc_to_dict(doc):
     data['id'] = doc.id
     return data
 
-def add_user(name, email, password, role):
+def add_user(name, email, password, role, is_admin=False):
     """Add a new user to Firestore."""
     user_ref = db.collection('users').document(email)
     user_ref.set({
@@ -30,6 +30,7 @@ def add_user(name, email, password, role):
         'email': email,
         'password': password,  # already hashed
         'role': role,
+        'is_admin': is_admin,   # new boolean field
         'created_at': firestore.SERVER_TIMESTAMP
     })
 
@@ -40,7 +41,7 @@ def get_user(email):
     if user_doc.exists:
         data = user_doc.to_dict()
         data['id'] = email  # store email as id for consistency
-        return (data['id'], data['name'], data['email'], data['password'], data['role'])
+        return (data['id'], data['name'], data['email'], data['password'], data['role'], data.get('is_admin', False))
     return None
 
 def get_user_by_id(user_id):
@@ -55,7 +56,6 @@ def get_or_create_profile(user_id):
     if profile_doc.exists:
         data = profile_doc.to_dict()
     else:
-        # Create empty profile
         data = {
             'user_id': user_id,
             'phone': '',
@@ -1096,13 +1096,14 @@ def get_all_users():
     for doc in users_ref:
         data = doc.to_dict()
         data['id'] = doc.id
-        # Get profile if exists
         profile = get_or_create_profile(doc.id)  # returns tuple
+        # New tuple: (id, name, email, role, is_admin, created_at, phone, location, skills, resume_path)
         users.append((
-            data['id'],                # email
+            data['id'],
             data.get('name'),
             data.get('email'),
             data.get('role'),
+            data.get('is_admin', False),          # added is_admin
             data.get('created_at'),
             profile[1],  # phone
             profile[2],  # location
@@ -1118,6 +1119,8 @@ def get_user_by_id_admin(user_id):
         return None
     user_data = user_doc.to_dict()
     user_data['id'] = user_doc.id
+    # Add is_admin if not present
+    user_data.setdefault('is_admin', False)
     profile = get_or_create_profile(user_id)
     user_data.update({
         'phone': profile[1],
@@ -1178,7 +1181,7 @@ def delete_user(user_id):
     # Finally delete the user
     db.collection('users').document(user_id).delete()
 
-def add_user_admin(name, email, password_hash, role):
+def add_user_admin(name, email, password_hash, role, is_admin=False):
     """Admin creates a new user (bypasses normal signup)."""
     user_ref = db.collection('users').document(email)
     user_ref.set({
@@ -1186,11 +1189,12 @@ def add_user_admin(name, email, password_hash, role):
         'email': email,
         'password': password_hash,
         'role': role,
+        'is_admin': is_admin,
         'created_at': firestore.SERVER_TIMESTAMP
     })
     # If role is employee, create empty profile
     if role == 'employee':
-        get_or_create_profile(email)  # creates if not exists
+        get_or_create_profile(email)
 
 def get_all_companies_admin():
     """Retrieve all companies with full details."""
@@ -1288,7 +1292,10 @@ def get_system_stats():
     users_count = len(list(db.collection('users').stream()))
     employees_count = len(list(db.collection('users').where('role', '==', 'employee').stream()))
     employers_count = len(list(db.collection('users').where('role', '==', 'employer').stream()))
-    admins_count = len(list(db.collection('users').where('role', '==', 'admin').stream()))
+    
+    # Count admins based on is_admin flag (regardless of role)
+    admins_count = len(list(db.collection('users').where('is_admin', '==', True).stream()))
+    
     companies_count = len(list(db.collection('companies').stream()))
     jobs_count = len(list(db.collection('jobs').stream()))
     active_jobs_count = len(list(db.collection('jobs').where('status', '==', 'active').stream()))
@@ -1296,6 +1303,7 @@ def get_system_stats():
     job_requests_count = len(list(db.collection('job_requests').stream()))
     open_requests_count = len(list(db.collection('job_requests').where('status', '==', 'open').stream()))
     messages_count = len(list(db.collection('messages').stream()))
+    
     return {
         'users': users_count,
         'employees': employees_count,
@@ -1309,6 +1317,17 @@ def get_system_stats():
         'open_requests': open_requests_count,
         'messages': messages_count
     }
+
+def update_is_admin(user_id, is_admin):
+    """
+    Update the is_admin flag for a user.
+    
+    Args:
+        user_id (str): The user's email (document ID).
+        is_admin (bool): True to grant admin privileges, False to revoke.
+    """
+    user_ref = db.collection('users').document(user_id)
+    user_ref.update({'is_admin': is_admin})
 
 def get_users_by_role(role):
     """Get all users with a specific role."""

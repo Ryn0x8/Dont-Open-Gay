@@ -12,6 +12,7 @@ import time
 
 # Import all database functions
 from database import (
+    db, update_is_admin,
     # User management
     get_all_users, get_user_by_id_admin, update_user_role, delete_user, add_user_admin,
     
@@ -46,14 +47,12 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- Authentication and Role Check ---
 if not (
     st.session_state.get("authenticated", False)
     or
     st.session_state.get("employer_authenticated", False)
 ):
     previous_page = st.session_state.get("previous_page")
-
     if previous_page == "pages/employer_dashboard.py":
         st.switch_page("pages/login_employer.py")
     elif previous_page == "pages/employee_dashboard.py":
@@ -64,13 +63,8 @@ if not (
             st.switch_page("app.py")
     st.stop()
 
-# Check if user is admin
-
-if not (
-    st.session_state.get("user_role") == "admin"
-    or
-    st.session_state.get("employer_role") == "admin"
-):
+# Check if user is admin (using is_admin flag)
+if not st.session_state.get("is_admin", False):
     st.error("⛔ Access Denied. This page is for administrators only.")
     if st.button("← Go to Home"):
         st.switch_page("app.py")
@@ -78,12 +72,11 @@ if not (
 
 if "previous_page" not in st.session_state:
     st.session_state.previous_page = "app.py"
-
+    
 if st.session_state.get("previous_page") == "pages/employer_dashboard.py":
     st.session_state.user_id = st.session_state.get("company_id")
     st.session_state.user_name = st.session_state.get("employer_name")
     st.session_state.user_email = st.session_state.get("employer_email")
-    st.session_state.user_role = st.session_state.get("employer_role")
 
 # --- Helper Functions ---
 def format_datetime(dt):
@@ -625,7 +618,9 @@ elif selected == "Users":
                 new_email = st.text_input("Email")
             with col2:
                 new_password = st.text_input("Password", type="password")
-                new_role = st.selectbox("Role", ["employee", "employer", "admin"])
+                new_role = st.selectbox("Role", ["employee", "employer"])
+                new_is_admin = st.checkbox("Is Admin?", value=False)
+
             
             col_a, col_b = st.columns(2)
             with col_a:
@@ -643,7 +638,7 @@ elif selected == "Users":
                         st.error("User with this email already exists!")
                     else:
                         password_hash = hashlib.sha256(new_password.encode()).hexdigest()
-                        add_user_admin(new_name, new_email, password_hash, new_role)
+                        add_user_admin(new_name, new_email, password_hash, new_role, new_is_admin)
                         st.success(f"User {new_name} created successfully!")
                         st.session_state.show_add_user = False
                         time.sleep(1)
@@ -696,10 +691,14 @@ elif selected == "Users":
                 role_class = {
                     'employee': 'role-employee',
                     'employer': 'role-employer',
-                    'admin': 'role-admin'
                 }.get(user['role'], '')
                 
                 st.markdown(f'<span class="role-badge {role_class}">{user["role"].upper()}</span>', unsafe_allow_html=True)
+                
+                # Show admin badge if is_admin is True
+                if user.get('is_admin', False):
+                    st.markdown('<span class="role-badge role-admin">ADMIN</span>', unsafe_allow_html=True)
+                
                 if user['location']:
                     st.markdown(f"📍 {user['location']}")
             
@@ -728,6 +727,7 @@ elif selected == "Users":
                         st.markdown(f"- **Name:** {user['name']}")
                         st.markdown(f"- **Email:** {user['email']}")
                         st.markdown(f"- **Role:** {user['role'].upper()}")
+                        st.markdown(f"- **Admin:** {'Yes' if user.get('is_admin', False) else 'No'}")
                         st.markdown(f"- **Phone:** {user['phone'] or 'Not provided'}")
                         st.markdown(f"- **Location:** {user['location'] or 'Not provided'}")
                     
@@ -744,13 +744,19 @@ elif selected == "Users":
                             st.markdown("- **Resume:** Not uploaded")
                     
                     # Role change option
-                    new_role = st.selectbox("Change Role", ["employee", "employer", "admin"], 
-                                           index=["employee", "employer", "admin"].index(user['role']) if user['role'] in ["employee", "employer", "admin"] else 0,
-                                           key=f"role_change_{user['id']}")
-                    if new_role != user['role']:
+                    new_role = st.selectbox("Change Role", ["employee", "employer"], 
+                                            index=["employee", "employer"].index(user['role']) if user['role'] in ["employee", "employer"] else 0,
+                                            key=f"role_change_{user['id']}")
+
+                    # New: Admin flag toggle
+                    new_is_admin = st.checkbox("Is Admin?", value=user.get('is_admin', False), key=f"is_admin_{user['id']}")
+
+                    if new_role != user['role'] or new_is_admin != user.get('is_admin', False):
                         if st.button("💾 Update Role", key=f"update_role_{user['id']}"):
                             update_user_role(user['id'], new_role)
-                            st.success(f"Role updated to {new_role}")
+                            update_is_admin(new_is_admin)
+                            db.collection('users').document(user['id']).update({'is_admin': new_is_admin})
+                            st.success(f"User updated")
                             time.sleep(1)
                             st.rerun()
                     
