@@ -65,7 +65,12 @@ if not (
     st.stop()
 
 # Check if user is admin
-if st.session_state.get("user_role") != "admin":
+
+if not (
+    st.session_state.get("user_role") == "admin"
+    or
+    st.session_state.get("employer_role") == "admin"
+):
     st.error("⛔ Access Denied. This page is for administrators only.")
     if st.button("← Go to Home"):
         st.switch_page("app.py")
