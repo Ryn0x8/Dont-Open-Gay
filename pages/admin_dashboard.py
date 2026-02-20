@@ -9,6 +9,7 @@ import base64
 from streamlit_autorefresh import st_autorefresh
 import io
 import time
+import bcrypt
 
 # Import all database functions
 from database import (
@@ -637,7 +638,8 @@ elif selected == "Users":
                     if existing:
                         st.error("User with this email already exists!")
                     else:
-                        password_hash = hashlib.sha256(new_password.encode()).hexdigest()
+                        password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt())
+    
                         add_user_admin(new_name, new_email, password_hash, new_role, new_is_admin)
                         st.success(f"User {new_name} created successfully!")
                         st.session_state.show_add_user = False
