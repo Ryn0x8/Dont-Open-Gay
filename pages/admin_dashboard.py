@@ -663,7 +663,7 @@ elif selected == "Users":
     users = get_all_users()
     
     # Convert to DataFrame for filtering
-    df_users = pd.DataFrame(users, columns=['id', 'name', 'email', 'role', 'created_at', 
+    df_users = pd.DataFrame(users, columns=['id', 'name', 'email', 'role', 'is_admin','created_at', 
                                             'phone', 'location', 'skills', 'resume_path'])
     
     # Apply filters
