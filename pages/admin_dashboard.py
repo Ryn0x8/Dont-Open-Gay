@@ -754,7 +754,7 @@ elif selected == "Users":
                     if new_role != user['role'] or new_is_admin != user.get('is_admin', False):
                         if st.button("💾 Update Role", key=f"update_role_{user['id']}"):
                             update_user_role(user['id'], new_role)
-                            update_is_admin(new_is_admin)
+                            update_is_admin(user['id'], new_is_admin)
                             db.collection('users').document(user['id']).update({'is_admin': new_is_admin})
                             st.success(f"User updated")
                             time.sleep(1)
