@@ -76,6 +76,15 @@ if not (
         st.switch_page("app.py")
     st.stop()
 
+if "previous_page" not in st.session_state:
+    st.session_state.previous_page = "app.py"
+
+if st.session_state.get("previous_page") == "pages/login_employer.py":
+    st.session_state.user_id = st.session_state.get("company_id")
+    st.session_state.user_name = st.session_state.get("employer_name")
+    st.session_state.user_email = st.session_state.get("employer_email")
+    st.session_state.user_role = st.session_state.get("employer_role")
+
 # --- Helper Functions ---
 def format_datetime(dt):
     """Format datetime for display"""
@@ -428,11 +437,16 @@ with logout_col:
         if st.button("⬅️ Back to Dashboard", key="back_dashboard", use_container_width=True):
             target = st.session_state.previous_page
             del st.session_state["previous_page"]
+            if st.session_state.get("previous_page") == "pages/login_employer.py":
+                del st.session_state["user_id"]
+                del st.session_state["user_name"] 
+                del st.session_state["user_email"] 
+                del st.session_state["user_role"] 
             st.switch_page(target)
 
     # Logout button
     if st.button("🚪 Logout", key="admin_logout", use_container_width=True):
-        for key in ['authenticated', 'user_id', 'user_name', 'user_email', 'user_role', 'admin_nav', 'previous_page']:
+        for key in ['authenticated', 'user_id', 'user_name', 'user_email', 'user_role', 'admin_nav', 'previous_page', 'employer_authenticated', 'company_id', 'employer_name', 'employer_email', 'employer_role']:
             if key in st.session_state:
                 del st.session_state[key]
         st.switch_page("app.py")
