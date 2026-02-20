@@ -10,7 +10,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import os
 import base64
-
+from rapidfuzz import fuzz
 load_dotenv()
 
 # Initialize Firebase Admin SDK (assumes database.py already did, but safe)
@@ -62,6 +62,24 @@ def send_job_alert_email(to_email, job_title, company_name, description, require
     </html>
     """
     return send_email(to_email, subject, body)
+
+def calculate_match_score(job_skills, employee_skills, threshold=70):
+    if not job_skills or not employee_skills:
+        return 0
+
+    job_list = [s.strip().lower() for s in job_skills.split(',')]
+    emp_list = [s.strip().lower() for s in employee_skills.split(',')]
+
+    matched = 0
+
+    for job_skill in job_list:
+        for emp_skill in emp_list:
+            similarity = fuzz.token_sort_ratio(job_skill, emp_skill)
+            if similarity >= threshold:
+                matched += 1
+                break
+
+    return int((matched / len(job_list)) * 100)
 
 
 # ===== OTP =====

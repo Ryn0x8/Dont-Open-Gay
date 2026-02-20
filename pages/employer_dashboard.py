@@ -5,7 +5,7 @@ import base64
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
-from auth_utils import send_email, send_job_alert_email
+from auth_utils import send_email, send_job_alert_email, calculate_match_score
 from streamlit_autorefresh import st_autorefresh
 from database import (
     get_company_by_id, update_company_profile,
@@ -602,7 +602,6 @@ elif selected == "Post a Job":
 
                     # --- Notify matching employees ---
                     with st.spinner("🔍 Finding matching candidates and sending alerts..."):
-                        from employee_dashboard import calculate_match_score
 
                         employees = get_users_by_role('employee')
                         matched_count = 0
