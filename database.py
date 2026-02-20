@@ -4,6 +4,7 @@ import os
 from datetime import datetime, timezone
 import datetime as dt
 import streamlit as st
+import base64
 
 # cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "serviceAccountKey.json")
 # if not firebase_admin._apps:
