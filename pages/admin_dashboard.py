@@ -79,7 +79,7 @@ if not (
 if "previous_page" not in st.session_state:
     st.session_state.previous_page = "app.py"
 
-if st.session_state.get("previous_page") == "pages/login_employer.py":
+if st.session_state.get("previous_page") == "pages/employer_dashboard.py":
     st.session_state.user_id = st.session_state.get("company_id")
     st.session_state.user_name = st.session_state.get("employer_name")
     st.session_state.user_email = st.session_state.get("employer_email")
@@ -437,7 +437,7 @@ with logout_col:
         if st.button("⬅️ Back to Dashboard", key="back_dashboard", use_container_width=True):
             target = st.session_state.previous_page
             del st.session_state["previous_page"]
-            if st.session_state.get("previous_page") == "pages/login_employer.py":
+            if st.session_state.get("previous_page") == "pages/employer_dashboard.py":
                 del st.session_state["user_id"]
                 del st.session_state["user_name"] 
                 del st.session_state["user_email"] 
