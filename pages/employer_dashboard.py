@@ -5,7 +5,7 @@ import base64
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
-from auth_utils import send_email, send_job_alert_email, calculate_match_score
+from auth_utils import send_email, send_job_alert_email, calculate_match_score, hash_password
 from streamlit_autorefresh import st_autorefresh
 from database import (
     get_company_by_id, update_company_profile,
@@ -18,7 +18,8 @@ from database import (
     upsert_interview, mark_company_messages_read, get_company_conversations,
     delete_job, get_company_jobs_all,
     get_new_applications_count, get_unread_messages_count, get_recent_activities,
-    get_job_by_id, get_users_by_role, get_or_create_profile
+    get_job_by_id, get_users_by_role, get_or_create_profile,
+    update_company_password  # you need to implement this function (see note)
 )
 import random
 from database import update_expired_jobs
@@ -50,14 +51,6 @@ def get_resume_download_link(resume_path, text="Download Resume"):
         return href
     return None
 
-# def ats_review(resume_path, cover_letter, required_skills):
-#     match_score = random.randint(30, 100)
-#     ai_score = random.uniform(0, 1)
-#     is_ai = ai_score > 0.7
-#     confidence = random.randint(60, 99)
-#     feedback = f"Match score: {match_score}%. AI detection: {'Likely AI' if is_ai else 'Human'} (confidence {confidence}%)."
-#     return match_score, is_ai, confidence, feedback
-
 # --- Custom CSS (ultra‑classy) ---
 st.markdown("""
 <style>
@@ -86,14 +79,6 @@ st.markdown("""
 
     .stApp {
         background: radial-gradient(circle at 10% 30%, rgba(255,255,255,0.95) 0%, #f1f5f9 100%);
-    }
-
-    /* Two‑row navigation */
-    .nav-badge-row {
-        margin-bottom: 0px;
-    }
-    .nav-button-row {
-        margin-top: 0px;
     }
 
     .badge-count {
@@ -339,10 +324,74 @@ st.markdown("""
         border: 0;
         border-top: 1px solid var(--border);
     }
+
+    /* ===== PILLS STYLING (employer theme) ===== */
+    div[class*="st-key-"] button {
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0.5rem 0.8rem !important;
+        margin: 0 !important;
+        font-family: inherit !important;
+        font-size: 1rem !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+        border-radius: 0 !important;
+        border-bottom: 2px solid transparent !important;
+        transition: color 0.2s, border-color 0.2s !important;
+        outline: none !important;
+        line-height: normal !important;
+        text-transform: none !important;
+        letter-spacing: normal !important;
+        display: inline-block !important;
+        color: var(--text-light) !important;
+    }
+
+    .st-key-main_pills {
+        border-bottom: 1px solid var(--border) !important;
+        margin-bottom: 1.5rem !important;
+        padding-bottom: 0.5rem !important;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .st-key-main_pills button:hover {
+        color: var(--primary) !important;
+        border-bottom-color: var(--primary-light) !important;
+    }
+
+    .st-key-main_pills button[aria-pressed="true"],
+    .st-key-main_pills button[kind="pillsActive"] {
+        color: var(--primary) !important;
+        border-bottom-color: var(--primary) !important;
+    }
+
+    div[class*="st-key-sub_pills"] {
+        margin-bottom: 1rem;
+    }
+
+    div[class*="st-key-sub_pills"] button:hover {
+        color: var(--secondary) !important;
+        border-bottom-color: var(--secondary) !important;
+    }
+
+    div[class*="st-key-sub_pills"] button[aria-pressed="true"],
+    div[class*="st-key-sub_pills"] button[kind="pillsActive"] {
+        color: var(--secondary) !important;
+        border-bottom-color: var(--secondary) !important;
+    }
+
+    div[class*="st-key-"] button:focus,
+    div[class*="st-key-"] button:active {
+        outline: none !important;
+        box-shadow: none !important;
+        background: none !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- Fetch counts for badges ---
+# --- Fetch counts for badges (still used in content) ---
 company_id = st.session_state.company_id
 new_apps_count = get_new_applications_count(company_id)
 unread_msgs_count = get_unread_messages_count(company_id)
@@ -351,55 +400,12 @@ active_jobs_count = get_job_count_for_company(company_id)
 total_apps = get_application_count_for_company(company_id)
 interview_count = get_interview_count_for_company(company_id)
 
-# --- Two‑row navigation with badges ---
-menu_items = [
-    {"label": "Dashboard", "icon": "📊", "badge": None},
-    {"label": "Post a Job", "icon": "📝", "badge": None},
-    {"label": "Applications", "icon": "📋", "badge": new_apps_count},
-    {"label": "Job Requests", "icon": "👥", "badge": open_requests_count},
-    {"label": "Messages", "icon": "💬", "badge": unread_msgs_count},
-    {"label": "Company Profile", "icon": "🏢", "badge": None},
-]
+# --- Navigation state ---
+if "main_tab" not in st.session_state:
+    st.session_state.main_tab = "Dashboard"
+if "sub_tab" not in st.session_state:
+    st.session_state.sub_tab = None
 
-# Row 1: badges
-badge_cols = st.columns([1,1,1,1,1,1,0.8])
-for i, item in enumerate(menu_items):
-    with badge_cols[i]:
-        if item["badge"] and item["badge"] > 0:
-            st.markdown(
-                f"<div style='text-align: center; margin-bottom: 5px;'>"
-                f"<span class='badge-count'>{item['badge']}</span>"
-                f"</div>",
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-with badge_cols[-1]:
-    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-
-# Row 2: buttons
-button_cols = st.columns([1,1,1,1,1,1,0.8])
-for i, item in enumerate(menu_items):
-    with button_cols[i]:
-        active = "primary" if st.session_state.get("nav_selected") == item["label"] else "secondary"
-        if st.button(f"{item['icon']} {item['label']}", key=f"nav_{item['label']}", use_container_width=True, type=active):
-            st.session_state.nav_selected = item["label"]
-            st.rerun()
-with button_cols[-1]:
-    if st.button("🚪 Logout", key="logout_top", use_container_width=True):
-        for key in ['employer_authenticated', 'company_id', 'employer_name', 'employer_email', 'nav_selected']:
-            if key in st.session_state:
-                del st.session_state[key]
-        st.switch_page("app.py")
-
-    if st.session_state.get("is_admin", False) == True:
-        if st.button("🛡️ Admin Panel", key="goto_admin"):
-            st.session_state.previous_page = "pages/employer_dashboard.py"
-            st.switch_page("pages/admin_dashboard.py")
-
-selected = st.session_state.get("nav_selected", "Dashboard")
-
-# --- Hero Header ---
 st.markdown(f"""
 <div class="hero-header">
     <div>
@@ -412,31 +418,84 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- Notification Cards (always visible) ---
-st.markdown("## 🔔 Recent Notifications")
-activities = get_recent_activities(company_id, limit=6)
+# --- Main menu items (no badges in pills) ---
+main_tabs = ["Dashboard", "Post a Job", "Applications", "Job Requests", "Messages", "Notifications", "Company Profile"]
+main_icons = {
+    "Dashboard": "📊",
+    "Post a Job": "📝",
+    "Applications": "📋",
+    "Job Requests": "👥",
+    "Messages": "💬",
+    "Notifications": "🔔",
+    "Company Profile": "🏢"
+}
 
-if activities:
-    for i in range(0, len(activities), 3):
-        row = activities[i:i+3]
-        cols = st.columns(3)
-        for j, act in enumerate(row):
-            with cols[j]:
-                icon = "📝" if act['type'] == 'application' else "💬"
-                bg = "#DCFCE7" if act['type'] == 'application' else "#DBEAFE"
-                time_str = act['time'].strftime('%Y-%m-%d %H:%M') if act['time'] else ''
-                st.markdown(f"""
-                <div class="notification-card">
-                    <div class="notification-icon" style="background: {bg};">{icon}</div>
-                    <div class="notification-title">{act['content']}</div>
-                    <div class="notification-time">{time_str}</div>
-                </div>
-                """, unsafe_allow_html=True)
+# --- Main pills navigation ---
+selected_main = st.pills(
+    "",
+    options=main_tabs,
+    default=st.session_state.main_tab,
+    selection_mode="single",
+    format_func=lambda tab: f"{main_icons[tab]} {tab}",
+    label_visibility="collapsed",
+    key="main_pills"
+)
+st.session_state.main_tab = selected_main
+
+# --- Sub‑navigation (only for applicable main tabs) ---
+if st.session_state.main_tab == "Applications":
+    sub_tabs = ["All Applications", "Pending", "Interview", "Accepted", "Rejected"]
+    sub_icons = {
+        "All Applications": "📋",
+        "Pending": "⏳",
+        "Interview": "🗓️",
+        "Accepted": "✅",
+        "Rejected": "❌"
+    }
+elif st.session_state.main_tab == "Job Requests":
+    sub_tabs = ["Open Requests"]
+    sub_icons = {
+        "Open Requests": "👥",
+    }
+elif st.session_state.main_tab == "Messages":
+    sub_tabs = ["Conversations"]
+    sub_icons = {
+        "Conversations": "💬",
+    }
+elif st.session_state.main_tab == "Company Profile":
+    sub_tabs = ["Profile", "Settings"]
+    sub_icons = {
+        "Profile": "🏢",
+        "Settings": "⚙️"
+    }
 else:
-    st.info("No recent notifications.")
+    sub_tabs = []
+    sub_icons = {}
 
-# --- Dashboard Tab (enhanced) ---
-if selected == "Dashboard":
+if sub_tabs:
+    # Ensure sub_tab is valid
+    if st.session_state.sub_tab not in sub_tabs:
+        st.session_state.sub_tab = sub_tabs[0]
+    selected_sub = st.pills(
+        "",
+        options=sub_tabs,
+        default=st.session_state.sub_tab,
+        selection_mode="single",
+        format_func=lambda tab: f"{sub_icons[tab]} {tab}",
+        label_visibility="collapsed",
+        key=f"sub_pills_{st.session_state.main_tab}"
+    )
+    st.session_state.sub_tab = selected_sub
+else:
+    st.session_state.sub_tab = None
+
+# Determine current page for content rendering
+current_page = st.session_state.sub_tab if st.session_state.sub_tab else st.session_state.main_tab
+
+
+
+# --- Content rendering based on current_page ---
+if current_page == "Dashboard":
     st.markdown("## 📊 Overview")
 
     # Top KPI row
@@ -552,9 +611,7 @@ if selected == "Dashboard":
         )
         st.plotly_chart(fig, use_container_width=True)
 
-
-
-elif selected == "Post a Job":
+elif current_page == "Post a Job":
     update_expired_jobs()
     tab1, tab2 = st.tabs(["📝 Post New Job", "📋 Manage Jobs"])
     if "job_form_counter" not in st.session_state:
@@ -645,7 +702,6 @@ elif selected == "Post a Job":
                     st.session_state.job_form_counter += 1
                     st.rerun()
 
-
     with tab2:
         st.markdown("## 📋 Your Job Postings")
         jobs = get_company_jobs_all(st.session_state.company_id)
@@ -683,11 +739,10 @@ elif selected == "Post a Job":
                                 del st.session_state.job_to_delete
                                 st.rerun()
 
-elif selected == "Applications":
-    st.markdown(f"## 📋 Applications Received  "
-                f"<span class='badge-count' style='font-size: 0.9rem; margin-left: 10px;'>{new_apps_count} pending</span>",
-                unsafe_allow_html=True)
-
+elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "Rejected"]:
+    st.markdown(f"## 📋 Applications – {current_page}")
+    
+    # Chat mode handling (unchanged)
     if "chat_employee_id" in st.session_state:
         st_autorefresh(interval=10000, key="employer_chat_autorefresh")
         col1, col2 = st.columns([3, 1])
@@ -734,8 +789,19 @@ elif selected == "Applications":
                 st.rerun()
     else:
         apps = get_applications_for_company(company_id)
+        if current_page != "All Applications":
+            # Filter by status
+            status_map = {
+                "Pending": "pending",
+                "Interview": "interview",
+                "Accepted": "accepted",
+                "Rejected": "rejected"
+            }
+            status_filter = status_map[current_page]
+            apps = [app for app in apps if app[4] == status_filter]
+
         if not apps:
-            st.info("No applications yet.")
+            st.info("No applications in this category.")
         else:
             for i, app in enumerate(apps):
                 status = app[4]
@@ -755,34 +821,24 @@ elif selected == "Applications":
                     with col2:
                         if st.button("🔍 Run ATS Review", key=f"ats_{app[0]}_{i}"):
                             with st.spinner("Analyzing resume with AI..."):
-                                job_id = app[3]  # job_id is index 3 in the application tuple
+                                job_id = app[3]
                                 job_details = get_job_by_id(job_id)
                                 if not job_details:
                                     st.error("Could not fetch job details.")
                                 else:
-                                    # job_details indices: description=5, requirements=6, skills_required=11
                                     job_desc = job_details[5]
                                     job_skills = job_details[11]
-                                    
-                                    # Get resume file path (app[13] is resume_path)
                                     resume_path = app[13]
                                     if not resume_path or not os.path.exists(resume_path):
                                         st.error("Resume file not found.")
                                     else:
                                         with open(resume_path, "rb") as f:
                                             resume_file = io.BytesIO(f.read())
-                                        # Now call with three arguments
                                         result = evaluate_candidate(resume_file, job_desc, job_skills)
                                         if result:
                                             score = result['score']
                                             explanation = result['explanation']
-                                            # Determine colour based on score
-                                            if score >= 70:
-                                                colour = "#10B981"  # green
-                                            elif score >= 40:
-                                                colour = "#F59E0B"  # orange
-                                            else:
-                                                colour = "#EF4444"  # red
+                                            colour = "#10B981" if score >= 70 else "#F59E0B" if score >= 40 else "#EF4444"
                                             st.markdown(f"""
                                             <div style="background: white; padding:1rem; border-radius:16px; border:1px solid var(--border); margin:0.5rem 0;">
                                                 <h4 style="margin:0 0 0.5rem 0;">ATS Evaluation Result</h4>
@@ -822,110 +878,135 @@ elif selected == "Applications":
                             st.session_state.chat_application_id = app[0]
                             st.rerun()
 
-elif selected == "Job Requests":
-    st.markdown(f"## 👥 Employee Job Requests  "
-                f"<span class='badge-count' style='font-size: 0.9rem; margin-left: 10px;'>{open_requests_count} open</span>",
-                unsafe_allow_html=True)
-
-    requests = get_all_open_job_requests()
-    if not requests:
-        st.info("No open job requests.")
-    else:
-        for i, req in enumerate(requests):
-            with st.expander(f"{req[2]} by {req[10]}"):
-                col1, col2 = st.columns([2, 1])
-                with col1:
-                    st.markdown(f"**Category:** {req[4]}")
-                    st.markdown(f"**Location:** {req[5]}")
-                    st.markdown(f"**Budget:** {req[6]}")
-                    st.markdown(f"**Description:** {req[3]}")
-                    st.markdown(f"**Skills:** {req[12]}")
-                    st.markdown(f"**Bio:** {req[15]}")
-                with col2:
-                    if req[13]:
-                        st.markdown(get_resume_download_link(req[13], "📄 Download Resume"), unsafe_allow_html=True)
-                    with st.form(key=f"interest_form_{req[0]}", clear_on_submit=True):
-                        message = st.text_input("Message to employee")
-                        if st.form_submit_button("✋ Express Interest", use_container_width=True) and message:
-                            express_interest_in_request(req[0], st.session_state.company_id, message)
-                            st.success("Interest expressed! The employee will be notified.")
-                            st.rerun()
-
-elif selected == "Messages":
-    st.markdown("## 💬 Conversations")
-
-    if "chat_employee_id" in st.session_state:
-        st_autorefresh(interval=10000, key="employer_chat_autorefresh")
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.markdown(f"### 💬 Chat with {st.session_state.chat_employee_name}")
-        with col2:
-            if st.button("← Back to Conversations"):
-                for key in ['chat_employee_id', 'chat_employee_name']:
-                    if key in st.session_state: del st.session_state[key]
-                st.rerun()
-
-        msgs = get_messages_between_company_and_employee(company_id, st.session_state.chat_employee_id)
-        mark_company_messages_read(company_id, st.session_state.chat_employee_id)
-
-        st.markdown('<div class="chat-container" id="chat-container-msg">', unsafe_allow_html=True)
-        for msg in msgs:
-            if msg[2] == 'company':
-                msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
-                st.markdown(f"""
-                <div style="text-align: right; margin: 0.5rem 0;">
-                    <div class="chat-bubble-company">{msg[6]}<br><span class="chat-timestamp">{msg_time}</span></div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
-                st.markdown(f"""
-                <div style="text-align: left; margin: 0.5rem 0;">
-                    <div class="chat-bubble-employee"><strong>{st.session_state.chat_employee_name}</strong><br>{msg[6]}<br><span class="chat-timestamp">{msg_time}</span></div>
-                </div>
-                """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        st.markdown("""
-        <script>
-            var chatContainer = document.getElementById('chat-container-msg');
-            if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
-        </script>
-        """, unsafe_allow_html=True)
-
-        with st.form("send_message_employer"):
-            message = st.text_area("Type message", key="employer_chat_message")
-            if st.form_submit_button("Send", use_container_width=True):
-                send_message_from_company(company_id, st.session_state.chat_employee_id, message, application_id=None)
-                st.rerun()
-    else:
-        convos = get_company_conversations(company_id)
-        if not convos:
-            st.info("No conversations yet. Express interest in job requests to start chatting!")
+elif current_page in ["Open Requests", "My Interests"]:
+    if current_page == "Open Requests":
+        st.markdown(f"## 👥 Open Job Requests")
+        requests = get_all_open_job_requests()
+        if not requests:
+            st.info("No open job requests.")
         else:
-            for conv in convos:
-                st.markdown(f"""
-                <div class="conversation-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <h4 style="margin: 0;">{conv[1]}</h4>
-                            <p style="margin: 0.25rem 0 0; color: var(--text-light);">{conv[2][:100] if conv[2] else 'No messages'}...</p>
-                        </div>
-                        <div style="text-align: right;">
-                            <span class="badge badge-danger" style="margin-right: 0.5rem;">{conv[4]} new</span>
-                            <span style="font-size: 0.8rem; color: var(--text-light);">{conv[3].strftime('%Y-%m-%d') if conv[3] else ''}</span>
+            for i, req in enumerate(requests):
+                with st.expander(f"{req[2]} by {req[10]}"):
+                    col1, col2 = st.columns([2, 1])
+                    with col1:
+                        st.markdown(f"**Category:** {req[4]}")
+                        st.markdown(f"**Location:** {req[5]}")
+                        st.markdown(f"**Budget:** {req[6]}")
+                        st.markdown(f"**Description:** {req[3]}")
+                        st.markdown(f"**Skills:** {req[12]}")
+                        st.markdown(f"**Bio:** {req[15]}")
+                    with col2:
+                        if req[13]:
+                            st.markdown(get_resume_download_link(req[13], "📄 Download Resume"), unsafe_allow_html=True)
+                        with st.form(key=f"interest_form_{req[0]}", clear_on_submit=True):
+                            message = st.text_input("Message to employee")
+                            if st.form_submit_button("✋ Express Interest", use_container_width=True) and message:
+                                express_interest_in_request(req[0], st.session_state.company_id, message)
+                                st.success("Interest expressed! The employee will be notified.")
+                                st.rerun()
+    else:  # My Interests
+        st.markdown(f"## ✋ My Interests")
+        # For now, placeholder
+        st.info("You haven't expressed interest in any requests yet.")
+
+elif current_page in ["Conversations", "Archived"]:
+    if current_page == "Conversations":
+        st.markdown("## 💬 Conversations")
+
+        if "chat_employee_id" in st.session_state:
+            st_autorefresh(interval=10000, key="employer_chat_autorefresh")
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.markdown(f"### 💬 Chat with {st.session_state.chat_employee_name}")
+            with col2:
+                if st.button("← Back to Conversations"):
+                    for key in ['chat_employee_id', 'chat_employee_name']:
+                        if key in st.session_state: del st.session_state[key]
+                    st.rerun()
+
+            msgs = get_messages_between_company_and_employee(company_id, st.session_state.chat_employee_id)
+            mark_company_messages_read(company_id, st.session_state.chat_employee_id)
+
+            st.markdown('<div class="chat-container" id="chat-container-msg">', unsafe_allow_html=True)
+            for msg in msgs:
+                if msg[2] == 'company':
+                    msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
+                    st.markdown(f"""
+                    <div style="text-align: right; margin: 0.5rem 0;">
+                        <div class="chat-bubble-company">{msg[6]}<br><span class="chat-timestamp">{msg_time}</span></div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
+                    st.markdown(f"""
+                    <div style="text-align: left; margin: 0.5rem 0;">
+                        <div class="chat-bubble-employee"><strong>{st.session_state.chat_employee_name}</strong><br>{msg[6]}<br><span class="chat-timestamp">{msg_time}</span></div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            st.markdown("""
+            <script>
+                var chatContainer = document.getElementById('chat-container-msg');
+                if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+            </script>
+            """, unsafe_allow_html=True)
+
+            with st.form("send_message_employer"):
+                message = st.text_area("Type message", key="employer_chat_message")
+                if st.form_submit_button("Send", use_container_width=True):
+                    send_message_from_company(company_id, st.session_state.chat_employee_id, message, application_id=None)
+                    st.rerun()
+        else:
+            convos = get_company_conversations(company_id)
+            if not convos:
+                st.info("No conversations yet. Express interest in job requests to start chatting!")
+            else:
+                for conv in convos:
+                    st.markdown(f"""
+                    <div class="conversation-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h4 style="margin: 0;">{conv[1]}</h4>
+                                <p style="margin: 0.25rem 0 0; color: var(--text-light);">{conv[2][:100] if conv[2] else 'No messages'}...</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <span class="badge badge-danger" style="margin-right: 0.5rem;">{conv[4]} new</span>
+                                <span style="font-size: 0.8rem; color: var(--text-light);">{conv[3].strftime('%Y-%m-%d') if conv[3] else ''}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                """, unsafe_allow_html=True)
-                if st.button("Open Chat", key=f"open_chat_{conv[0]}"):
-                    st.session_state.chat_employee_id = conv[0]
-                    st.session_state.chat_employee_name = conv[1]
-                    st.rerun()
-                st.markdown("<br>", unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
+                    if st.button("Open Chat", key=f"open_chat_{conv[0]}"):
+                        st.session_state.chat_employee_id = conv[0]
+                        st.session_state.chat_employee_name = conv[1]
+                        st.rerun()
+                    st.markdown("<br>", unsafe_allow_html=True)
 
-elif selected == "Company Profile":
-    st.markdown("## 🏢 Edit Company Profile")
+elif current_page == "Notifications":
+    st.markdown("## 🔔 Notifications")
+    activities = get_recent_activities(company_id, limit=50)  # fetch more if needed
+    if activities:
+        for act in activities:
+            icon = "📝" if act['type'] == 'application' else "💬"
+            bg = "#DCFCE7" if act['type'] == 'application' else "#DBEAFE"
+            time_str = act['time'].strftime('%Y-%m-%d %H:%M') if act['time'] else ''
+            st.markdown(f"""
+            <div class="notification-card" style="margin-bottom: 0.5rem;">
+                <div style="display: flex; align-items: center;">
+                    <div class="notification-icon" style="background: {bg}; margin-right: 1rem;">{icon}</div>
+                    <div>
+                        <div class="notification-title">{act['content']}</div>
+                        <div class="notification-time">{time_str}</div>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("No notifications yet.")
+
+elif current_page == "Profile":
+    st.markdown("## 🏢 Company Profile")
     company = get_company_by_id(company_id)
 
     with st.form("company_profile_form"):
@@ -941,11 +1022,16 @@ elif selected == "Company Profile":
 
         description = st.text_area("Description", value=company[4] or "", height=150)
 
-        col_a, col_b = st.columns(2)
+        col_a, col_b, col_c = st.columns(3)
         with col_a:
             submitted = st.form_submit_button("Update Profile", use_container_width=True)
         with col_b:
             logout = st.form_submit_button("Logout", use_container_width=True)
+        with col_c:
+            if st.session_state.get("is_admin", False):
+                admin_btn = st.form_submit_button("🛡️ Admin Panel", use_container_width=True)
+            else:
+                admin_btn = False
 
         if submitted:
             update_company_profile(company_id,
@@ -957,7 +1043,31 @@ elif selected == "Company Profile":
             st.success("Profile updated!")
             st.rerun()
         if logout:
-            for key in ['employer_authenticated', 'company_id', 'employer_name', 'employer_email', 'nav_selected']:
+            for key in ['employer_authenticated', 'company_id', 'employer_name', 'employer_email', 'main_tab', 'sub_tab']:
                 if key in st.session_state:
                     del st.session_state[key]
             st.switch_page("app.py")
+        if admin_btn:
+            st.session_state.previous_page = "pages/employer_dashboard.py"
+            st.switch_page("pages/admin_dashboard.py")
+
+elif current_page == "Settings":
+    st.markdown("## ⚙️ Settings")
+    
+    # Password change
+    with st.expander("🔐 Change Password", expanded=True):
+        with st.form("change_password_form"):
+            current_pw = st.text_input("Current Password", type="password")
+            new_pw = st.text_input("New Password", type="password")
+            confirm_pw = st.text_input("Confirm New Password", type="password")
+            if st.form_submit_button("Update Password", use_container_width=True):
+                if not current_pw or not new_pw or not confirm_pw:
+                    st.error("Please fill all fields.")
+                elif new_pw != confirm_pw:
+                    st.error("New passwords do not match.")
+                else:
+                    new_pw_hash = hash_password(new_pw)
+                    update_company_password(st.session_state.company_id, new_pw_hash)
+                    st.success("Password updated successfully!")
+                    st.rerun()
+

@@ -1386,3 +1386,33 @@ def get_resume_download_link(resume_path, text="Download Resume"):
         href = f'<a href="data:application/octet-stream;base64,{b64}" download="{os.path.basename(resume_path)}" class="badge badge-info">{text}</a>'
         return href
     return None
+
+def update_user_password(user_id, new_password_hash):
+    """
+    Update a user's password in Firestore.
+    
+    Args:
+        user_id (str): The user's email (document ID).
+        new_password_hash (str): The bcrypt hash of the new password.
+    """
+    user_ref = db.collection('users').document(user_id)
+    user_ref.update({'password': new_password_hash})
+
+def update_company_password(company_id, new_password_hash):
+    """
+    Update the password for the employer user associated with the given company.
+    
+    Args:
+        company_id (str): The company document ID.
+        new_password_hash (str): The bcrypt hash of the new password.
+    
+    Raises:
+        ValueError: If no user is found with the given company_id.
+    """
+    # Find the user document that has this company_id
+    users_ref = db.collection('users').where('company_id', '==', company_id).limit(1).stream()
+    user_doc = next(users_ref, None)
+    if user_doc:
+        user_doc.reference.update({'password': new_password_hash})
+    else:
+        raise ValueError(f"No user found for company_id {company_id}")

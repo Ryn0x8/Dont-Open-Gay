@@ -48,6 +48,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# --- Authentication check ---
 if not (
     st.session_state.get("authenticated", False)
     or
@@ -64,7 +65,7 @@ if not (
             st.switch_page("app.py")
     st.stop()
 
-# Check if user is admin (using is_admin flag)
+# Check if user is admin
 if not st.session_state.get("is_admin", False):
     st.error("⛔ Access Denied. This page is for administrators only.")
     if st.button("← Go to Home"):
@@ -113,7 +114,7 @@ def confirm_action(key, message):
                 return False
     return False
 
-# --- Custom CSS (same glass-morphism style) ---
+# --- Custom CSS (glass-morphism + pills styling) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -143,14 +144,6 @@ st.markdown("""
 
     .stApp {
         background: radial-gradient(circle at 10% 30%, rgba(255,255,255,0.95) 0%, #f1f5f9 100%);
-    }
-
-    /* Two‑row navigation */
-    .nav-badge-row {
-        margin-bottom: 0px;
-    }
-    .nav-button-row {
-        margin-top: 0px;
     }
 
     .badge-count {
@@ -336,119 +329,114 @@ st.markdown("""
         border: 0;
         border-top: 1px solid var(--border);
     }
+
+    /* ===== PILLS STYLING (admin theme) ===== */
+    div[class*="st-key-"] button {
+        all: unset;
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0.5rem 0.8rem !important;
+        margin: 0 !important;
+        font-family: inherit !important;
+        font-size: 1rem !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+        border-radius: 0 !important;
+        transition: color 0.2s, border-color 0.2s !important;
+        outline: none !important;
+        line-height: normal !important;
+        text-transform: none !important;
+        letter-spacing: normal !important;
+        display: inline-block !important;
+        color: var(--text-light) !important;
+        border-bottom: 2px solid transparent !important;
+    }
+
+    .st-key-main_pills {
+        border-bottom: 1px solid var(--border) !important;
+        margin-bottom: 1.5rem !important;
+        padding-bottom: 0.5rem !important;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .st-key-main_pills button:hover {
+        color: var(--primary) !important;
+        border-bottom-color: var(--primary-light) !important;
+    }
+
+    .st-key-main_pills button[aria-pressed="true"],
+    .st-key-main_pills button[kind="pillsActive"] {
+        color: var(--primary) !important;
+        border-bottom-color: var(--primary) !important;
+    }
+
+    div[class*="st-key-sub_pills"] {
+        margin-bottom: 1rem;
+    }
+
+    div[class*="st-key-sub_pills"] button:hover {
+        color: #dc2626 !important;
+        border-bottom-color: #f87171 !important;
+    }
+
+    div[class*="st-key-sub_pills"] button[aria-pressed="true"],
+    div[class*="st-key-sub_pills"] button[kind="pillsActive"] {
+        color: #b91c1c !important;
+        border-bottom: 2px solid #b91c1c !important;
+        background: none !important;
+    }
+
+    .st-key-main_pills button:focus,
+    .st-key-main_pills button:active,
+    div[class*="st-key-sub_pills"] button:focus,
+    div[class*="st-key-sub_pills"] button:active {
+        outline: none !important;
+        box-shadow: none !important;
+        background: none !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # --- Get System Stats ---
 stats = get_system_stats()
 
-# --- Navigation Menu Items ---
-menu_items = [
-    {"label": "Dashboard", "icon": "📊", "badge": None},
-    {"label": "Users", "icon": "👥", "badge": stats['users']},
-    {"label": "Companies", "icon": "🏢", "badge": stats['companies']},
-    {"label": "Jobs", "icon": "📋", "badge": stats['jobs']},
-    {"label": "Applications", "icon": "📝", "badge": stats['applications']},
-    {"label": "Job Requests", "icon": "📌", "badge": stats['open_requests']},
-    {"label": "Messages", "icon": "💬", "badge": stats['messages']},
-    {"label": "Analytics", "icon": "📈", "badge": None},
-    {"label": "Settings", "icon": "⚙️", "badge": None},
-]
+# --- Navigation state ---
+if "main_tab" not in st.session_state:
+    st.session_state.main_tab = "Dashboard"
+if "sub_tab" not in st.session_state:
+    st.session_state.sub_tab = None
 
-# Split into two rows (5 and 4)
-first_group = menu_items[:5]   # Dashboard, Users, Companies, Jobs, Applications
-second_group = menu_items[5:]  # Job Requests, Messages, Analytics, Settings
+# --- Define main tabs and sub-tabs (grouped) ---
+main_tabs = ["Dashboard", "Management", "Jobs", "Communication", "System"]
+main_icons = {
+    "Dashboard": "📊",
+    "Management": "👥",
+    "Jobs": "📋",
+    "Communication": "💬",
+    "System": "⚙️"
+}
 
-# --- First Row Navigation ---
-cols1 = st.columns([1,1,1,1,1,0.8])
-badge_cols1 = cols1[:5]
-logout_placeholder1 = cols1[5]
+# Sub-tabs definitions
+if st.session_state.main_tab == "Management":
+    sub_tabs = ["Users", "Companies"]
+    sub_icons = {"Users": "👤", "Companies": "🏢"}
+elif st.session_state.main_tab == "Jobs":
+    sub_tabs = ["Job Postings", "Applications", "Job Requests"]
+    sub_icons = {"Job Postings": "📋", "Applications": "📝", "Job Requests": "📌"}
+elif st.session_state.main_tab == "Communication":
+    sub_tabs = ["Messages"]
+    sub_icons = {"Messages": "💬"}
+elif st.session_state.main_tab == "System":
+    sub_tabs = ["Analytics", "Settings"]
+    sub_icons = {"Analytics": "📈", "Settings": "⚙️"}
+else:
+    sub_tabs = []
+    sub_icons = {}
 
-# First row badges
-for i, item in enumerate(first_group):
-    with badge_cols1[i]:
-        if item["badge"] and item["badge"] > 0:
-            st.markdown(
-                f"<div style='text-align: center; margin-bottom: 5px;'>"
-                f"<span class='badge-count'>{item['badge']}</span>"
-                f"</div>",
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-with logout_placeholder1:
-    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-
-# First row buttons
-button_cols1 = st.columns([1,1,1,1,1,0.8])
-for i, item in enumerate(first_group):
-    with button_cols1[i]:
-        active = "primary" if st.session_state.get("admin_nav") == item["label"] else "secondary"
-        if st.button(f"{item['icon']} {item['label']}", key=f"nav1_{item['label']}", use_container_width=True, type=active):
-            st.session_state.admin_nav = item["label"]
-            st.rerun()
-with button_cols1[5]:
-    st.markdown("")
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# --- Second Row Navigation ---
-cols2 = st.columns([1,1,1,1,1])
-badge_cols2 = cols2[:4]
-logout_col = cols2[4]
-
-for i, item in enumerate(second_group):
-    with badge_cols2[i]:
-
-        # Badge (top)
-        if item["badge"] and item["badge"] > 0:
-            st.markdown(
-                f"""
-                <div style="display:flex; justify-content:center; margin-bottom:5px;">
-                    <span class='badge-count'>{item['badge']}</span>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown("<div style='height:28px;'></div>", unsafe_allow_html=True)
-
-        # Button
-        active = "primary" if st.session_state.get("admin_nav") == item["label"] else "secondary"
-        if st.button(
-            f"{item['icon']} {item['label']}",
-            key=f"nav2_{item['label']}",
-            use_container_width=True,
-            type=active
-        ):
-            st.session_state.admin_nav = item["label"]
-            st.rerun()
-
-# Logout button
-with logout_col:
-    # Back button (only show if previous page exists)
-    if "previous_page" in st.session_state:
-        if st.button("⬅️ Back to Dashboard", key="back_dashboard", use_container_width=True):
-            target = st.session_state.previous_page
-            del st.session_state["previous_page"]
-            if st.session_state.get("previous_page") == "pages/employer_dashboard.py":
-                del st.session_state["user_id"]
-                del st.session_state["user_name"] 
-                del st.session_state["user_email"] 
-                del st.session_state["user_role"] 
-            st.switch_page(target)
-
-    # Logout button
-    if st.button("🚪 Logout", key="admin_logout", use_container_width=True):
-        for key in ['authenticated', 'user_id', 'user_name', 'user_email', 'user_role', 'admin_nav', 'previous_page', 'employer_authenticated', 'company_id', 'employer_name', 'employer_email', 'employer_role']:
-            if key in st.session_state:
-                del st.session_state[key]
-        st.switch_page("app.py")
-
-
-selected = st.session_state.get("admin_nav", "Dashboard")
-
-# --- Hero Header ---
+# --- Hero Header (always on top) ---
 st.markdown(f"""
 <div class="hero-header">
     <div>
@@ -461,43 +449,61 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- Recent Activity Feed (Always Visible) ---
-with st.expander("🔔 Recent System Activity", expanded=False):
-    activities = get_recent_activities_admin(limit=10)
-    if activities:
-        for act in activities:
-            icon = {
-                'user': '👤',
-                'job': '📋',
-                'application': '📝',
-                'message': '💬'
-            }.get(act['type'], '🔔')
-            
-            bg = {
-                'user': '#DBEAFE',
-                'job': '#DCFCE7',
-                'application': '#FEF3C7',
-                'message': '#E0F2FE'
-            }.get(act['type'], '#F1F5F9')
-            
-            time_str = act['time'].strftime('%Y-%m-%d %H:%M') if act['time'] else ''
-            
-            st.markdown(f"""
-            <div style="background: {bg}; padding: 0.75rem 1rem; border-radius: 16px; margin: 0.5rem 0; display: flex; align-items: center; gap: 1rem;">
-                <div style="font-size: 1.5rem;">{icon}</div>
-                <div style="flex-grow: 1;">
-                    <div style="font-weight: 500;">{act['content']}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-light);">{time_str}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.info("No recent activity")
+# --- Main pills navigation ---
+selected_main = st.pills(
+    "",
+    options=main_tabs,
+    default=st.session_state.main_tab,
+    selection_mode="single",
+    format_func=lambda tab: f"{main_icons[tab]} {tab}",
+    label_visibility="collapsed",
+    key="main_pills"
+)
+st.session_state.main_tab = selected_main
+
+# --- Sub pills navigation (if any) ---
+if sub_tabs:
+    if st.session_state.sub_tab not in sub_tabs:
+        st.session_state.sub_tab = sub_tabs[0]
+    selected_sub = st.pills(
+        "",
+        options=sub_tabs,
+        default=st.session_state.sub_tab,
+        selection_mode="single",
+        format_func=lambda tab: f"{sub_icons[tab]} {tab}",
+        label_visibility="collapsed",
+        key=f"sub_pills_{st.session_state.main_tab}"
+    )
+    st.session_state.sub_tab = selected_sub
+else:
+    st.session_state.sub_tab = None
+
+# Determine current page for content rendering
+current_page = st.session_state.sub_tab if st.session_state.sub_tab else st.session_state.main_tab
+
+# --- Back/Logout buttons (placed after navigation) ---
+col1, col2, col3 = st.columns([6, 1, 1])
+with col2:
+    if "previous_page" in st.session_state:
+        if st.button("⬅️ Back", key="back_dashboard", use_container_width=True):
+            target = st.session_state.previous_page
+            del st.session_state["previous_page"]
+            if st.session_state.get("previous_page") == "pages/employer_dashboard.py":
+                for key in ['user_id', 'user_name', 'user_email', 'user_role']:
+                    st.session_state.pop(key, None)
+            st.switch_page(target)
+with col3:
+    if st.button("🚪 Logout", key="admin_logout", use_container_width=True):
+        for key in ['authenticated', 'user_id', 'user_name', 'user_email', 'user_role', 'admin_nav', 'previous_page', 'employer_authenticated', 'company_id', 'employer_name', 'employer_email', 'employer_role', 'main_tab', 'sub_tab']:
+            st.session_state.pop(key, None)
+        st.switch_page("app.py")
 
 # ============================================================================
-# DASHBOARD TAB
+# CONTENT RENDERING BASED ON current_page
 # ============================================================================
-if selected == "Dashboard":
+
+# --- DASHBOARD (main tab) ---
+if current_page == "Dashboard":
     st.markdown("## 📊 System Overview")
     
     # Top KPI Row
@@ -547,7 +553,6 @@ if selected == "Dashboard":
     
     # Charts Row
     col1, col2 = st.columns(2)
-    
     with col1:
         # User Distribution Pie Chart
         user_data = pd.DataFrame({
@@ -564,7 +569,6 @@ if selected == "Dashboard":
             margin=dict(l=20, r=20, t=40, b=20)
         )
         st.plotly_chart(fig, use_container_width=True)
-    
     with col2:
         # Jobs Status Bar Chart
         job_data = pd.DataFrame({
@@ -588,7 +592,8 @@ if selected == "Dashboard":
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         if st.button("➕ Add New User", use_container_width=True):
-            st.session_state.admin_nav = "Users"
+            st.session_state.main_tab = "Management"
+            st.session_state.sub_tab = "Users"
             st.session_state.show_add_user = True
             st.rerun()
     with col2:
@@ -603,10 +608,8 @@ if selected == "Dashboard":
             time.sleep(2)
             st.success("Cleanup completed!")
 
-# ============================================================================
-# USERS TAB
-# ============================================================================
-elif selected == "Users":
+# --- MANAGEMENT: USERS sub-tab ---
+elif current_page == "Users":
     st.markdown("## 👥 User Management")
     
     # Add User Form (if triggered)
@@ -621,7 +624,6 @@ elif selected == "Users":
                 new_password = st.text_input("Password", type="password")
                 new_role = st.selectbox("Role", ["employee", "employer"])
                 new_is_admin = st.checkbox("Is Admin?", value=False)
-
             
             col_a, col_b = st.columns(2)
             with col_a:
@@ -633,13 +635,11 @@ elif selected == "Users":
             
             if submitted:
                 if new_name and new_email and new_password:
-                    # Check if user exists
                     existing = get_user(new_email)
                     if existing:
                         st.error("User with this email already exists!")
                     else:
                         password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt())
-    
                         add_user_admin(new_name, new_email, password_hash, new_role, new_is_admin)
                         st.success(f"User {new_name} created successfully!")
                         st.session_state.show_add_user = False
@@ -656,66 +656,48 @@ elif selected == "Users":
     with col2:
         search = st.text_input("🔍 Search by name or email", placeholder="Type to search...")
     with col3:
-        st.markdown("<br>", unsafe_allow_html=True)
         if st.button("➕ Add New User", use_container_width=True):
             st.session_state.show_add_user = True
             st.rerun()
     
     # Get and filter users
     users = get_all_users()
-    
-    # Convert to DataFrame for filtering
     df_users = pd.DataFrame(users, columns=['id', 'name', 'email', 'role', 'is_admin','created_at', 
                                             'phone', 'location', 'skills', 'resume_path'])
     
-    # Apply filters
     if role_filter != "All":
         df_users = df_users[df_users['role'] == role_filter]
-    
     if search:
         df_users = df_users[
             df_users['name'].str.contains(search, case=False, na=False) |
             df_users['email'].str.contains(search, case=False, na=False)
         ]
     
-    # Display users
     st.markdown(f"### Found {len(df_users)} Users")
     
     for idx, user in df_users.iterrows():
         with st.container():
             col1, col2, col3, col4, col5 = st.columns([2, 2, 1, 1, 1])
-            
             with col1:
                 st.markdown(f"**{user['name']}**")
                 st.markdown(f"📧 {user['email']}")
-            
             with col2:
                 role_class = {
                     'employee': 'role-employee',
                     'employer': 'role-employer',
                 }.get(user['role'], '')
-                
                 st.markdown(f'<span class="role-badge {role_class}">{user["role"].upper()}</span>', unsafe_allow_html=True)
-                
-                # Show admin badge if is_admin is True
                 if user.get('is_admin', False):
                     st.markdown('<span class="role-badge role-admin">ADMIN</span>', unsafe_allow_html=True)
-                
                 if user['location']:
                     st.markdown(f"📍 {user['location']}")
-            
             with col3:
                 if user['phone']:
                     st.markdown(f"📱 {user['phone']}")
-            
             with col4:
-                # View Details button
                 if st.button("👁️ View", key=f"view_user_{user['id']}_{idx}", use_container_width=True):
                     st.session_state.view_user_id = user['id']
-                    st.rerun()
-            
             with col5:
-                # Delete button with confirmation
                 if st.button("🗑️", key=f"del_user_{user['id']}_{idx}", use_container_width=True, type="secondary"):
                     st.session_state.delete_user_id = user['id']
                     st.session_state.delete_user_name = user['name']
@@ -732,7 +714,6 @@ elif selected == "Users":
                         st.markdown(f"- **Admin:** {'Yes' if user.get('is_admin', False) else 'No'}")
                         st.markdown(f"- **Phone:** {user['phone'] or 'Not provided'}")
                         st.markdown(f"- **Location:** {user['location'] or 'Not provided'}")
-                    
                     with col_b:
                         st.markdown("**Skills & Resume:**")
                         st.markdown(f"- **Skills:** {user['skills'] or 'Not provided'}")
@@ -745,14 +726,11 @@ elif selected == "Users":
                         else:
                             st.markdown("- **Resume:** Not uploaded")
                     
-                    # Role change option
+                    # Role change
                     new_role = st.selectbox("Change Role", ["employee", "employer"], 
                                             index=["employee", "employer"].index(user['role']) if user['role'] in ["employee", "employer"] else 0,
                                             key=f"role_change_{user['id']}")
-
-                    # New: Admin flag toggle
                     new_is_admin = st.checkbox("Is Admin?", value=user.get('is_admin', False), key=f"is_admin_{user['id']}")
-
                     if new_role != user['role'] or new_is_admin != user.get('is_admin', False):
                         if st.button("💾 Update Role", key=f"update_role_{user['id']}"):
                             update_user_role(user['id'], new_role)
@@ -761,7 +739,6 @@ elif selected == "Users":
                             st.success(f"User updated")
                             time.sleep(1)
                             st.rerun()
-                    
                     if st.button("❌ Close", key=f"close_view_{user['id']}"):
                         del st.session_state.view_user_id
                         st.rerun()
@@ -773,29 +750,24 @@ elif selected == "Users":
                 with col_yes:
                     if st.button("✅ Yes, Delete", key=f"confirm_del_{user['id']}"):
                         delete_user(user['id'])
-                        del st.session_state.delete_user_id
-                        del st.session_state.delete_user_name
+                        st.session_state.pop("delete_user_id", None)
+                        st.session_state.pop("delete_user_name", None)
                         st.success(f"User {user['name']} deleted!")
                         time.sleep(1)
                         st.rerun()
                 with col_no:
                     if st.button("❌ No, Cancel", key=f"cancel_del_{user['id']}"):
-                        del st.session_state.delete_user_id
-                        del st.session_state.delete_user_name
+                        st.session_state.pop("delete_user_id", None)
+                        st.session_state.pop("delete_user_name", None)
                         st.rerun()
-            
             st.markdown("---")
 
-# ============================================================================
-# COMPANIES TAB
-# ============================================================================
-elif selected == "Companies":
+# --- MANAGEMENT: COMPANIES sub-tab ---
+elif current_page == "Companies":
     st.markdown("## 🏢 Company Management")
     
-    # Get companies
     companies = get_all_companies_admin()
     
-    # Filters
     col1, col2 = st.columns(2)
     with col1:
         search = st.text_input("🔍 Search companies", placeholder="Search by name or industry...")
@@ -803,7 +775,6 @@ elif selected == "Companies":
         industries = list(set(c.get('industry', '') for c in companies if c.get('industry')))
         industry_filter = st.selectbox("Industry", ["All"] + industries)
     
-    # Filter companies
     filtered_companies = companies
     if search:
         filtered_companies = [c for c in filtered_companies 
@@ -817,28 +788,23 @@ elif selected == "Companies":
     for company in filtered_companies:
         with st.container():
             col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
-            
             with col1:
                 logo = company.get('logo', '')
                 if logo:
                     st.markdown(f'<img src="{logo}" width="30" style="border-radius:50%; vertical-align:middle;"> ', unsafe_allow_html=True)
                 st.markdown(f"**{company.get('name', 'Unnamed')}**")
                 st.markdown(f"📧 {company.get('email', 'N/A')}")
-            
             with col2:
                 st.markdown(f"🏭 {company.get('industry', 'N/A')}")
                 st.markdown(f"📍 {company.get('location', 'N/A')}")
-            
             with col3:
                 if st.button("👁️ View", key=f"view_comp_{company['id']}", use_container_width=True):
                     st.session_state.view_company_id = company['id']
-            
             with col4:
                 if st.button("🗑️", key=f"del_comp_{company['id']}", use_container_width=True, type="secondary"):
                     st.session_state.delete_company_id = company['id']
                     st.session_state.delete_company_name = company.get('name', '')
             
-            # View Details
             if st.session_state.get("view_company_id") == company['id']:
                 with st.expander(f"Company Details: {company.get('name', '')}", expanded=True):
                     col_a, col_b = st.columns(2)
@@ -849,13 +815,11 @@ elif selected == "Companies":
                         st.markdown(f"- **Industry:** {company.get('industry', 'N/A')}")
                         st.markdown(f"- **Location:** {company.get('location', 'N/A')}")
                         st.markdown(f"- **Website:** {company.get('website', 'N/A')}")
-                    
                     with col_b:
                         st.markdown("**Description:**")
                         st.markdown(f"{company.get('description', 'No description')[:300]}...")
                         st.markdown(f"**Created:** {format_datetime(company.get('created_at'))}")
                     
-                    # Edit form
                     with st.form(f"edit_comp_{company['id']}"):
                         st.markdown("**Edit Company**")
                         new_name = st.text_input("Name", value=company.get('name', ''))
@@ -878,39 +842,33 @@ elif selected == "Companies":
                             st.rerun()
                     
                     if st.button("❌ Close", key=f"close_comp_{company['id']}"):
-                        del st.session_state.view_company_id
+                        st.session_state.pop("view_company_id", None)
                         st.rerun()
             
-            # Delete Confirmation
             if st.session_state.get("delete_company_id") == company['id']:
                 st.warning(f"Are you sure you want to delete '{st.session_state.delete_company_name}'? This will delete ALL jobs, applications, and messages for this company!")
                 col_yes, col_no = st.columns(2)
                 with col_yes:
                     if st.button("✅ Yes, Delete", key=f"confirm_del_comp_{company['id']}"):
                         delete_company(company['id'])
-                        del st.session_state.delete_company_id
-                        del st.session_state.delete_company_name
+                        st.session_state.pop("delete_company_id", None)
+                        st.session_state.pop("delete_company_name", None)
                         st.success(f"Company deleted!")
                         time.sleep(1)
                         st.rerun()
                 with col_no:
                     if st.button("❌ No, Cancel", key=f"cancel_del_comp_{company['id']}"):
-                        del st.session_state.delete_company_id
-                        del st.session_state.delete_company_name
+                        st.session_state.pop("delete_company_id", None)
+                        st.session_state.pop("delete_company_name", None)
                         st.rerun()
-            
             st.markdown("---")
 
-# ============================================================================
-# JOBS TAB
-# ============================================================================
-elif selected == "Jobs":
+# --- JOBS: JOB POSTINGS sub-tab ---
+elif current_page == "Job Postings":
     st.markdown("## 📋 Job Postings Management")
     
-    # Get all jobs
     jobs = get_all_jobs_admin()
     
-    # Filters
     col1, col2, col3 = st.columns(3)
     with col1:
         status_filter = st.selectbox("Status", ["All", "active", "expired"])
@@ -920,7 +878,6 @@ elif selected == "Jobs":
         job_types = list(set(j.get('job_type', '') for j in jobs if j.get('job_type')))
         type_filter = st.selectbox("Job Type", ["All"] + job_types)
     
-    # Apply filters
     filtered_jobs = jobs
     if status_filter != "All":
         filtered_jobs = [j for j in filtered_jobs if j.get('status') == status_filter]
@@ -936,26 +893,21 @@ elif selected == "Jobs":
     for job in filtered_jobs:
         with st.container():
             col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
-            
             with col1:
                 st.markdown(f"**{job.get('title', 'Untitled')}**")
                 st.markdown(f"🏢 {job.get('company_name', 'Unknown')}")
-            
             with col2:
                 status_class = 'status-active' if job.get('status') == 'active' else 'status-expired'
                 st.markdown(f'<span class="status-badge {status_class}">{job.get("status", "unknown").upper()}</span>', unsafe_allow_html=True)
                 st.markdown(f"📍 {job.get('location', 'N/A')}")
-            
             with col3:
                 if st.button("👁️ View", key=f"view_job_{job['id']}", use_container_width=True):
                     st.session_state.view_job_id = job['id']
-            
             with col4:
                 if st.button("🗑️", key=f"del_job_{job['id']}", use_container_width=True, type="secondary"):
                     st.session_state.delete_job_id = job['id']
                     st.session_state.delete_job_title = job.get('title', '')
             
-            # View Details
             if st.session_state.get("view_job_id") == job['id']:
                 with st.expander(f"Job Details: {job.get('title', '')}", expanded=True):
                     col_a, col_b = st.columns(2)
@@ -968,7 +920,6 @@ elif selected == "Jobs":
                         st.markdown(f"- **Type:** {job.get('job_type', 'N/A')}")
                         st.markdown(f"- **Salary:** {job.get('salary_range', 'N/A')}")
                         st.markdown(f"- **Experience:** {job.get('experience_level', 'N/A')}")
-                    
                     with col_b:
                         st.markdown("**Description & Requirements:**")
                         st.markdown(f"**Description:** {job.get('description', 'N/A')[:200]}...")
@@ -977,7 +928,6 @@ elif selected == "Jobs":
                         st.markdown(f"**Posted:** {format_datetime(job.get('created_at'))}")
                         st.markdown(f"**Deadline:** {format_datetime(job.get('deadline'))}")
                     
-                    # Edit form
                     with st.form(f"edit_job_{job['id']}"):
                         st.markdown("**Edit Job**")
                         new_status = st.selectbox("Status", ["active", "expired"], 
@@ -997,42 +947,34 @@ elif selected == "Jobs":
                             st.rerun()
                     
                     if st.button("❌ Close", key=f"close_job_{job['id']}"):
-                        del st.session_state.view_job_id
+                        st.session_state.pop("view_job_id", None)
                         st.rerun()
             
-            # Delete Confirmation
             if st.session_state.get("delete_job_id") == job['id']:
                 st.warning(f"Are you sure you want to delete job '{st.session_state.delete_job_title}'?")
                 col_yes, col_no = st.columns(2)
                 with col_yes:
                     if st.button("✅ Yes, Delete", key=f"confirm_del_job_{job['id']}"):
                         delete_job(job['id'])
-                        del st.session_state.delete_job_id
-                        del st.session_state.delete_job_title
+                        st.session_state.pop("delete_job_id", None)
+                        st.session_state.pop("delete_job_title", None)
                         st.success("Job deleted!")
                         time.sleep(1)
                         st.rerun()
                 with col_no:
                     if st.button("❌ No, Cancel", key=f"cancel_del_job_{job['id']}"):
-                        del st.session_state.delete_job_id
-                        del st.session_state.delete_job_title
+                        st.session_state.pop("delete_job_id", None)
+                        st.session_state.pop("delete_job_title", None)
                         st.rerun()
-            
             st.markdown("---")
 
-# ============================================================================
-# APPLICATIONS TAB
-# ============================================================================
-elif selected == "Applications":
+# --- JOBS: APPLICATIONS sub-tab ---
+elif current_page == "Applications":
     st.markdown("## 📝 Applications Management")
     
-    # Get all companies to fetch applications
     companies = get_all_companies_admin()
-    
-    # Company selector
     company_options = {c.get('name', 'Unnamed'): c['id'] for c in companies}
     company_options["All Companies"] = "all"
-    
     selected_company = st.selectbox("Filter by Company", list(company_options.keys()))
     
     all_apps = []
@@ -1044,9 +986,7 @@ elif selected == "Applications":
         company_id = company_options[selected_company]
         all_apps = get_applications_for_company(company_id)
     
-    # Status filter
     status_filter = st.selectbox("Filter by Status", ["All", "pending", "reviewed", "interview", "accepted", "rejected"])
-    
     if status_filter != "All":
         all_apps = [a for a in all_apps if a[4] == status_filter]
     
@@ -1055,11 +995,9 @@ elif selected == "Applications":
     for app in all_apps:
         with st.container():
             col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
-            
             with col1:
-                st.markdown(f"**{app[10]}**")  # applicant name
-                st.markdown(f"📧 {app[11]}")   # email
-            
+                st.markdown(f"**{app[10]}**")
+                st.markdown(f"📧 {app[11]}")
             with col2:
                 status_class = {
                     'pending': 'status-pending',
@@ -1068,19 +1006,15 @@ elif selected == "Applications":
                     'accepted': 'status-active',
                     'rejected': 'status-expired'
                 }.get(app[4], 'status-pending')
-                
                 st.markdown(f'<span class="status-badge {status_class}">{app[4].upper()}</span>', unsafe_allow_html=True)
-                st.markdown(f"🎯 {app[9]}")  # job title
-            
+                st.markdown(f"🎯 {app[9]}")
             with col3:
                 if st.button("👁️ View", key=f"view_app_{app[0]}", use_container_width=True):
                     st.session_state.view_app_id = app[0]
-            
             with col4:
                 if st.button("🗑️", key=f"del_app_{app[0]}", use_container_width=True, type="secondary"):
                     st.session_state.delete_app_id = app[0]
             
-            # View Details
             if st.session_state.get("view_app_id") == app[0]:
                 with st.expander(f"Application Details", expanded=True):
                     col_a, col_b = st.columns(2)
@@ -1091,7 +1025,6 @@ elif selected == "Applications":
                         st.markdown(f"- **Phone:** {app[15]}")
                         st.markdown(f"- **Location:** {app[14]}")
                         st.markdown(f"- **Skills:** {app[12]}")
-                    
                     with col_b:
                         st.markdown("**Application Details:**")
                         st.markdown(f"- **Job:** {app[9]}")
@@ -1108,44 +1041,37 @@ elif selected == "Applications":
                         st.markdown(href, unsafe_allow_html=True)
                     
                     if st.button("❌ Close", key=f"close_app_{app[0]}"):
-                        del st.session_state.view_app_id
+                        st.session_state.pop("view_app_id", None)
                         st.rerun()
             
-            # Delete Confirmation
             if st.session_state.get("delete_app_id") == app[0]:
                 st.warning(f"Delete application from {app[10]}?")
                 col_yes, col_no = st.columns(2)
                 with col_yes:
                     if st.button("✅ Yes", key=f"confirm_del_app_{app[0]}"):
                         delete_application_admin(app[0])
-                        del st.session_state.delete_app_id
+                        st.session_state.pop("delete_app_id", None)
                         st.success("Application deleted!")
                         time.sleep(1)
                         st.rerun()
                 with col_no:
                     if st.button("❌ No", key=f"cancel_del_app_{app[0]}"):
-                        del st.session_state.delete_app_id
+                        st.session_state.pop("delete_app_id", None)
                         st.rerun()
-            
             st.markdown("---")
 
-# ============================================================================
-# JOB REQUESTS TAB
-# ============================================================================
-elif selected == "Job Requests":
+# --- JOBS: JOB REQUESTS sub-tab ---
+elif current_page == "Job Requests":
     st.markdown("## 📌 Job Requests Management")
     
-    # Get all job requests
     requests = get_all_job_requests_admin()
     
-    # Filters
     col1, col2 = st.columns(2)
     with col1:
         status_filter = st.selectbox("Status", ["All", "open", "closed"])
     with col2:
         search = st.text_input("🔍 Search requests", placeholder="Search by title or employee...")
     
-    # Apply filters
     filtered_reqs = requests
     if status_filter != "All":
         filtered_reqs = [r for r in filtered_reqs if r.get('status') == status_filter]
@@ -1159,26 +1085,21 @@ elif selected == "Job Requests":
     for req in filtered_reqs:
         with st.container():
             col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
-            
             with col1:
                 st.markdown(f"**{req.get('title', 'Untitled')}**")
                 st.markdown(f"👤 {req.get('employee_name', 'Unknown')}")
-            
             with col2:
                 status_class = 'status-active' if req.get('status') == 'open' else 'status-closed'
                 st.markdown(f'<span class="status-badge {status_class}">{req.get("status", "unknown").upper()}</span>', unsafe_allow_html=True)
                 st.markdown(f"📍 {req.get('location', 'N/A')}")
-            
             with col3:
                 if st.button("👁️ View", key=f"view_req_{req['id']}", use_container_width=True):
                     st.session_state.view_req_id = req['id']
-            
             with col4:
                 if st.button("🗑️", key=f"del_req_{req['id']}", use_container_width=True, type="secondary"):
                     st.session_state.delete_req_id = req['id']
                     st.session_state.delete_req_title = req.get('title', '')
             
-            # View Details
             if st.session_state.get("view_req_id") == req['id']:
                 with st.expander(f"Request Details: {req.get('title', '')}", expanded=True):
                     col_a, col_b = st.columns(2)
@@ -1190,48 +1111,40 @@ elif selected == "Job Requests":
                         st.markdown(f"- **Category:** {req.get('category', 'N/A')}")
                         st.markdown(f"- **Location:** {req.get('location', 'N/A')}")
                         st.markdown(f"- **Budget:** {req.get('budget', 'N/A')}")
-                    
                     with col_b:
                         st.markdown("**Description:**")
                         st.markdown(f"{req.get('description', 'N/A')}")
                         st.markdown(f"**Posted:** {format_datetime(req.get('created_at'))}")
                     
                     if st.button("❌ Close", key=f"close_req_{req['id']}"):
-                        del st.session_state.view_req_id
+                        st.session_state.pop("view_req_id", None)
                         st.rerun()
             
-            # Delete Confirmation
             if st.session_state.get("delete_req_id") == req['id']:
                 st.warning(f"Delete request '{st.session_state.delete_req_title}'?")
                 col_yes, col_no = st.columns(2)
                 with col_yes:
                     if st.button("✅ Yes", key=f"confirm_del_req_{req['id']}"):
                         delete_job_request_admin(req['id'])
-                        del st.session_state.delete_req_id
-                        del st.session_state.delete_req_title
+                        st.session_state.pop("delete_req_id", None)
+                        st.session_state.pop("delete_req_title", None)
                         st.success("Request deleted!")
                         time.sleep(1)
                         st.rerun()
                 with col_no:
                     if st.button("❌ No", key=f"cancel_del_req_{req['id']}"):
-                        del st.session_state.delete_req_id
-                        del st.session_state.delete_req_title
+                        st.session_state.pop("delete_req_id", None)
+                        st.session_state.pop("delete_req_title", None)
                         st.rerun()
-            
             st.markdown("---")
 
-# ============================================================================
-# MESSAGES TAB
-# ============================================================================
-elif selected == "Messages":
+# --- COMMUNICATION: MESSAGES sub-tab ---
+elif current_page == "Messages":
     st.markdown("## 💬 Message Monitoring")
-    st.info("Message monitoring feature - view all system messages")
     
-    # Get all companies and users to browse messages
     companies = get_all_companies_admin()
     employees = get_users_by_role('employee')
     
-    # Select conversation
     col1, col2 = st.columns(2)
     with col1:
         selected_employee = st.selectbox("Select Employee", 
@@ -1243,7 +1156,6 @@ elif selected == "Messages":
                                        format_func=lambda x: x)
     
     if st.button("🔍 Load Conversation"):
-        # Extract IDs
         emp_email = selected_employee.split('(')[-1].strip(')')
         comp_name = selected_company.split('(')[0].strip()
         
@@ -1256,7 +1168,6 @@ elif selected == "Messages":
         
         if comp_id:
             messages = get_messages_between_company_and_employee(comp_id, emp_id)
-            
             if messages:
                 st.markdown('<div class="chat-container" style="max-height:500px;">', unsafe_allow_html=True)
                 for msg in messages:
@@ -1283,13 +1194,10 @@ elif selected == "Messages":
             else:
                 st.info("No messages in this conversation")
 
-# ============================================================================
-# ANALYTICS TAB
-# ============================================================================
-elif selected == "Analytics":
+# --- SYSTEM: ANALYTICS sub-tab ---
+elif current_page == "Analytics":
     st.markdown("## 📈 Advanced Analytics")
     
-    # Growth metrics
     col1, col2, col3 = st.columns(3)
     with col1:
         growth_rate = ((stats['users'] - stats['employees'] - stats['employers']) / max(stats['users'], 1)) * 100
@@ -1316,7 +1224,6 @@ elif selected == "Analytics":
         </div>
         """, unsafe_allow_html=True)
     
-    # Role distribution chart
     st.markdown("### 👥 User Role Distribution")
     role_data = pd.DataFrame({
         'Role': ['Employees', 'Employers', 'Admins'],
@@ -1327,7 +1234,6 @@ elif selected == "Analytics":
     fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig, use_container_width=True)
     
-    # Jobs vs Applications
     st.markdown("### 📊 Jobs vs Applications")
     comparison_data = pd.DataFrame({
         'Category': ['Jobs', 'Applications'],
@@ -1338,10 +1244,8 @@ elif selected == "Analytics":
     fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig, use_container_width=True)
 
-# ============================================================================
-# SETTINGS TAB
-# ============================================================================
-elif selected == "Settings":
+# --- SYSTEM: SETTINGS sub-tab ---
+elif current_page == "Settings":
     st.markdown("## ⚙️ System Settings")
     
     tab1, tab2, tab3 = st.tabs(["General", "Security", "Maintenance"])
@@ -1363,36 +1267,28 @@ elif selected == "Settings":
     with tab2:
         st.markdown("### Security Settings")
         st.info("Security settings will be implemented in the next version")
-        
         min_password_length = st.slider("Minimum Password Length", 6, 20, 8)
         session_timeout = st.number_input("Session Timeout (minutes)", value=30)
-        
         if st.button("🔒 Update Security", use_container_width=True):
             st.success("Security settings updated!")
     
     with tab3:
         st.markdown("### System Maintenance")
-        
         col1, col2 = st.columns(2)
         with col1:
             if st.button("🧹 Clear Cache", use_container_width=True):
                 with st.spinner("Clearing cache..."):
                     time.sleep(2)
                 st.success("Cache cleared!")
-        
         with col2:
             if st.button("📊 Generate Report", use_container_width=True):
                 st.info("Generating system report...")
                 time.sleep(3)
-                
-                # Create a simple report
                 report_data = {
                     'Metric': ['Total Users', 'Total Companies', 'Total Jobs', 'Total Applications'],
                     'Value': [stats['users'], stats['companies'], stats['jobs'], stats['applications']]
                 }
                 df_report = pd.DataFrame(report_data)
-                
-                # Download button
                 csv = df_report.to_csv(index=False)
                 b64 = base64.b64encode(csv.encode()).decode()
                 href = f'<a href="data:file/csv;base64,{b64}" download="system_report_{datetime.now().strftime("%Y%m%d")}.csv">📥 Download Report</a>'

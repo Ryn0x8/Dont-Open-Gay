@@ -5,9 +5,11 @@ import os
 import base64
 import time
 import plotly.express as px
+import random
+import string
 from datetime import datetime
 from streamlit_option_menu import option_menu
-from auth_utils import send_email  
+from auth_utils import send_email, hash_password  
 from database import (
     get_user_by_id, get_or_create_profile, update_profile,
     update_user_name, get_all_companies, get_company_jobs, search_jobs, get_job_by_id,
@@ -16,7 +18,7 @@ from database import (
     add_job_request, get_user_requests,
     get_conversations, get_messages, send_message, mark_messages_read,
     get_application_stats, get_applications_over_time, get_interview_count,
-    delete_job_request, update_job_request
+    delete_job_request, update_job_request, update_user_password
 )
 from database import update_expired_jobs
 
@@ -47,7 +49,7 @@ def send_email(to_email, subject, body):
         print(f"Email error: {e}")
         return False
 
-# --- Helper to count unread messages for employee (add to database.py if not present) ---
+# --- Helper to count unread messages for employee ---
 def get_unread_messages_count_employee(employee_id):
     """Count unread messages from companies to this employee."""
     from database import db
@@ -56,6 +58,24 @@ def get_unread_messages_count_employee(employee_id):
                  .where('receiver_type', '==', 'employee')\
                  .where('is_read', '==', False)
     return len(list(msgs_ref.stream()))
+
+# --- Helper to count unread notifications ---
+def get_unread_notifications_count(user_id):
+    """Return the number of unread notifications for the employee."""
+    from database import db
+    notifications_ref = db.collection('notifications')\
+                          .where('user_id', '==', user_id)\
+                          .where('is_read', '==', False)
+    return len(list(notifications_ref.stream()))
+
+# --- Password change OTP handling ---
+def generate_otp(length=6):
+    return ''.join(random.choices(string.digits, k=length))
+
+def send_otp_email(to_email, otp):
+    subject = "Your Anvaya Password Change OTP"
+    body = f"Your OTP for changing your password is: {otp}\n\nThis code will expire in 10 minutes."
+    return send_email(to_email, subject, body)
 
 # --- Page config ---
 st.set_page_config(
@@ -94,11 +114,11 @@ def get_resume_download_link(resume_path, text="Download Resume"):
         with open(resume_path, "rb") as f:
             bytes_data = f.read()
         b64 = base64.b64encode(bytes_data).decode()
-        href = f'<a href="data:application/octet-stream;base64,{b64}" download="{os.path.basename(resume_path)}" class="badge badge-info">{text}</a>'
+        href = f'<a href="data:application/octet-stream;base64,{b64}" download="{os.path.basename(resume_path)}" style="color: var(--primary); text-decoration: none;">{text}</a>'
         return href
     return None
 
-# --- Custom CSS (modern, glass‑morphism) ---
+# --- Custom CSS (softer, less blue, buttons auto width) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -108,76 +128,64 @@ st.markdown("""
     }
 
     :root {
-        --primary: #4F46E5;
-        --primary-light: #818CF8;
-        --primary-dark: #3730A3;
+        --primary: #2563EB;
+        --primary-light: #60A5FA;
+        --primary-dark: #1E40AF;
         --secondary: #0EA5E9;
         --accent: #10B981;
         --bg: #F8FAFC;
-        --card-bg: rgba(255,255,255,0.9);
-        --text: #0F172A;
-        --text-light: #475569;
+        --card-bg: #FFFFFF;
+        --text: #1E293B;
+        --text-light: #64748B;
         --border: #E2E8F0;
-        --shadow-sm: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
-        --shadow-lg: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.02);
-        --glass-bg: rgba(255,255,255,0.7);
-        --glass-border: 1px solid rgba(255,255,255,0.5);
+        --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
+        --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
     }
 
     .stApp {
-        background: radial-gradient(circle at 10% 30%, rgba(255,255,255,0.95) 0%, #f1f5f9 100%);
-    }
-
-    /* Two‑row navigation */
-    .nav-badge-row {
-        margin-bottom: 0px;
-    }
-    .nav-button-row {
-        margin-top: 0px;
+        background: #F1F5F9;
     }
 
     .badge-count {
         background: #EF4444;
         color: white;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 600;
-        padding: 0.25rem 0.6rem;
+        padding: 0.2rem 0.5rem;
         border-radius: 40px;
         line-height: 1;
         display: inline-block;
-        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+        margin-left: 0.3rem;
     }
 
     /* Hero header */
     .hero-header {
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        padding: 2rem 2.5rem;
-        border-radius: 40px;
+        background: linear-gradient(135deg, var(--primary), #3B82F6);
+        padding: 1.5rem 2rem;
+        border-radius: 30px;
         color: white;
-        margin: 1.5rem 0 2rem 0;
+        margin: 1rem 0 1.5rem 0;
         box-shadow: var(--shadow-lg);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        backdrop-filter: blur(5px);
     }
 
     .hero-header h1 {
         margin: 0;
-        font-size: 2.2rem;
-        font-weight: 700;
-        letter-spacing: -0.02em;
+        font-size: 1.8rem;
+        font-weight: 600;
     }
 
     .hero-header p {
-        margin: 0.5rem 0 0;
+        margin: 0.2rem 0 0;
         opacity: 0.9;
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
 
     .date-badge {
         background: rgba(255,255,255,0.2);
-        padding: 0.5rem 1.5rem;
+        padding: 0.4rem 1.2rem;
         border-radius: 40px;
         font-weight: 500;
         backdrop-filter: blur(5px);
@@ -186,166 +194,187 @@ st.markdown("""
 
     /* Notification card */
     .notification-card {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border-radius: 24px;
+        background: white;
+        border-radius: 20px;
         padding: 1rem;
-        border: var(--glass-border);
+        border: 1px solid var(--border);
         box-shadow: var(--shadow-sm);
-        transition: transform 0.2s, box-shadow 0.2s;
+        transition: transform 0.2s;
         height: 100%;
         display: flex;
         flex-direction: column;
     }
 
     .notification-card:hover {
-        transform: translateY(-5px);
+        transform: translateY(-3px);
         box-shadow: var(--shadow-lg);
     }
 
     .notification-icon {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.2rem;
-        margin-bottom: 0.75rem;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
     }
 
     .notification-title {
         font-weight: 600;
         color: var(--text);
-        margin-bottom: 0.25rem;
-        font-size: 0.95rem;
+        margin-bottom: 0.2rem;
+        font-size: 0.9rem;
+    }
+
+    .notification-content {
+        font-size: 0.85rem;
+        color: var(--text-light);
+        margin-bottom: 0.3rem;
     }
 
     .notification-time {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         color: var(--text-light);
         margin-top: auto;
     }
 
     /* Stat cards */
     .stat-card {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        padding: 1.5rem;
-        border-radius: 30px;
-        border: var(--glass-border);
+        background: white;
+        padding: 1.2rem;
+        border-radius: 24px;
+        border: 1px solid var(--border);
         box-shadow: var(--shadow-sm);
-        transition: transform 0.2s, box-shadow 0.2s;
+        transition: transform 0.2s;
         text-align: center;
     }
 
     .stat-card:hover {
-        transform: translateY(-5px);
+        transform: translateY(-3px);
         box-shadow: var(--shadow-lg);
     }
 
     .stat-card h3 {
         color: var(--text-light);
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.3rem;
     }
 
     .stat-card p {
-        font-size: 2.5rem;
-        font-weight: 700;
+        font-size: 2rem;
+        font-weight: 600;
         color: var(--primary);
         margin: 0;
     }
 
     .metric-card {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        padding: 1rem 1.5rem;
-        border-radius: 30px;
-        border: var(--glass-border);
+        background: white;
+        padding: 0.8rem 1.2rem;
+        border-radius: 24px;
+        border: 1px solid var(--border);
         box-shadow: var(--shadow-sm);
         text-align: center;
     }
 
     .metric-card .label {
         color: var(--text-light);
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
     }
 
     .metric-card .value {
-        font-size: 1.8rem;
-        font-weight: 700;
+        font-size: 1.5rem;
+        font-weight: 600;
         color: var(--primary);
         line-height: 1.2;
     }
 
     .metric-card .delta {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: var(--accent);
     }
 
     .section-title {
-        font-size: 1.5rem;
+        font-size: 1.3rem;
         font-weight: 600;
         color: var(--text);
-        margin: 2rem 0 1rem;
-        letter-spacing: -0.01em;
+        margin: 1.5rem 0 1rem;
     }
 
     /* Job / company cards */
     .job-card, .company-card {
         background: white;
-        padding: 1.5rem;
-        border-radius: 24px;
+        padding: 1.2rem;
+        border-radius: 20px;
         border: 1px solid var(--border);
         transition: all 0.2s;
-        margin-bottom: 1rem;
+        margin-bottom: 0.8rem;
     }
     .job-card:hover, .company-card:hover {
         box-shadow: var(--shadow-lg);
         border-color: var(--primary);
     }
 
-    .badge-open { background: #10B98120; color: #10B981; }
-    .badge-assigned { background: #F59E0B20; color: #F59E0B; }
-    .badge-completed { background: #64748B20; color: #64748B; }
-
-    /* Buttons */
+    /* Buttons - auto width, outline for secondary */
     .stButton > button {
         border-radius: 40px;
         font-weight: 500;
         transition: all 0.2s;
-        border: none;
-        padding: 0.5rem 1.5rem;
+        border: 1px solid transparent;
+        padding: 0.4rem 1.2rem;
         background: var(--primary);
         color: white;
         box-shadow: var(--shadow-sm);
+        width: auto !important;
+    }
+
+    .stButton > button[kind="secondary"] {
+        background: white;
+        color: var(--primary);
+        border: 1px solid var(--primary);
     }
 
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 16px -4px rgba(79, 70, 229, 0.4);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px -2px rgba(37, 99, 235, 0.3);
+    }
+
+    /* Text links for navigation */
+    .nav-link {
+        color: var(--text-light);
+        font-weight: 500;
+        padding: 0.5rem 0;
+        text-decoration: none;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+        cursor: pointer;
+        display: inline-block;
+        margin-right: 1.5rem;
+    }
+    .nav-link.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+    }
+    .nav-link:hover {
+        color: var(--primary);
     }
 
     /* Form inputs */
     .stTextInput > div > div > input, .stTextArea > div > textarea, .stSelectbox > div > div > select {
         border-radius: 30px;
         border: 1px solid var(--border);
-        padding: 0.75rem 1.5rem;
+        padding: 0.6rem 1.2rem;
         background: white;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
     }
 
-    .stTextInput > div > div > input:focus, .stTextArea > div > textarea:focus {
+    .stTextInput > div > div > input:focus {
         border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
     }
 
     /* Chat container */
@@ -353,51 +382,46 @@ st.markdown("""
         max-height: 400px;
         overflow-y: auto;
         padding: 1rem;
-        border-radius: 30px;
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border: var(--glass-border);
+        border-radius: 24px;
+        background: #F9FAFB;
+        border: 1px solid var(--border);
         margin-bottom: 1rem;
     }
 
     .chat-bubble-employee {
         background: var(--primary);
         color: white;
-        padding: 0.75rem 1rem;
+        padding: 0.6rem 1rem;
         border-radius: 20px 20px 0 20px;
         max-width: 70%;
         display: inline-block;
-        margin: 0.5rem 0;
+        margin: 0.3rem 0;
         text-align: left;
-        box-shadow: var(--shadow-sm);
     }
 
     .chat-bubble-company {
         background: white;
         color: var(--text);
-        padding: 0.75rem 1rem;
+        padding: 0.6rem 1rem;
         border-radius: 20px 20px 20px 0;
         max-width: 70%;
         display: inline-block;
-        margin: 0.5rem 0;
+        margin: 0.3rem 0;
         text-align: left;
-        box-shadow: var(--shadow-sm);
         border: 1px solid var(--border);
     }
 
     .chat-timestamp {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         opacity: 0.7;
-        margin-top: 0.25rem;
+        margin-top: 0.2rem;
     }
 
     hr {
-        margin: 2rem 0;
+        margin: 1.5rem 0;
         border: 0;
         border-top: 1px solid var(--border);
     }
-</style>
 """, unsafe_allow_html=True)
 
 # --- Fetch counts for badges ---
@@ -407,107 +431,8 @@ total_apps = len(applications)
 pending_apps = sum(1 for a in applications if a[4] == 'pending')
 interview_count = get_interview_count(user_id)
 saved_count = len(get_saved_jobs(user_id))
-unread_msgs = get_unread_messages_count_employee(user_id)  # use helper
-
-# --- Two‑row navigation with badges (split into two rows) ---
-menu_items = [
-    {"label": "Dashboard", "icon": "📊", "badge": None},
-    {"label": "Find Jobs", "icon": "🔍", "badge": None},
-    {"label": "Companies", "icon": "🏢", "badge": None},
-    {"label": "My Applications", "icon": "📋", "badge": pending_apps if pending_apps > 0 else None},
-    {"label": "Job Requests", "icon": "📝", "badge": None},
-    {"label": "Messages", "icon": "💬", "badge": unread_msgs if unread_msgs > 0 else None},
-    {"label": "Saved Jobs", "icon": "🔖", "badge": saved_count if saved_count > 0 else None},
-    {"label": "Profile", "icon": "👤", "badge": None},
-    {"label": "Analytics", "icon": "📈", "badge": None},
-]
-
-# Split into two groups: first 5, then 4
-first_group = menu_items[:5]   # Dashboard, Find Jobs, Companies, My Applications, Job Requests
-second_group = menu_items[5:]  # Messages, Saved Jobs, Profile, Analytics
-
-# --- First row (5 items) ---
-cols1 = st.columns([1,1,1,1,1,0.8])  # 5 nav + logout placeholder
-badge_cols1 = cols1[:5]
-logout_placeholder1 = cols1[5]
-
-# First row badges
-for i, item in enumerate(first_group):
-    with badge_cols1[i]:
-        if item["badge"] and item["badge"] > 0:
-            st.markdown(
-                f"<div style='text-align: center; margin-bottom: 5px;'>"
-                f"<span class='badge-count'>{item['badge']}</span>"
-                f"</div>",
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-with logout_placeholder1:
-    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-
-# First row buttons
-button_cols1 = st.columns([1,1,1,1,1,0.8])
-for i, item in enumerate(first_group):
-    with button_cols1[i]:
-        active = "primary" if st.session_state.get("nav_selected") == item["label"] else "secondary"
-        if st.button(f"{item['icon']} {item['label']}", key=f"nav1_{item['label']}", use_container_width=True, type=active):
-            st.session_state.nav_selected = item["label"]
-            st.rerun()
-with button_cols1[5]:
-    # This column is empty (spacer for logout in second row)
-    st.markdown("")
-
-st.markdown("<br>", unsafe_allow_html=True)  # small gap between rows
-
-# --- Second row (4 items + logout) ---
-cols2 = st.columns([1,1,1,1,1])  # 4 nav + logout
-badge_cols2 = cols2[:4]
-logout_col = cols2[4]
-
-
-for i, item in enumerate(second_group):
-    with badge_cols2[i]:
-
-        # Badge (top)
-        if item["badge"] and item["badge"] > 0:
-            st.markdown(
-                f"""
-                <div style="display:flex; justify-content:center; margin-bottom:5px;">
-                    <span class='badge-count'>{item['badge']}</span>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown("<div style='height:28px;'></div>", unsafe_allow_html=True)
-
-        # Button
-        active = "primary" if st.session_state.get("nav_selected") == item["label"] else "secondary"
-        if st.button(
-            f"{item['icon']} {item['label']}",
-            key=f"nav2_{item['label']}",
-            use_container_width=True,
-            type=active
-        ):
-            st.session_state.nav_selected = item["label"]
-            st.rerun()
-
-
-# Logout button in the last column of second row
-with logout_col:
-    if st.button("🚪 Logout", key="logout_bottom", use_container_width=True):
-        for key in ['authenticated', 'user_id', 'user_name', 'user_email', 'nav_selected']:
-            if key in st.session_state:
-                del st.session_state[key]
-        st.switch_page("app.py")
-
-    if st.session_state.is_admin == True:
-        if st.button("🛡️ Admin Panel", key="goto_admin"):
-            st.session_state.previous_page = "pages/employee_dashboard.py"
-            st.switch_page("pages/admin_dashboard.py")
-
-selected = st.session_state.get("nav_selected", "Dashboard")
+unread_msgs = get_unread_messages_count_employee(user_id)
+unread_notifications = get_unread_notifications_count(user_id)
 
 # --- Hero Header ---
 st.markdown(f"""
@@ -522,30 +447,181 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- Notification Cards (always visible) ---
-st.markdown("## 🔔 Recent Notifications")
-notifications = get_user_notifications(user_id, limit=6)
-if notifications:
-    for i in range(0, len(notifications), 3):
-        row = notifications[i:i+3]
-        cols = st.columns(3)
-        for j, notif in enumerate(row):
-            with cols[j]:
-                icon = "📝" if notif[2] == 'application' else "💬" if notif[2] == 'message' else "🔔"
-                bg = "#DCFCE7" if notif[2] == 'application' else "#DBEAFE" if notif[2] == 'message' else "#FEF3C7"
-                time_str = notif[7].strftime('%Y-%m-%d %H:%M') if notif[7] else ''
-                st.markdown(f"""
-                <div class="notification-card">
-                    <div class="notification-icon" style="background: {bg};">{icon}</div>
-                    <div class="notification-title">{notif[3]}</div>
-                    <div class="notification-time">{time_str}</div>
-                </div>
-                """, unsafe_allow_html=True)
-else:
-    st.info("No recent notifications.")
+# --- Styling for pills as underlined tabs ---
+st.markdown("""
+<style>
+    /* ===== RESET ONLY FOR PILLS BUTTONS ===== */
+    /* Main pills buttons */
+    .st-key-main_pills button {
+        all: unset; /* start fresh */
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0.5rem 0.8rem !important;
+        margin: 0 !important;
+        font-family: inherit !important;
+        font-size: 1rem !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+        border-radius: 0 !important;
+        transition: color 0.2s, border-color 0.2s !important;
+        outline: none !important;
+        line-height: normal !important;
+        text-transform: none !important;
+        letter-spacing: normal !important;
+        display: inline-block !important;
+        color: var(--text-light) !important;
+        border-bottom: 2px solid transparent !important;
+    }
 
-# --- Dashboard Tab (enhanced) ---
-if selected == "Dashboard":
+    /* Sub pills buttons – any container with class containing "st-key-sub_pills" */
+    div[class*="st-key-sub_pills"] button {
+        all: unset;
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0.5rem 0.8rem !important;
+        margin: 0 !important;
+        font-family: inherit !important;
+        font-size: 1rem !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+        border-radius: 0 !important;
+        transition: color 0.2s, border-color 0.2s !important;
+        outline: none !important;
+        line-height: normal !important;
+        text-transform: none !important;
+        letter-spacing: normal !important;
+        display: inline-block !important;
+        color: var(--text-light) !important;
+        border-bottom: 2px solid transparent !important;
+    }
+
+    /* ===== MAIN PILLS CONTAINER ===== */
+    .st-key-main_pills {
+        border-bottom: 1px solid var(--border) !important;
+        margin-bottom: 1.5rem !important;
+        padding-bottom: 0.5rem !important;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    /* Main pills hover */
+    .st-key-main_pills button:hover {
+        color: var(--primary) !important;
+        border-bottom-color: var(--primary-light) !important;
+    }
+
+    /* Main pills active (opened) – using both aria and kind attributes */
+    .st-key-main_pills button[aria-pressed="true"],
+    .st-key-main_pills button[kind="pillsActive"] {
+        color: var(--primary) !important;
+        border-bottom-color: var(--primary) !important;
+    }
+
+    /* ===== SUB PILLS CONTAINER ===== */
+    div[class*="st-key-sub_pills"] {
+        margin-bottom: 1rem;
+    }
+
+    /* Sub pills hover */
+    div[class*="st-key-sub_pills"] button:hover {
+        color: #dc2626 !important;
+        border-bottom-color: #f87171 !important;
+    }
+
+    /* Sub pills active (opened) – red theme */
+    div[class*="st-key-sub_pills"] button[aria-pressed="true"],
+    div[class*="st-key-sub_pills"] button[kind="pillsActive"] {
+        color: #b91c1c !important;
+        border-bottom: 2px solid #b91c1c !important;
+        background: none !important;
+    }
+
+    /* Remove focus rings from all pills buttons */
+    .st-key-main_pills button:focus,
+    .st-key-main_pills button:active,
+    div[class*="st-key-sub_pills"] button:focus,
+    div[class*="st-key-sub_pills"] button:active {
+        outline: none !important;
+        box-shadow: none !important;
+        background: none !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- NAVIGATION using pills ---
+
+if "main_tab" not in st.session_state:
+    st.session_state.main_tab = "Dashboard"
+if "sub_tab" not in st.session_state:
+    st.session_state.sub_tab = None
+
+main_tabs = ["Dashboard", "Jobs", "Applications", "Notifications", "Profile"]
+main_icons = {
+    "Dashboard": "📊",
+    "Jobs": "🔍",
+    "Applications": "📋",
+    "Notifications": "🔔",
+    "Profile": "👤"
+}
+
+# --- Main Navigation with pills ---
+selected_main = st.pills(
+    "",
+    options=main_tabs,
+    default=st.session_state.main_tab,
+    selection_mode="single",
+    format_func=lambda tab: f"{main_icons[tab]} {tab}" + 
+        (f" ({unread_notifications})" if tab == "Notifications" and unread_notifications > 0 else ""),
+    label_visibility="collapsed",
+    key="main_pills"   # this creates class st-key-main_pills
+)
+st.session_state.main_tab = selected_main
+
+# --- Sub Navigation with pills (only when needed) ---
+if st.session_state.main_tab == "Jobs":
+    sub_tabs = ["Find Jobs", "Companies", "Saved Jobs"]
+    sub_icons = {"Find Jobs": "🔍", "Companies": "🏢", "Saved Jobs": "🔖"}
+elif st.session_state.main_tab == "Applications":
+    sub_tabs = ["My Applications", "Job Requests"]
+    sub_icons = {"My Applications": "📋", "Job Requests": "📝"}
+elif st.session_state.main_tab == "Profile":
+    sub_tabs = ["Profile", "Messages", "Analytics"]
+    sub_icons = {"Profile": "👤", "Messages": "💬", "Analytics": "📈"}
+else:
+    sub_tabs = []
+    sub_icons = {}
+
+if sub_tabs:
+    # Prepare badges for sub tabs
+    sub_badges = {
+        "My Applications": pending_apps if pending_apps > 0 else None,
+        "Saved Jobs": saved_count if saved_count > 0 else None,
+        "Messages": unread_msgs if unread_msgs > 0 else None,
+    }
+
+    # Ensure the saved sub_tab is valid for the current main tab
+    if st.session_state.sub_tab not in sub_tabs:
+        st.session_state.sub_tab = sub_tabs[0]
+
+    selected_sub = st.pills(
+        "",
+        options=sub_tabs,
+        default=st.session_state.sub_tab,
+        selection_mode="single",
+        format_func=lambda tab: f"{sub_icons[tab]} {tab}" + 
+            (f" ({sub_badges[tab]})" if sub_badges.get(tab) else ""),
+        label_visibility="collapsed",
+        key=f"sub_pills_{st.session_state.main_tab}"  # creates class like st-key-sub_pills_Jobs
+    )
+    st.session_state.sub_tab = selected_sub
+else:
+    st.session_state.sub_tab = None
+
+current_page = st.session_state.sub_tab if st.session_state.sub_tab else st.session_state.main_tab
+if current_page == "Dashboard":
     st.markdown("## 📊 Overview")
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
     with kpi1:
@@ -651,8 +727,7 @@ if selected == "Dashboard":
         )
         st.plotly_chart(fig, use_container_width=True)
 
-# --- Find Jobs Tab (with details) ---
-elif selected == "Find Jobs":
+elif current_page == "Find Jobs":
     if "apply_job_id" in st.session_state:
         # Apply for a specific job
         st.markdown("## 📝 Apply for Job")
@@ -701,9 +776,9 @@ elif selected == "Find Jobs":
                 st.warning("⚠️ Please upload your resume in Profile section before applying")
             col_a, col_b = st.columns(2)
             with col_a:
-                submitted = st.form_submit_button("✅ Submit Application", use_container_width=True)
+                submitted = st.form_submit_button("✅ Submit Application")
             with col_b:
-                if st.form_submit_button("❌ Cancel", use_container_width=True):
+                if st.form_submit_button("❌ Cancel"):
                     del st.session_state.apply_job_id
                     del st.session_state.apply_job_title
                     st.rerun()
@@ -777,7 +852,6 @@ elif selected == "Find Jobs":
         filtered.sort(key=lambda x: x['match_score'], reverse=True)
         st.markdown(f"### Found {len(filtered)} jobs")
 
-        # Track which job details are expanded
         if "show_job_details" not in st.session_state:
             st.session_state.show_job_details = None
 
@@ -812,31 +886,29 @@ elif selected == "Find Jobs":
                         """, unsafe_allow_html=True)
                 with col2:
                     if job['applied'] == 0:
-                        if st.button("📝 Apply Now", key=f"apply_{job['id']}", use_container_width=True):
+                        if st.button("📝 Apply Now", key=f"apply_{job['id']}"):
                             st.session_state.apply_job_id = job['id']
                             st.session_state.apply_job_title = job['title']
                             st.rerun()
                     else:
                         st.success("✅ Applied")
                     if job['saved'] == 0:
-                        if st.button("🔖 Save", key=f"save_{job['id']}", use_container_width=True):
+                        if st.button("🔖 Save", key=f"save_{job['id']}"):
                             save_job(user_id, job['id'])
                             add_notification(user_id, "save", "Job Saved",
                                            f"You saved {job['title']}")
                             st.rerun()
                     else:
-                        if st.button("📌 Saved", key=f"unsave_{job['id']}", use_container_width=True):
+                        if st.button("📌 Saved", key=f"unsave_{job['id']}"):
                             unsave_job(user_id, job['id'])
                             st.rerun()
-                    # View Details button
-                    if st.button("📋 View Details", key=f"details_{job['id']}", use_container_width=True):
+                    if st.button("📋 View Details", key=f"details_{job['id']}"):
                         if st.session_state.show_job_details == job['id']:
                             st.session_state.show_job_details = None
                         else:
                             st.session_state.show_job_details = job['id']
                         st.rerun()
 
-                # Expanded job details
                 if st.session_state.show_job_details == job['id']:
                     with st.expander("Job Details", expanded=True):
                         st.markdown(f"**Description:**\n{job['description']}")
@@ -856,8 +928,7 @@ elif selected == "Find Jobs":
                             st.rerun()
                 st.markdown("---")
 
-# --- Companies Tab (with job details) ---
-elif selected == "Companies":
+elif current_page == "Companies":
     st.markdown("## 🏢 Recruiting Companies")
     if "apply_job_id" in st.session_state:
         # Apply flow (same as above)
@@ -1049,8 +1120,55 @@ elif selected == "Companies":
                     st.session_state.selected_company_name = company[1]
                     st.rerun()
 
-# --- My Applications Tab (unchanged, but with new styling) ---
-elif selected == "My Applications":
+elif current_page == "Saved Jobs":
+    st.markdown("## 🔖 Saved Jobs")
+    saved = get_saved_jobs(user_id)
+    if not saved:
+        st.info("No saved jobs yet.")
+    else:
+        for job in saved:
+            job_dict = {
+                'id': job[0],
+                'company_id': job[1],
+                'company_name_jobs': job[2],
+                'title': job[3],
+                'category': job[4],
+                'description': job[5],
+                'requirements': job[6],
+                'location': job[7],
+                'job_type': job[8],
+                'salary_range': job[9],
+                'experience_level': job[10],
+                'skills_required': job[11],
+                'status': job[12],
+                'created_at': job[13],
+                'deadline': job[14],
+                'company_name': job[15],
+                'applied': job[16],
+            }
+            st.markdown(f"""
+            <div class="job-card">
+                <h3>{job_dict['title']}</h3>
+                <p style="color: var(--primary);">{job_dict['company_name']}</p>
+                <p>📍 {job_dict['location']} | 💼 {job_dict['job_type']} | 💰 {job_dict['salary_range']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                if job_dict['applied'] == 0:
+                    if st.button("📝 Apply", key=f"apply_saved_{job_dict['id']}"):
+                        st.session_state.apply_job_id = job_dict['id']
+                        st.session_state.apply_job_title = job_dict['title']
+                        st.rerun()
+                else:
+                    st.info("✅ Applied")
+            with col2:
+                if st.button("❌ Remove", key=f"remove_saved_{job_dict['id']}"):
+                    unsave_job(user_id, job_dict['id'])
+                    st.rerun()
+            st.markdown("---")
+
+elif current_page == "My Applications":
     st.markdown("## 📋 My Applications")
     applications = get_user_applications(user_id)
     if not applications:
@@ -1095,8 +1213,7 @@ elif selected == "My Applications":
                     st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
 
-# --- Job Requests Tab (unchanged) ---
-elif selected == "Job Requests":
+elif current_page == "Job Requests":
     st.markdown("## 📝 My Job Requests")
     if "job_request_tab" not in st.session_state:
         st.session_state.job_request_tab = "My Requests"
@@ -1196,8 +1313,7 @@ elif selected == "Job Requests":
                 st.session_state.job_request_tab = "My Requests"
                 st.rerun()
 
-# --- Messages Tab (unchanged) ---
-elif selected == "Messages":
+elif current_page == "Messages":
     st.markdown("## 💬 Messages")
     conversations = get_conversations(user_id)
     if not conversations:
@@ -1280,57 +1396,38 @@ elif selected == "Messages":
                 else:
                     st.warning("Please enter a message.")
 
-# --- Saved Jobs Tab (unchanged) ---
-elif selected == "Saved Jobs":
-    st.markdown("## 🔖 Saved Jobs")
-    saved = get_saved_jobs(user_id)
-    if not saved:
-        st.info("No saved jobs yet.")
+elif current_page == "Notifications":
+    st.markdown("## 🔔 All Notifications")
+    
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("Mark all as read", use_container_width=True):
+            mark_notifications_read(user_id)
+            st.rerun()
+    
+    all_notifications = get_user_notifications(user_id, limit=50)
+    
+    if not all_notifications:
+        st.info("No notifications yet.")
     else:
-        for job in saved:
-            job_dict = {
-                'id': job[0],
-                'company_id': job[1],
-                'company_name_jobs': job[2],
-                'title': job[3],
-                'category': job[4],
-                'description': job[5],
-                'requirements': job[6],
-                'location': job[7],
-                'job_type': job[8],
-                'salary_range': job[9],
-                'experience_level': job[10],
-                'skills_required': job[11],
-                'status': job[12],
-                'created_at': job[13],
-                'deadline': job[14],
-                'company_name': job[15],
-                'applied': job[16],
-            }
+        for notif in all_notifications:
+            icon = "📝" if notif[2] == 'application' else "💬" if notif[2] == 'message' else "🔔"
+            bg = "#DCFCE7" if notif[2] == 'application' else "#DBEAFE" if notif[2] == 'message' else "#FEF3C7"
+            time_str = notif[7].strftime('%Y-%m-%d %H:%M') if notif[7] else ''
+            is_read = notif[6]  # assuming is_read is at index 6
+            opacity = "1" if not is_read else "0.7"
             st.markdown(f"""
-            <div class="job-card">
-                <h3>{job_dict['title']}</h3>
-                <p style="color: var(--primary);">{job_dict['company_name']}</p>
-                <p>📍 {job_dict['location']} | 💼 {job_dict['job_type']} | 💰 {job_dict['salary_range']}</p>
+            <div class="notification-card" style="opacity: {opacity};">
+                <div class="notification-icon" style="background: {bg};">{icon}</div>
+                <div class="notification-title">{notif[3]}</div>
+                <div class="notification-content">{notif[4]}</div>
+                <div class="notification-time">{time_str}</div>
             </div>
             """, unsafe_allow_html=True)
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                if job_dict['applied'] == 0:
-                    if st.button("📝 Apply", key=f"apply_saved_{job_dict['id']}"):
-                        st.session_state.apply_job_id = job_dict['id']
-                        st.session_state.apply_job_title = job_dict['title']
-                        st.rerun()
-                else:
-                    st.info("✅ Applied")
-            with col2:
-                if st.button("❌ Remove", key=f"remove_saved_{job_dict['id']}"):
-                    unsave_job(user_id, job_dict['id'])
-                    st.rerun()
             st.markdown("---")
 
-# --- Profile Tab (unchanged) ---
-elif selected == "Profile":
+
+elif current_page == "Profile":
     st.markdown("## 👤 My Profile")
     user = get_user_by_id(user_id)
     profile = get_or_create_profile(user_id)
@@ -1338,7 +1435,7 @@ elif selected == "Profile":
     with col1:
         st.markdown(f"""
         <div style="text-align:center;">
-            <div style="width:120px; height:120px; border-radius:50%; background:linear-gradient(135deg, var(--primary), var(--secondary)); display:flex; align-items:center; justify-content:center; color:white; font-size:3rem; font-weight:bold; margin:0 auto 1rem;">{user[1][0].upper() if user[1] else 'U'}</div>
+            <div style="width:120px; height:120px; border-radius:50%; background:linear-gradient(135deg, var(--primary), #3B82F6); display:flex; align-items:center; justify-content:center; color:white; font-size:3rem; font-weight:bold; margin:0 auto 1rem;">{user[1][0].upper() if user[1] else 'U'}</div>
             <h3>{user[1]}</h3>
             <p>📧 {user[2]}</p>
             {f'<p>📱 {profile[1]}</p>' if profile[1] else ''}
@@ -1364,6 +1461,64 @@ elif selected == "Profile":
         if profile[10]: st.markdown(f"[LinkedIn]({profile[10]})")
         if profile[11]: st.markdown(f"[GitHub]({profile[11]})")
         if profile[12]: st.markdown(f"[Portfolio]({profile[12]})")
+
+        # --- New: Change Password Section ---
+        st.markdown("---")
+        st.markdown("#### 🔐 Change Password")
+        if "password_change_step" not in st.session_state:
+            st.session_state.password_change_step = 1  # 1: request OTP, 2: verify, 3: new password
+            st.session_state.otp = None
+            st.session_state.otp_sent = False
+
+        if st.session_state.password_change_step == 1:
+            if st.button("Send Verification Code"):
+                otp = generate_otp()
+                st.session_state.otp = otp
+                if send_otp_email(st.session_state.user_email, otp):
+                    st.success("OTP sent to your email. Please check your inbox.")
+                    st.session_state.password_change_step = 2
+                    st.rerun()
+                else:
+                    st.error("Failed to send OTP. Try again later.")
+        elif st.session_state.password_change_step == 2:
+            otp_input = st.text_input("Enter 6-digit OTP", max_chars=6)
+            col_a, col_b = st.columns(2)
+            with col_a:
+                if st.button("Verify OTP"):
+                    if otp_input == st.session_state.otp:
+                        st.success("OTP verified. Now set your new password.")
+                        st.session_state.password_change_step = 3
+                        st.rerun()
+                    else:
+                        st.error("Invalid OTP. Please try again.")
+            with col_b:
+                if st.button("Cancel"):
+                    st.session_state.password_change_step = 1
+                    st.session_state.otp = None
+                    st.rerun()
+        elif st.session_state.password_change_step == 3:
+            new_pass = st.text_input("New Password", type="password")
+            confirm_pass = st.text_input("Confirm New Password", type="password")
+            col_a, col_b = st.columns(2)
+            with col_a:
+                if st.button("Update Password"):
+                    if new_pass != confirm_pass:
+                        st.error("Passwords do not match.")
+                    elif len(new_pass) < 8:
+                        st.error("Password must be at least 8 characters.")
+                    else:
+                        new_pass_hash = hash_password(new_pass)
+                        update_user_password(st.session_state.user_id, new_pass_hash)
+                        st.success("Password updated successfully!")
+                        st.session_state.password_change_step = 1
+                        st.session_state.otp = None
+                        st.rerun()
+            with col_b:
+                if st.button("Cancel"):
+                    st.session_state.password_change_step = 1
+                    st.session_state.otp = None
+                    st.rerun()
+
     with col2:
         with st.form("profile_edit_form"):
             st.markdown("#### ✏️ Edit Profile")
@@ -1389,7 +1544,7 @@ elif selected == "Profile":
                 github = st.text_input("GitHub URL", value=profile[11] or "")
             with col_d:
                 portfolio = st.text_input("Portfolio URL", value=profile[12] or "")
-            submitted = st.form_submit_button("💾 Save Changes", use_container_width=True)
+            submitted = st.form_submit_button("💾 Save Changes")
             if submitted:
                 update_user_name(user_id, name)
                 update_profile(user_id,
@@ -1399,8 +1554,22 @@ elif selected == "Profile":
                 st.success("Profile updated!")
                 st.rerun()
 
-# --- Analytics Tab (unchanged) ---
-elif selected == "Analytics":
+    # --- Logout and Admin buttons (text links) ---
+    st.markdown("---")
+    col_logout, col_admin = st.columns(2)
+    with col_logout:
+        if st.button("🚪 Logout", type="secondary"):
+            for key in ['authenticated', 'user_id', 'user_name', 'user_email', 'main_tab', 'sub_tab']:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.switch_page("app.py")
+    with col_admin:
+        if st.session_state.get("is_admin", False):
+            if st.button("🛡️ Admin Panel", type="secondary"):
+                st.session_state.previous_page = "pages/employee_dashboard.py"
+                st.switch_page("pages/admin_dashboard.py")
+
+elif current_page == "Analytics":
     st.markdown("## 📊 My Analytics")
     stats = get_application_stats(user_id)
     timeline = get_applications_over_time(user_id)
@@ -1443,3 +1612,4 @@ elif selected == "Analytics":
             </div>
         </div>
         """, unsafe_allow_html=True)
+
