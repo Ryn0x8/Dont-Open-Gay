@@ -405,7 +405,7 @@ stats = get_system_stats()
 
 
 
-# --- Define main tabs and sub-tabs (grouped) ---
+# --- Define main tabs ---
 main_tabs = ["Dashboard", "Management", "Jobs", "Communication", "System"]
 main_icons = {
     "Dashboard": "📊",
@@ -415,7 +415,42 @@ main_icons = {
     "System": "⚙️"
 }
 
-# Sub-tabs definitions
+# --- Navigation state ---
+if "main_tab" not in st.session_state:
+    st.session_state.main_tab = "Dashboard"
+if "sub_tab" not in st.session_state:
+    st.session_state.sub_tab = None
+
+# --- Ensure stored main_tab is valid ---
+if st.session_state.main_tab not in main_tabs:
+    st.session_state.main_tab = main_tabs[0]
+
+# --- Hero Header (always on top) ---
+st.markdown(f"""
+<div class="hero-header">
+    <div>
+        <h1>👋 Welcome, Admin {st.session_state.user_name}!</h1>
+        <p>You have full system access and control</p>
+    </div>
+    <div class="date-badge">
+        {datetime.now().strftime('%B %d, %Y')}
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# --- Main pills navigation ---
+selected_main = st.pills(
+    "",
+    options=main_tabs,
+    default=st.session_state.main_tab,
+    selection_mode="single",
+    format_func=lambda tab: f"{main_icons[tab]} {tab}",
+    label_visibility="collapsed",
+    key="main_pills"
+)
+st.session_state.main_tab = selected_main
+
+# --- Sub‑tabs definitions (based on updated main_tab) ---
 if st.session_state.main_tab == "Management":
     sub_tabs = ["Users", "Companies"]
     sub_icons = {"Users": "👤", "Companies": "🏢"}
@@ -432,28 +467,6 @@ else:
     sub_tabs = []
     sub_icons = {}
 
-# --- Hero Header (always on top) ---
-st.markdown(f"""
-<div class="hero-header">
-    <div>
-        <h1>👋 Welcome, Admin {st.session_state.user_name}!</h1>
-        <p>You have full system access and control</p>
-    </div>
-    <div class="date-badge">
-        {datetime.now().strftime('%B %d, %Y')}
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# --- Navigation state ---
-if "main_tab" not in st.session_state:
-    st.session_state.main_tab = "Dashboard"
-if "sub_tab" not in st.session_state:
-    st.session_state.sub_tab = None
-
-# --- Ensure stored main_tab is valid ---
-if st.session_state.main_tab not in main_tabs:
-    st.session_state.main_tab = main_tabs[0]   
 # --- Sub pills navigation (if any) ---
 if sub_tabs:
     if st.session_state.sub_tab not in sub_tabs:
