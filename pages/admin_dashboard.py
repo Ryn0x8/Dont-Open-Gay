@@ -403,11 +403,7 @@ st.markdown("""
 # --- Get System Stats ---
 stats = get_system_stats()
 
-# --- Navigation state ---
-if "main_tab" not in st.session_state:
-    st.session_state.main_tab = "Dashboard"
-if "sub_tab" not in st.session_state:
-    st.session_state.sub_tab = None
+
 
 # --- Define main tabs and sub-tabs (grouped) ---
 main_tabs = ["Dashboard", "Management", "Jobs", "Communication", "System"]
@@ -449,18 +445,15 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- Main pills navigation ---
-selected_main = st.pills(
-    "",
-    options=main_tabs,
-    default=st.session_state.main_tab,
-    selection_mode="single",
-    format_func=lambda tab: f"{main_icons[tab]} {tab}",
-    label_visibility="collapsed",
-    key="main_pills"
-)
-st.session_state.main_tab = selected_main
+# --- Navigation state ---
+if "main_tab" not in st.session_state:
+    st.session_state.main_tab = "Dashboard"
+if "sub_tab" not in st.session_state:
+    st.session_state.sub_tab = None
 
+# --- Ensure stored main_tab is valid ---
+if st.session_state.main_tab not in main_tabs:
+    st.session_state.main_tab = main_tabs[0]   
 # --- Sub pills navigation (if any) ---
 if sub_tabs:
     if st.session_state.sub_tab not in sub_tabs:
