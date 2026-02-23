@@ -1511,6 +1511,7 @@ elif current_page == "Profile":
                         update_user_password(st.session_state.user_id, new_pass_hash)
                         st.success("Password updated successfully!")
                         st.session_state.password_change_step = 1
+                        time.sleep(2)
                         st.session_state.otp = None
                         st.rerun()
             with col_b:

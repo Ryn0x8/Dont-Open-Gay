@@ -1069,5 +1069,6 @@ elif current_page == "Settings":
                     new_pw_hash = hash_password(new_pw)
                     update_company_password(st.session_state.company_id, new_pw_hash)
                     st.success("Password updated successfully!")
+                    time.sleep(2)
                     st.rerun()
 
