@@ -14,3 +14,5 @@ pypdf2
 google-generativeai
 PyMuPDF
 rapidfuzz
+insightface
+mediapipe
