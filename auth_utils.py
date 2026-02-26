@@ -13,7 +13,10 @@ import base64
 from rapidfuzz import fuzz
 from insightface.app import FaceAnalysis
 import mediapipe as mp
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 from modelDownload import download_model
+
 load_dotenv()
 
 # Initialize Firebase Admin SDK (assumes database.py already did, but safe)
@@ -30,21 +33,37 @@ def load_models():
     if not os.path.exists(model_root):
         success = download_model()
         if not success:
-            st.error("Failed to load face recognition model.")
-            return None, None, None
+            st.error("Failed to load face recognition model. Please check your internet connection.")
+            return None, None
+    
     app = FaceAnalysis(name='buffalo_l', root=model_root, providers=['CPUExecutionProvider'])
     app.prepare(ctx_id=0, det_size=(640, 640))
-    # MediaPipe for blink detection
-    mp_face_mesh = mp.solutions.face_mesh
-    face_mesh = mp_face_mesh.FaceMesh(
-        static_image_mode=False,
-        max_num_faces=1,
-        min_detection_confidence=0.5,
+    
+    # MediaPipe Tasks for blink detection (new API)
+    # Download the face landmarker model if not present
+    landmarker_model_path = os.path.join(model_root, "face_landmarker.task")
+    if not os.path.exists(landmarker_model_path):
+        # Download face landmarker model from MediaPipe
+        import urllib.request
+        url = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
+        urllib.request.urlretrieve(url, landmarker_model_path)
+    
+    # Create FaceLandmarker from the model
+    base_options = python.BaseOptions(model_asset_path=landmarker_model_path)
+    options = vision.FaceLandmarkerOptions(
+        base_options=base_options,
+        output_face_blendshapes=False,
+        output_facial_transformation_matrixes=False,
+        num_faces=1,
+        min_face_detection_confidence=0.5,
+        min_face_presence_confidence=0.5,
         min_tracking_confidence=0.5
     )
-    return app, face_mesh, mp_face_mesh
+    landmarker = vision.FaceLandmarker.create_from_options(options)
+    
+    return app, landmarker
 
-app, face_mesh, mp_face_mesh = load_models()
+app, landmarker = load_models()
 
 # -------------------------------------------------------------------
 # Helper: Get face embedding using InsightFace
@@ -61,11 +80,13 @@ def get_face_embedding(image):
     return np.array(embedding)
 
 # -------------------------------------------------------------------
-# Helper: Eye Aspect Ratio (EAR) for blink detection
+# Helper: Eye Aspect Ratio (EAR) for blink detection using MediaPipe Tasks
 # -------------------------------------------------------------------
 def eye_aspect_ratio(landmarks, eye_indices):
     """
     Compute EAR from MediaPipe landmarks.
+    landmarks: list of NormalizedLandmark objects
+    eye_indices: list of landmark indices for the eye
     """
     points = []
     for idx in eye_indices:
@@ -77,6 +98,35 @@ def eye_aspect_ratio(landmarks, eye_indices):
     C = np.linalg.norm(points[0] - points[3])
     ear = (A + B) / (2.0 * C)
     return ear
+
+def get_ear_from_image(image):
+    """
+    Process image with MediaPipe FaceLandmarker and return EAR.
+    Returns (ear_value, success_flag)
+    """
+    # Convert to MediaPipe Image
+    rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+    
+    # Detect face landmarks
+    detection_result = landmarker.detect(mp_image)
+    
+    if not detection_result.face_landmarks:
+        return None, False
+    
+    # Get landmarks for the first face
+    landmarks = detection_result.face_landmarks[0]
+    
+    # Eye landmark indices for MediaPipe Face Landmarker
+    # These are the standard indices for eye contours
+    left_eye_indices = [33, 133, 157, 158, 159, 160]
+    right_eye_indices = [362, 263, 387, 386, 385, 384]
+    
+    left_ear = eye_aspect_ratio(landmarks, left_eye_indices)
+    right_ear = eye_aspect_ratio(landmarks, right_eye_indices)
+    ear = (left_ear + right_ear) / 2.0
+    
+    return ear, True
 
 # -------------------------------------------------------------------
 # New: Capture face (registration) – stores embedding
@@ -122,16 +172,8 @@ def verify_face(email):
     """
     # ---- Liveness check ----
     st.markdown("### 👁️ Liveness Check – Please Blink")
-    # We'll use a simple loop with camera_input (non‑streaming) for simplicity.
-    # (For a hackathon, you can ask the user to blink while taking a short video,
-    # but that's complex. Instead, we can do a quick 2‑step: capture 5 frames
-    # and check if at least one shows a blink. Let's keep it simple.)
-
-    # For hackathon simplicity, we'll skip the video stream and just ask the user
-    # to blink while we capture a photo. This is less robust but still shows we care.
-    # If you want full video, see the MediaPipe + webrtc example earlier.
-
-    # We'll just do a simple blink detection on a single photo for now.
+    
+    # Capture photo with eyes open
     st.write("Take a photo with your eyes open.")
     open_img = st.camera_input("Open eyes", key="open_eyes")
     if open_img is None:
@@ -143,17 +185,12 @@ def verify_face(email):
     open_frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
     # Compute EAR on open eyes
-    rgb = cv2.cvtColor(open_frame, cv2.COLOR_BGR2RGB)
-    results = face_mesh.process(rgb)
-    if not results.multi_face_landmarks:
+    ear_open, success = get_ear_from_image(open_frame)
+    if not success:
         st.error("No face detected. Please try again.")
         return False
-    landmarks = results.multi_face_landmarks[0].landmark
-    left_eye = [33, 133, 157, 158, 159, 160]
-    right_eye = [362, 263, 387, 386, 385, 384]
-    ear_open = (eye_aspect_ratio(landmarks, left_eye) + eye_aspect_ratio(landmarks, right_eye)) / 2.0
 
-    # Now ask for a photo with eyes closed
+    # Capture photo with eyes closed
     st.write("Now take a photo with your eyes **closed**.")
     closed_img = st.camera_input("Closed eyes", key="closed_eyes")
     if closed_img is None:
@@ -162,13 +199,11 @@ def verify_face(email):
     bytes_data = closed_img.getvalue()
     np_arr = np.frombuffer(bytes_data, np.uint8)
     closed_frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-    rgb = cv2.cvtColor(closed_frame, cv2.COLOR_BGR2RGB)
-    results = face_mesh.process(rgb)
-    if not results.multi_face_landmarks:
+    
+    ear_closed, success = get_ear_from_image(closed_frame)
+    if not success:
         st.error("No face detected.")
         return False
-    landmarks = results.multi_face_landmarks[0].landmark
-    ear_closed = (eye_aspect_ratio(landmarks, left_eye) + eye_aspect_ratio(landmarks, right_eye)) / 2.0
 
     # If EAR dropped significantly, we have a blink
     if ear_open - ear_closed > 0.15:  # threshold
@@ -210,6 +245,13 @@ def verify_face(email):
         st.error("❌ Face does not match.")
         return False
 
+# -------------------------------------------------------------------
+# Helper: Check if user has a registered face (embedding exists)
+# -------------------------------------------------------------------
+def has_face_registered(email):
+    """Return True if a face embedding exists for this email."""
+    doc = db.collection('faces').document(email).get()
+    return doc.exists
 
 # ===== EMAIL =====
 def send_email(to_email: str, subject: str, body: str, is_html: bool = False) -> bool:
@@ -323,142 +365,142 @@ def hash_password(password):
 def check_password(password, hashed):
     return bcrypt.checkpw(password.encode(), hashed)
 
-# # ===== FACE =====
+# ===== OLD FACE FUNCTIONS (keep intact) =====
 # def capture_face(email):
 #     """
 #     Capture face from browser camera and store in Firestore as Base64.
 #     Returns True if face detected and saved.
 #     """
 #     import streamlit as st
-
+#
 #     st.info("📸 Please capture your face for registration")
-
+#
 #     # Persist camera input across reruns
 #     if "reg_face" not in st.session_state:
 #         st.session_state.reg_face = None
-
+#
 #     img_file = st.camera_input("Take a photo", key="register_camera")
-
+#
 #     if img_file is not None:
 #         st.session_state.reg_face = img_file
-
+#
 #     if st.session_state.reg_face is None:
 #         return False  # No photo captured yet
-
+#
 #     # Convert to OpenCV format
 #     bytes_data = st.session_state.reg_face.getvalue()
 #     np_arr = np.frombuffer(bytes_data, np.uint8)
 #     frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
+#
 #     if frame is None:
 #         st.error("Could not process image")
 #         return False
-
+#
 #     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 #     face_cascade = cv2.CascadeClassifier(
 #         cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 #     )
-
+#
 #     faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-
+#
 #     if len(faces) == 0:
 #         st.error("No face detected. Make sure you are in good lighting and try again.")
 #         return False
-
+#
 #     # Take the first detected face
 #     x, y, w, h = faces[0]
 #     face = gray[y:y+h, x:x+w]
 #     face = cv2.resize(face, (200, 200))
-
+#
 #     # Encode face as JPEG bytes
 #     ret, buffer = cv2.imencode('.jpg', face)
 #     if not ret:
 #         st.error("Failed to encode face image")
 #         return False
-
+#
 #     # Convert to Base64 string
 #     face_base64 = base64.b64encode(buffer.tobytes()).decode('utf-8')
-
+#
 #     # Store in Firestore (faces collection, document ID = email)
 #     db.collection('faces').document(email).set({
 #         'image': face_base64,
 #         'uploaded_at': firestore.SERVER_TIMESTAMP
 #     })
-
+#
 #     st.success("✅ Face captured and saved successfully!")
 #     st.session_state.reg_face = None
 #     return True
-
+#
 # def verify_face(email):
 #     """
 #     Capture a new face and compare with stored face from Firestore.
 #     Returns True if matched.
 #     """
 #     import streamlit as st
-
+#
 #     # Retrieve stored face from Firestore
 #     face_doc = db.collection('faces').document(email).get()
 #     if not face_doc.exists:
 #         st.error("No registered face found. Please register first.")
 #         return False
-
+#
 #     stored_base64 = face_doc.to_dict().get('image')
 #     if not stored_base64:
 #         st.error("Stored face data is missing.")
 #         return False
-
+#
 #     # Decode Base64 to image
 #     stored_bytes = base64.b64decode(stored_base64)
 #     np_arr_stored = np.frombuffer(stored_bytes, np.uint8)
 #     stored_face = cv2.imdecode(np_arr_stored, cv2.IMREAD_GRAYSCALE)
-
+#
 #     if stored_face is None:
 #         st.error("Stored face image is corrupted.")
 #         return False
-
+#
 #     # Persist camera input across reruns
 #     if "verify_face_img" not in st.session_state:
 #         st.session_state.verify_face_img = None
-
+#
 #     img_file = st.camera_input("Take a photo", key="verify_camera")
-
+#
 #     if img_file is not None:
 #         st.session_state.verify_face_img = img_file
-
+#
 #     if st.session_state.verify_face_img is None:
 #         st.info("📸 Please take a photo to continue.")
 #         return False
-
+#
 #     # Convert to OpenCV format
 #     bytes_data = st.session_state.verify_face_img.getvalue()
 #     np_arr = np.frombuffer(bytes_data, np.uint8)
 #     frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
+#
 #     if frame is None:
 #         st.error("Could not process image")
 #         return False
-
+#
 #     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 #     face_cascade = cv2.CascadeClassifier(
 #         cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 #     )
-
+#
 #     faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-
+#
 #     if len(faces) == 0:
 #         st.error("Face not detected. Make sure you are in good lighting.")
 #         return False
-
+#
 #     # Take the first detected face
 #     x, y, w, h = faces[0]
 #     face = gray[y:y+h, x:x+w]
 #     face = cv2.resize(face, (200, 200))
-
+#
 #     # Compare with stored face
 #     diff = cv2.absdiff(stored_face, face)
 #     score = np.mean(diff)
 #     st.write(f"Face difference score: {score:.2f}")
-
+#
 #     if score < 50:  # threshold can be tuned
 #         st.success("✅ Face verified successfully!")
 #         st.session_state.verify_face_img = None
@@ -467,9 +509,8 @@ def check_password(password, hashed):
 #         st.error("❌ Face does not match the registered one.")
 #         st.session_state.verify_face_img = None
 #         return False
-    
+#
 # def has_face_registered(email):
-
 #     face_ref = db.collection('faces').document(email)
 #     face_doc = face_ref.get()
 #     return face_doc.exists
