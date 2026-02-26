@@ -15,5 +15,5 @@ google-generativeai
 PyMuPDF
 rapidfuzz
 insightface
-mediapipe==0.10.9
+mediapipe
 onnxruntime
