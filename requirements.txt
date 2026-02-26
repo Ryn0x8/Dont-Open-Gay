@@ -16,3 +16,4 @@ PyMuPDF
 rapidfuzz
 insightface
 mediapipe
+onnxruntime
