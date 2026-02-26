@@ -17,3 +17,4 @@ rapidfuzz
 insightface
 mediapipe
 onnxruntime
+gdown
