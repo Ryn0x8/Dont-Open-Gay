@@ -11,9 +11,9 @@ from firebase_admin import credentials, firestore
 import os
 import base64
 from rapidfuzz import fuzz
-import insightface
 from insightface.app import FaceAnalysis
 import mediapipe as mp
+from modelDownload import download_model
 load_dotenv()
 
 # Initialize Firebase Admin SDK (assumes database.py already did, but safe)
@@ -27,6 +27,11 @@ db = firestore.client()
 def load_models():
     # InsightFace for detection + recognition
     model_root = os.path.join(os.getcwd(), "models")
+    if not os.path.exists(model_root):
+        success = download_model()
+        if not success:
+            st.error("Failed to load face recognition model.")
+            return None, None, None
     app = FaceAnalysis(name='buffalo_l', root=model_root, providers=['CPUExecutionProvider'])
     app.prepare(ctx_id=0, det_size=(640, 640))
     # MediaPipe for blink detection
