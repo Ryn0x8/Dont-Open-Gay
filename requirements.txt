@@ -20,3 +20,4 @@ onnxruntime
 gdown
 streamlit-webrtc
 av
+pkg_resources
