@@ -21,4 +21,3 @@ gdown
 streamlit-webrtc
 av
 setuptools==68.2.2
-opencv-contrib-python==0.0.0
