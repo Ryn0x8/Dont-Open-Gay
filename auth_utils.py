@@ -16,6 +16,8 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from modelDownload import download_model
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, RTCConfiguration
+import av
 
 load_dotenv()
 
@@ -165,85 +167,100 @@ def capture_face(email):
 # -------------------------------------------------------------------
 # New: Verify face with liveness (blink detection)
 # -------------------------------------------------------------------
+
+class BlinkProcessor(VideoProcessorBase):
+    def __init__(self):
+        self.blink_detected = False
+        self.blink_counter = 0
+        self.ear_baseline = None
+        self.frames_collected = 0
+        self.EAR_DROP_RATIO = 0.35   # 35% drop from baseline
+        self.CONSEC_FRAMES = 3
+
+    def recv(self, frame):
+        img = frame.to_ndarray(format="bgr24")
+
+        ear, success = get_ear_from_image(img)
+
+        if success:
+            # Collect baseline for first 20 frames
+            if self.frames_collected < 20:
+                if self.ear_baseline is None:
+                    self.ear_baseline = ear
+                else:
+                    self.ear_baseline = (self.ear_baseline + ear) / 2
+                self.frames_collected += 1
+
+            else:
+                threshold = self.ear_baseline * (1 - self.EAR_DROP_RATIO)
+
+                if ear < threshold:
+                    self.blink_counter += 1
+                else:
+                    if self.blink_counter >= self.CONSEC_FRAMES:
+                        self.blink_detected = True
+                    self.blink_counter = 0
+
+            cv2.putText(img, f"EAR: {ear:.2f}", (30, 40),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+        return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+
 def verify_face(email):
-    """
-    1. Liveness: detect a blink via webcam.
-    2. Capture final photo, compute embedding, compare with stored.
-    """
-    # ---- Liveness check ----
-    st.markdown("### 👁️ Liveness Check – Please Blink")
-    
-    # Capture photo with eyes open
-    st.write("Take a photo with your eyes open.")
-    open_img = st.camera_input("Open eyes", key="open_eyes")
-    if open_img is None:
-        return False
+    st.markdown("### 👁️ Real-Time Liveness Check – Please Blink")
 
-    # Convert open eyes frame
-    bytes_data = open_img.getvalue()
-    np_arr = np.frombuffer(bytes_data, np.uint8)
-    open_frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    rtc_config = RTCConfiguration(
+        {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+    )
 
-    # Compute EAR on open eyes
-    ear_open, success = get_ear_from_image(open_frame)
-    if not success:
-        st.error("No face detected. Please try again.")
-        return False
+    ctx = webrtc_streamer(
+        key="blink-detection",
+        video_processor_factory=BlinkProcessor,
+        rtc_configuration=rtc_config,
+        media_stream_constraints={"video": True, "audio": False},
+    )
 
-    # Capture photo with eyes closed
-    st.write("Now take a photo with your eyes **closed**.")
-    closed_img = st.camera_input("Closed eyes", key="closed_eyes")
-    if closed_img is None:
-        return False
+    if ctx.video_processor:
+        if ctx.video_processor.blink_detected:
+            st.success("✅ Blink detected – You are live!")
 
-    bytes_data = closed_img.getvalue()
-    np_arr = np.frombuffer(bytes_data, np.uint8)
-    closed_frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-    
-    ear_closed, success = get_ear_from_image(closed_frame)
-    if not success:
-        st.error("No face detected.")
-        return False
+            st.markdown("### 📸 Now capture final image for verification")
+            img_file = st.camera_input("Take final photo")
 
-    # If EAR dropped significantly, we have a blink
-    if ear_open - ear_closed > 0.15:  # threshold
-        st.success("✅ Blink detected – you're live!")
-    else:
-        st.error("❌ Blink not detected. Please try again.")
-        return False
+            if img_file is None:
+                return False
 
-    # ---- Face verification ----
-    st.write("Now take a final photo for identity verification.")
-    final_img = st.camera_input("Final photo", key="final_face")
-    if final_img is None:
-        return False
+            bytes_data = img_file.getvalue()
+            np_arr = np.frombuffer(bytes_data, np.uint8)
+            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-    bytes_data = final_img.getvalue()
-    np_arr = np.frombuffer(bytes_data, np.uint8)
-    final_frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            new_embedding = get_face_embedding(frame)
+            if new_embedding is None:
+                st.error("No face detected.")
+                return False
 
-    new_embedding = get_face_embedding(final_frame)
-    if new_embedding is None:
-        st.error("No face detected.")
-        return False
+            doc = db.collection('faces').document(email).get()
+            if not doc.exists:
+                st.error("No registered face.")
+                return False
 
-    # Retrieve stored embedding
-    doc = db.collection('faces').document(email).get()
-    if not doc.exists:
-        st.error("No registered face.")
-        return False
-    stored_emb = np.array(doc.to_dict()['embedding'])
+            stored_emb = np.array(doc.to_dict()['embedding'])
 
-    # Cosine similarity
-    similarity = np.dot(new_embedding, stored_emb) / (np.linalg.norm(new_embedding) * np.linalg.norm(stored_emb))
-    st.write(f"Similarity: **{similarity:.2f}**")
+            similarity = np.dot(new_embedding, stored_emb) / (
+                np.linalg.norm(new_embedding) * np.linalg.norm(stored_emb)
+            )
 
-    if similarity > 0.5:  # threshold for ArcFace is usually around 0.5-0.6
-        st.success("✅ Face verified!")
-        return True
-    else:
-        st.error("❌ Face does not match.")
-        return False
+            st.write(f"Similarity: **{similarity:.2f}**")
+
+            if similarity > 0.55:
+                st.success("✅ Face verified!")
+                return True
+            else:
+                st.error("❌ Face does not match.")
+                return False
+
+    return False
 
 # -------------------------------------------------------------------
 # Helper: Check if user has a registered face (embedding exists)

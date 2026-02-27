@@ -18,3 +18,5 @@ insightface
 mediapipe
 onnxruntime
 gdown
+streamlit-webrtc
+av
