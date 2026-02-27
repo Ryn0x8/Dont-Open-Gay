@@ -15,9 +15,9 @@ google-generativeai
 PyMuPDF
 rapidfuzz
 # insightface
-mediapipe
-onnxruntime
-gdown
-streamlit-webrtc
-av
-setuptools==68.2.2
+# mediapipe
+# onnxruntime
+# gdown
+# streamlit-webrtc
+# av
+# setuptools==68.2.2
