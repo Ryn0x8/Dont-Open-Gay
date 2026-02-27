@@ -20,4 +20,4 @@ onnxruntime
 gdown
 streamlit-webrtc
 av
-setuptools
+setuptools==68.2.2
