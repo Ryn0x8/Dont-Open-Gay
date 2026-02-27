@@ -14,7 +14,7 @@ pypdf2
 google-generativeai
 PyMuPDF
 rapidfuzz
-insightface
+# insightface
 mediapipe
 onnxruntime
 gdown

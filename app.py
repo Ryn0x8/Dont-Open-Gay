@@ -9,11 +9,11 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-import pkg_resources
-import streamlit as st
+# import pkg_resources
+# import streamlit as st
 
-packages = sorted([f"{d.project_name}=={d.version}" for d in pkg_resources.working_set])
-st.write(packages)
+# packages = sorted([f"{d.project_name}=={d.version}" for d in pkg_resources.working_set])
+# st.write(packages)
 
 # --- Custom CSS (glass‑morphism, modern) ---
 st.markdown("""
