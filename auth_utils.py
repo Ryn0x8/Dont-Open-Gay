@@ -297,7 +297,7 @@ def check_password(password, hashed):
 
 MODEL_NAME = "Facenet512"  # more accurate than Facenet
 # For Facenet512, cosine similarity threshold (empirical, tune on your data)
-SIMILARITY_THRESHOLD = 0.35  # lower means stricter
+SIMILARITY_THRESHOLD = 0.6  # higher means stricter
 
 def capture_face(email):
     """Capture and store face embedding using DeepFace (Facenet512)"""
