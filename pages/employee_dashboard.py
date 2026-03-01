@@ -1560,7 +1560,7 @@ elif current_page == "Profile":
     col_logout, col_admin = st.columns(2)
     with col_logout:
         if st.button("🚪 Logout", type="secondary"):
-            for key in ['authenticated', 'user_id', 'user_name', 'user_email', 'main_tab', 'sub_tab']:
+            for key in ['authenticated', 'user_id', 'user_name', 'user_email', 'main_tab', 'sub_tab', 'reg_face', 'verify_img']:
                 if key in st.session_state:
                     del st.session_state[key]
             st.switch_page("app.py")
