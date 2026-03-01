@@ -14,7 +14,4 @@ pypdf2
 google-generativeai
 PyMuPDF
 rapidfuzz
-cmake
-dlib-bin
-face-recognition
 deepface
