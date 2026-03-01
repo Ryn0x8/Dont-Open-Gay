@@ -16,3 +16,4 @@ PyMuPDF
 rapidfuzz
 deepface
 tensorflow-cpu
+tf_keras
