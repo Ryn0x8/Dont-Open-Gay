@@ -11,7 +11,8 @@ from firebase_admin import credentials, firestore
 import os
 import base64
 from rapidfuzz import fuzz
-import face_recognition
+from deepface import DeepFace
+
 # from insightface.app import FaceAnalysis
 # import mediapipe as mp
 # from mediapipe.tasks import python
@@ -513,145 +514,110 @@ def check_password(password, hashed):
 #         return False
 
 def capture_face(email):
-    """
-    Capture a face from the browser camera, compute its embedding,
-    and store it in Firestore under 'faces' collection (document ID = email).
-    Returns True if successful.
-    """
+    """Capture and store face embedding using DeepFace"""
     st.info("📸 Please capture your face for registration")
-
-    # Persist camera input across reruns
+    
     if "reg_face" not in st.session_state:
         st.session_state.reg_face = None
-
+    
     img_file = st.camera_input("Take a photo", key="register_camera")
-
+    
     if img_file is not None:
         st.session_state.reg_face = img_file
-
+    
     if st.session_state.reg_face is None:
-        return False  # No photo captured yet
-
-    # Convert to OpenCV image (BGR)
+        return False
+    
+    # Convert to OpenCV format
     bytes_data = st.session_state.reg_face.getvalue()
     np_arr = np.frombuffer(bytes_data, np.uint8)
-    frame_bgr = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
-    if frame_bgr is None:
-        st.error("Could not process image")
+    frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    
+    # DeepFace handles both detection and embedding
+    try:
+        # Using Facenet model (works well, reasonable size)
+        embedding = DeepFace.represent(
+            img_path=frame, 
+            model_name="Facenet",
+            detector_backend="opencv",  # lightweight detector
+            enforce_detection=True
+        )
+        
+        if not embedding:
+            st.error("No face detected")
+            return False
+            
+        # Store embedding in Firestore
+        db.collection('faces').document(email).set({
+            'embedding': embedding[0]['embedding'],
+            'model': 'Facenet',
+            'uploaded_at': firestore.SERVER_TIMESTAMP
+        })
+        
+        st.success("✅ Face registered successfully!")
+        return True
+        
+    except Exception as e:
+        st.error(f"Face detection failed: {str(e)}")
         return False
-
-    # Convert BGR to RGB (face_recognition uses RGB)
-    frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-
-    # Detect face locations
-    face_locations = face_recognition.face_locations(frame_rgb)
-
-    if len(face_locations) == 0:
-        st.error("No face detected. Make sure you are in good lighting and try again.")
-        return False
-
-    # If multiple faces, take the largest one (by area)
-    if len(face_locations) > 1:
-        areas = [(loc[2] - loc[0]) * (loc[1] - loc[3]) for loc in face_locations]  # (top, right, bottom, left)
-        face_locations = [face_locations[np.argmax(areas)]]
-
-    # Compute face embedding for the detected face
-    face_encodings = face_recognition.face_encodings(frame_rgb, face_locations)
-    if len(face_encodings) == 0:
-        st.error("Could not extract face features. Please try again.")
-        return False
-
-    encoding = face_encodings[0].tolist()  # convert numpy array to list for Firestore
-
-    # Store embedding in Firestore (faces collection, document ID = email)
-    db.collection('faces').document(email).set({
-        'encoding': encoding,
-        'uploaded_at': firestore.SERVER_TIMESTAMP
-    })
-
-    st.success("✅ Face registered successfully!")
-    st.session_state.reg_face = None  # clear captured image
-    return True
-
 
 def verify_face(email):
-    """
-    Capture a new face and compare its embedding with the stored one.
-    Returns True if the faces match.
-    """
-    # Retrieve stored face embedding from Firestore
+    """Verify face using DeepFace comparison"""
+    # Retrieve stored embedding
     face_doc = db.collection('faces').document(email).get()
     if not face_doc.exists:
-        st.error("No registered face found. Please register first.")
+        st.error("No registered face found")
         return False
-
-    data = face_doc.to_dict()
-    stored_encoding = data.get('encoding')
-    if not stored_encoding:
-        st.error("Stored face data is missing.")
+    
+    stored_data = face_doc.to_dict()
+    stored_embedding = stored_data.get('embedding')
+    
+    if not stored_embedding:
+        st.error("Stored face data is missing")
         return False
-
-    stored_encoding = np.array(stored_encoding)  # convert back to numpy array
-
-    # Persist camera input across reruns
-    if "verify_face_img" not in st.session_state:
-        st.session_state.verify_face_img = None
-
+    
+    # Capture new face
+    if "verify_img" not in st.session_state:
+        st.session_state.verify_img = None
+    
     img_file = st.camera_input("Take a photo", key="verify_camera")
-
+    
     if img_file is not None:
-        st.session_state.verify_face_img = img_file
-
-    if st.session_state.verify_face_img is None:
-        st.info("📸 Please take a photo to continue.")
+        st.session_state.verify_img = img_file
+    
+    if st.session_state.verify_img is None:
+        st.info("📸 Please take a photo")
         return False
-
-    # Convert to OpenCV image (BGR)
-    bytes_data = st.session_state.verify_face_img.getvalue()
+    
+    # Convert to OpenCV
+    bytes_data = st.session_state.verify_img.getvalue()
     np_arr = np.frombuffer(bytes_data, np.uint8)
-    frame_bgr = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
-    if frame_bgr is None:
-        st.error("Could not process image")
-        return False
-
-    # Convert BGR to RGB
-    frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-
-    # Detect face locations
-    face_locations = face_recognition.face_locations(frame_rgb)
-
-    if len(face_locations) == 0:
-        st.error("No face detected. Make sure you are in good lighting.")
-        return False
-
-    # If multiple faces, take the largest one
-    if len(face_locations) > 1:
-        areas = [(loc[2] - loc[0]) * (loc[1] - loc[3]) for loc in face_locations]
-        face_locations = [face_locations[np.argmax(areas)]]
-
-    # Compute face encoding for the captured face
-    face_encodings = face_recognition.face_encodings(frame_rgb, face_locations)
-    if len(face_encodings) == 0:
-        st.error("Could not extract face features. Please try again.")
-        return False
-
-    new_encoding = face_encodings[0]
-
-    # Compare faces (using default tolerance of 0.6)
-    match = face_recognition.compare_faces([stored_encoding], new_encoding, tolerance=0.6)[0]
-    distance = face_recognition.face_distance([stored_encoding], new_encoding)[0]
-
-    st.write(f"Face similarity distance: {distance:.3f} (lower is better)")
-
-    if match:
-        st.success("✅ Face verified successfully!")
-        st.session_state.verify_face_img = None
-        return True
-    else:
-        st.error("❌ Face does not match the registered one.")
-        st.session_state.verify_face_img = None
+    frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    
+    try:
+        # Get embedding for new face
+        new_embedding = DeepFace.represent(
+            img_path=frame,
+            model_name="Facenet",
+            detector_backend="opencv",
+            enforce_detection=True
+        )[0]['embedding']
+        
+        # Compare using cosine similarity
+        from scipy.spatial.distance import cosine
+        similarity = 1 - cosine(stored_embedding, new_embedding)
+        
+        st.write(f"Similarity score: {similarity:.3f}")
+        
+        if similarity > 0.6:  # threshold, tune as needed
+            st.success("✅ Face verified!")
+            return True
+        else:
+            st.error("❌ Face does not match")
+            return False
+            
+    except Exception as e:
+        st.error(f"Verification failed: {str(e)}")
         return False
 
 def has_face_registered(email):

@@ -17,3 +17,4 @@ rapidfuzz
 cmake
 dlib-bin
 face-recognition
+deepface
