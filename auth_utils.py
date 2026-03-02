@@ -323,7 +323,7 @@ def capture_face(email):
         embedding_objs = DeepFace.represent(
             img_path=frame,
             model_name=MODEL_NAME,
-            detector_backend="opencv",      # fast & reliable
+            detector_backend="retinaface",      # fast & reliable
             enforce_detection=True
         )
         
@@ -392,7 +392,7 @@ def verify_face(email):
         new_embedding_objs = DeepFace.represent(
             img_path=frame,
             model_name=stored_model,
-            detector_backend="opencv",
+            detector_backend="retinaface",
             enforce_detection=True
         )
         
