@@ -1552,12 +1552,13 @@ elif current_page == "Profile":
         if profile[4]:
             st.markdown(get_resume_download_link(profile[4], "📥 Download Current Resume"), unsafe_allow_html=True)
 
-        # Resume upload handling
         uploaded_file = st.file_uploader("Upload New Resume (PDF)", type=['pdf'], key="resume_uploader")
 
         # Initialize session state for resume processing if not present
         if "uploaded_resume" not in st.session_state:
             st.session_state.uploaded_resume = None
+        if "uploaded_resume_name" not in st.session_state:  # store filename
+            st.session_state.uploaded_resume_name = None
         if "show_autofill_buttons" not in st.session_state:
             st.session_state.show_autofill_buttons = False
         if "goodness_feedback" not in st.session_state:
@@ -1565,15 +1566,16 @@ elif current_page == "Profile":
 
         # When a new file is uploaded, store it and show autofill options
         if uploaded_file is not None:
-            # Read file bytes and store in session state (only if new file)
-            if st.session_state.uploaded_resume != uploaded_file:
+            # Compare using filename instead of object
+            if st.session_state.uploaded_resume_name != uploaded_file.name:
                 st.info("Resume uploaded. You can now autofill your profile or get a goodness score.")
                 st.session_state.uploaded_resume = uploaded_file
+                st.session_state.uploaded_resume_name = uploaded_file.name  # save filename
                 st.session_state.show_autofill_buttons = True
                 st.session_state.goodness_feedback = None  # reset old feedback
                 time.sleep(0.5)  # slight delay to ensure state updates
                 st.rerun()  # immediately rerun to show buttons
-
+                
         # If we have a pending upload and autofill buttons are shown
         if st.session_state.show_autofill_buttons and st.session_state.uploaded_resume:
             col_a, col_b = st.columns(2)
