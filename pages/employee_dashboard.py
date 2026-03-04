@@ -18,7 +18,7 @@ from database import (
     add_job_request, get_user_requests,
     get_conversations, get_messages, send_message, mark_messages_read,
     get_application_stats, get_applications_over_time, get_interview_count,
-    delete_job_request, update_job_request, update_user_password, get_profile_strength, get_upcoming_interviews, get_recent_activities
+    delete_job_request, update_job_request, update_user_password
 )
 from database import update_expired_jobs
 
@@ -118,29 +118,6 @@ def get_resume_download_link(resume_path, text="Download Resume"):
         return href
     return None
 
-def job_to_dict(job_tuple):
-    return {
-        'id': job_tuple[0],
-        'company_id': job_tuple[1],
-        'company_name': job_tuple[2],
-        'company_name2': job_tuple[15],
-        'logo': job_tuple[16],
-        'title': job_tuple[3],
-        'category': job_tuple[4],
-        'description': job_tuple[5],
-        'requirements': job_tuple[6],
-        'location': job_tuple[7],
-        'job_type': job_tuple[8],
-        'salary_range': job_tuple[9],
-        'experience_level': job_tuple[10],
-        'skills_required': job_tuple[11],
-        'status': job_tuple[12],
-        'created_at': job_tuple[13],
-        'deadline': job_tuple[14],
-        'applied': job_tuple[17],
-        'saved': job_tuple[18],
-    }
-
 # --- Custom CSS (softer, less blue, buttons auto width) ---
 st.markdown("""
 <style>
@@ -179,20 +156,6 @@ st.markdown("""
         line-height: 1;
         display: inline-block;
         margin-left: 0.3rem;
-    }
-            
-    .stat-card {
-        background: white;
-        padding: 1.2rem;
-        border-radius: 24px;
-        border: 1px solid var(--border);
-        box-shadow: var(--shadow-sm);
-        text-align: center;
-        transition: transform 0.2s;
-    }
-    .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: var(--shadow-lg);
     }
 
     /* Hero header */
@@ -659,191 +622,110 @@ else:
 
 current_page = st.session_state.sub_tab if st.session_state.sub_tab else st.session_state.main_tab
 if current_page == "Dashboard":
-    # --- Helper data ---
-    user = get_user_by_id(user_id)
-    profile = get_or_create_profile(user_id)
-    profile_strength = get_profile_strength(profile)  # you already have this
-    upcoming = get_upcoming_interviews(user_id)       # from earlier
-    activities = get_recent_activities(user_id, 5)    # from earlier
-    jobs = search_jobs(user_id)
-    
-    # --- Profile Strength Card (full width, subtle) ---
-    strength_color = "#10B981" if profile_strength >= 80 else "#F59E0B" if profile_strength >= 50 else "#EF4444"
-    st.markdown(f"""
-    <div style="background: white; padding: 1.2rem 1.5rem; border-radius: 20px; border: 1px solid #E2E8F0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 2rem;">
-        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem;">
-            <span style="font-size: 0.9rem; font-weight: 500; color: #475569;">Profile strength</span>
-            <span style="font-weight: 600; color: {strength_color};">{profile_strength}%</span>
-        </div>
-        <div style="height: 6px; background: #E2E8F0; border-radius: 3px; width: 100%;">
-            <div style="width: {profile_strength}%; height: 6px; background: {strength_color}; border-radius: 3px;"></div>
-        </div>
-        <div style="font-size: 0.8rem; color: #64748B; margin-top: 0.5rem;">
-            { "⬆️ Complete your profile to get better matches" if profile_strength < 100 else "✅ Profile complete!"}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # --- Quick Actions (clean buttons) ---
-    st.markdown("### Quick actions")
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        if st.button("🔍 Find jobs", use_container_width=True):
-            st.session_state["main_pills"] = "Jobs"
-            st.session_state.main_tab = "Jobs"
-            st.session_state["sub_pills_Jobs"] = "Find Jobs"
-            st.session_state.sub_tab = "Find Jobs"
-            st.rerun()
-    with col2:
-        if st.button("💬 Messages", use_container_width=True):
-            st.session_state["main_pills"] = "Profile"
-            st.session_state.main_tab = "Profile"
-            st.session_state["sub_pills_Profile"] = "Messages"
-            st.session_state.sub_tab = "Messages"
-            st.rerun()
-    with col3:
-        if st.button("✏️ Update profile", use_container_width=True):
-            st.session_state["main_pills"] = "Profile"
-            st.session_state.main_tab = "Profile"
-            st.session_state["sub_pills_Profile"] = "Profile"
-            st.session_state.sub_tab = "Profile"
-            st.rerun()
-    with col4:
-        if st.button("📋 Applications", use_container_width=True):
-            st.session_state["main_pills"] = "Applications"
-            st.session_state.main_tab = "Applications"
-            st.session_state["sub_pills_Applications"] = "My Applications"
-            st.session_state.sub_tab = "My Applications"
-            st.rerun()    
-    # --- Upcoming Interviews (if any) ---
-    if upcoming:
-        st.markdown("### Upcoming interviews")
-        for interview in upcoming[:3]:
-            with st.container():
-                col1, col2, col3 = st.columns([3, 2, 1])
-                with col1:
-                    st.markdown(f"**{interview['job_title']}** · {interview['company']}")
-                with col2:
-                    st.markdown(f"{interview['datetime'].strftime('%b %d, %Y · %I:%M %p')}")
-                with col3:
-                    st.markdown(f"<a href='{interview['link']}' target='_blank' style='background:#2563EB; color:white; padding:0.2rem 1rem; border-radius:40px; text-decoration:none; font-size:0.8rem;'>Join</a>", unsafe_allow_html=True)
-                st.markdown("---")
-    
-    # --- Stats Row (minimal icons) ---
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.markdown(f"""
-        <div style="background: white; padding: 1.2rem; border-radius: 20px; border:1px solid #E2E8F0; text-align:center;">
-            <div style="font-size: 1.8rem; font-weight: 600; color: #2563EB;">{total_apps}</div>
-            <div style="font-size: 0.8rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;">Applications</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"""
-        <div style="background: white; padding: 1.2rem; border-radius: 20px; border:1px solid #E2E8F0; text-align:center;">
-            <div style="font-size: 1.8rem; font-weight: 600; color: #2563EB;">{interview_count}</div>
-            <div style="font-size: 0.8rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;">Interviews</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col3:
-        st.markdown(f"""
-        <div style="background: white; padding: 1.2rem; border-radius: 20px; border:1px solid #E2E8F0; text-align:center;">
-            <div style="font-size: 1.8rem; font-weight: 600; color: #2563EB;">{unread_msgs}</div>
-            <div style="font-size: 0.8rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;">Unread messages</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col4:
-        st.markdown(f"""
-        <div style="background: white; padding: 1.2rem; border-radius: 20px; border:1px solid #E2E8F0; text-align:center;">
-            <div style="font-size: 1.8rem; font-weight: 600; color: #2563EB;">{saved_count}</div>
-            <div style="font-size: 0.8rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;">Saved jobs</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # --- Recent Activity Feed ---
-    st.markdown("### Recent activity")
-    if activities:
-        for act in activities:
-            # Set a subtle left border color based on type
-            border_color = "#2563EB" if act['type'] == 'application' else "#8B5CF6" if act['type'] == 'message' else "#F59E0B"
-            with st.container():
-                st.markdown(f"""
-                <div style="padding: 0.75rem 0; border-left: 3px solid {border_color}; padding-left: 1rem; margin-bottom: 0.5rem;">
-                    <div style="font-weight: 500;">{act['title']}</div>
-                    <div style="font-size: 0.9rem; color: #475569;">{act['message']}</div>
-                    <div style="font-size: 0.7rem; color: #94A3B8;">{act['time'].strftime('%b %d, %H:%M') if act['time'] else ''}</div>
-                </div>
-                """, unsafe_allow_html=True)
+    st.markdown("## 📊 Overview")
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    with kpi1:
+        st.markdown(f'<div class="stat-card"><h3>📋 Applications</h3><p>{total_apps}</p></div>', unsafe_allow_html=True)
+    with kpi2:
+        st.markdown(f'<div class="stat-card"><h3>🗓️ Interviews</h3><p>{interview_count}</p></div>', unsafe_allow_html=True)
+    with kpi3:
+        st.markdown(f'<div class="stat-card"><h3>💬 Unread</h3><p>{unread_msgs}</p></div>', unsafe_allow_html=True)
+    with kpi4:
+        st.markdown(f'<div class="stat-card"><h3>🔖 Saved</h3><p>{saved_count}</p></div>', unsafe_allow_html=True)
+
+    if total_apps > 0:
+        interview_rate = (interview_count / total_apps) * 100
+        pending_rate = (pending_apps / total_apps) * 100
     else:
-        st.info("No recent activity.")
-    
-    # --- Recommended Jobs ---
-    st.markdown("### Recommended for you")
-    if jobs:
-        # Build list with match scores
-        job_list = []
-        for j in jobs:
-            job_dict = job_to_dict(j)
-            job_dict['match_score'] = calculate_match_score(job_dict['skills_required'], profile[5])
-            job_list.append(job_dict)
-        job_list.sort(key=lambda x: x['match_score'], reverse=True)
-        top_jobs = job_list[:3]
-        
-        if top_jobs:
-            cols = st.columns(3)
-            for idx, job in enumerate(top_jobs):
-                with cols[idx]:
-                    # Company initial as a subtle placeholder
-                    company_initial = job['company_name2'][0].upper() if job['company_name2'] else "C"
-                    match_color = "#10B981" if job['match_score'] >= 70 else "#F59E0B" if job['match_score'] >= 40 else "#EF4444"
-                    st.markdown(f"""
-                    <div style="background: white; padding: 1.2rem; border-radius: 20px; border:1px solid #E2E8F0; height: 100%; transition: all 0.2s; hover:shadow-lg;">
-                        <div style="display: flex; align-items: center; margin-bottom: 0.8rem;">
-                            <div style="width: 40px; height: 40px; border-radius: 12px; background: #2563EB; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; margin-right: 0.8rem;">{company_initial}</div>
-                            <div>
-                                <div style="font-weight: 600;">{job['title']}</div>
-                                <div style="font-size: 0.8rem; color: #64748B;">{job['company_name2']}</div>
-                            </div>
-                        </div>
-                        <div style="font-size: 0.8rem; color: #475569; margin-bottom: 0.5rem;">📍 {job['location']} · 💼 {job['job_type']}</div>
-                        <div style="margin: 0.5rem 0;">
-                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem;">
-                                <span>Match</span>
-                                <span style="font-weight: 600; color: {match_color};">{job['match_score']}%</span>
-                            </div>
-                            <div style="height: 4px; background: #E2E8F0; border-radius: 2px; width: 100%; margin-top: 0.2rem;">
-                                <div style="width: {job['match_score']}%; height: 4px; background: {match_color}; border-radius: 2px;"></div>
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    if st.button("View job", key=f"rec_{job['id']}"):
-                        st.session_state.apply_job_id = job['id']
-                        st.session_state.apply_job_title = job['title']
-                        st.rerun()
+        interview_rate = pending_rate = 0
+
+    m1, m2, m3 = st.columns(3)
+    with m1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="label">Interview Conversion</div>
+            <div class="value">{interview_rate:.1f}%</div>
+            <div class="delta">of all applications</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with m2:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="label">Pending Applications</div>
+            <div class="value">{pending_apps}</div>
+            <div class="delta">{pending_rate:.1f}% of total</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with m3:
+        if applications:
+            dates = [a[7] for a in applications if a[7]]
+            if dates:
+                earliest = min(dates).date()
+                latest = max(dates).date()
+                days_span = (latest - earliest).days or 1
+                apps_per_day = total_apps / days_span
+            else:
+                apps_per_day = 0
         else:
-            st.info("No recommendations available.")
-    else:
-        st.info("No job recommendations available.")
-    
-    # --- Optional: Detailed Charts (collapsible) ---
-    with st.expander("📈 View detailed analytics"):
-        col1, col2 = st.columns(2)
-        with col1:
-            timeline = get_applications_over_time(user_id)
-            if timeline:
-                df = pd.DataFrame(timeline, columns=['date', 'count'])
-                fig = px.line(df, x='date', y='count', title='Applications over time', markers=True)
-                fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#0F172A')
-                st.plotly_chart(fig, use_container_width=True)
-        with col2:
-            stats = get_application_stats(user_id)
-            if stats:
-                df = pd.DataFrame(stats, columns=['status', 'count'])
-                fig = px.pie(df, values='count', names='status', title='Application status',
-                             color_discrete_sequence=['#10B981', '#F59E0B', '#2563EB', '#EF4444'])
-                fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#0F172A')
-                st.plotly_chart(fig, use_container_width=True)
+            apps_per_day = 0
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="label">Applications / Day</div>
+            <div class="value">{apps_per_day:.1f}</div>
+            <div class="delta">over active period</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        timeline = get_applications_over_time(user_id)
+        if timeline:
+            df = pd.DataFrame(timeline, columns=['date', 'count'])
+            fig = px.line(df, x='date', y='count', title='📈 Applications Over Time',
+                          markers=True, line_shape='linear')
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font_color='var(--text)',
+                margin=dict(l=20, r=20, t=40, b=20)
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No application data yet.")
+    with col2:
+        stats = get_application_stats(user_id)
+        if stats:
+            df = pd.DataFrame(stats, columns=['status', 'count'])
+            fig = px.pie(df, values='count', names='status', title='🥧 Application Status',
+                         color_discrete_sequence=px.colors.qualitative.Set3)
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font_color='var(--text)',
+                margin=dict(l=20, r=20, t=40, b=20)
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No status data.")
+
+    if applications:
+        company_counts = {}
+        for app in applications:
+            company_name = app[10]
+            company_counts[company_name] = company_counts.get(company_name, 0) + 1
+        df = pd.DataFrame(list(company_counts.items()), columns=['Company', 'Applications'])
+        df = df.sort_values('Applications', ascending=True).tail(5)
+        fig = px.bar(df, x='Applications', y='Company', orientation='h',
+                     title='🏆 Top Companies by Applications',
+                     color='Applications', color_continuous_scale='Blues')
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font_color='var(--text)',
+            margin=dict(l=20, r=20, t=40, b=20),
+            yaxis={'categoryorder':'total ascending'}
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 elif current_page == "Find Jobs":
     if "apply_job_id" in st.session_state:
@@ -922,6 +804,28 @@ elif current_page == "Find Jobs":
         profile = get_or_create_profile(user_id)
         employee_skills = profile[5] if profile else ""
         jobs = search_jobs(user_id)
+        def job_to_dict(job_tuple):
+            return {
+                'id': job_tuple[0],
+                'company_id': job_tuple[1],
+                'company_name': job_tuple[2],
+                'company_name2': job_tuple[15],
+                'logo': job_tuple[16],
+                'title': job_tuple[3],
+                'category': job_tuple[4],
+                'description': job_tuple[5],
+                'requirements': job_tuple[6],
+                'location': job_tuple[7],
+                'job_type': job_tuple[8],
+                'salary_range': job_tuple[9],
+                'experience_level': job_tuple[10],
+                'skills_required': job_tuple[11],
+                'status': job_tuple[12],
+                'created_at': job_tuple[13],
+                'deadline': job_tuple[14],
+                'applied': job_tuple[17],
+                'saved': job_tuple[18],
+            }
         job_dicts = [job_to_dict(j) for j in jobs]
         with st.expander("🔎 Filters", expanded=True):
             col1, col2, col3, col4 = st.columns(4)
