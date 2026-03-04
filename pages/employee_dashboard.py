@@ -680,7 +680,7 @@ if current_page == "Dashboard":
                 if isinstance(interview_date, datetime) and interview_date > now:
                     upcoming.append(app)
         if upcoming:
-            for app in upcoming[:3]:  # show max 3
+            for app in upcoming[:2]:  # show max 2
                 company = app[10]
                 job_title = app[9]
                 date_str = app[13].strftime('%b %d, %Y at %I:%M %p')
