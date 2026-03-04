@@ -18,3 +18,4 @@ deepface
 tensorflow-cpu
 tf_keras
 scipy
+openai
