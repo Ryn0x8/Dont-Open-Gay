@@ -1436,7 +1436,8 @@ def get_upcoming_interviews(user_id):
     """Fetch interviews that are scheduled and in the future."""
     from database import db
     import datetime
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(timezone.utc)
+
     interviews = []
     apps = get_user_applications(user_id)
     for app in apps:
