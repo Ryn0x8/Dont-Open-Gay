@@ -659,42 +659,46 @@ else:
 
 current_page = st.session_state.sub_tab if st.session_state.sub_tab else st.session_state.main_tab
 if current_page == "Dashboard":
-    st.markdown("## 📊 Welcome to Your Dashboard")
-    
-    # Get data
+    # --- Helper data ---
     user = get_user_by_id(user_id)
     profile = get_or_create_profile(user_id)
-    profile_strength = get_profile_strength(profile)
-    upcoming = get_upcoming_interviews(user_id)
-    activities = get_recent_activities(user_id, 5)
+    profile_strength = get_profile_strength(profile)  # you already have this
+    upcoming = get_upcoming_interviews(user_id)       # from earlier
+    activities = get_recent_activities(user_id, 5)    # from earlier
+    jobs = search_jobs(user_id)
     
-    # ---- Welcome Card with Profile Strength ----
+    # --- Hero Section (Welcome + Profile Strength) ---
     col1, col2 = st.columns([2, 1])
     with col1:
         st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #2563EB, #3B82F6); padding: 1.5rem 2rem; border-radius: 30px; color: white; margin-bottom: 1.5rem;">
-            <h2 style="margin: 0; font-size: 2rem;">👋 Hello, {user[1]}!</h2>
-            <p style="margin: 0.5rem 0 0; opacity: 0.9;">Here's what's happening with your job search today.</p>
+        <div style="margin-bottom: 2rem;">
+            <h1 style="font-size: 2.2rem; font-weight: 600; color: #0F172A; margin: 0;">Welcome back, {user[1]} 👋</h1>
+            <p style="font-size: 1rem; color: #475569; margin-top: 0.3rem;">Here's what's happening with your job search.</p>
         </div>
         """, unsafe_allow_html=True)
     with col2:
-        # Profile strength meter
+        # Profile strength as a clean progress bar
+        strength_color = "#10B981" if profile_strength >= 80 else "#F59E0B" if profile_strength >= 50 else "#EF4444"
         st.markdown(f"""
-        <div style="background: white; padding: 1rem 1.5rem; border-radius: 30px; border: 1px solid var(--border); text-align: center;">
-            <div style="font-size: 2rem; font-weight: 600; color: #2563EB;">{profile_strength}%</div>
-            <div style="font-size: 0.9rem; color: var(--text-light);">Profile Strength</div>
-            <div style="height: 6px; background: #e2e8f0; border-radius: 3px; width: 100%; margin-top: 0.5rem;">
-                <div style="width: {profile_strength}%; height: 6px; background: #2563EB; border-radius: 3px;"></div>
+        <div style="background: white; padding: 1.2rem 1.5rem; border-radius: 20px; border: 1px solid #E2E8F0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.9rem; font-weight: 500; color: #475569;">Profile strength</span>
+                <span style="font-weight: 600; color: {strength_color};">{profile_strength}%</span>
             </div>
-            { '<p style="font-size:0.8rem; margin-top:0.3rem;">⬆️ Complete your profile</p>' if profile_strength < 100 else '<p style="font-size:0.8rem; margin-top:0.3rem;">✅ Profile complete</p>'}
+            <div style="height: 6px; background: #E2E8F0; border-radius: 3px; width: 100%;">
+                <div style="width: {profile_strength}%; height: 6px; background: {strength_color}; border-radius: 3px;"></div>
+            </div>
+            <div style="font-size: 0.8rem; color: #64748B; margin-top: 0.5rem;">
+                { "⬆️ Complete your profile to get better matches" if profile_strength < 100 else "✅ Profile complete!"}
+            </div>
         </div>
         """, unsafe_allow_html=True)
     
-    # ---- Quick Action Buttons ----
-    st.markdown("### ⚡ Quick Actions")
+    # --- Quick Actions (clean buttons) ---
+    st.markdown("### Quick actions")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        if st.button("🔍 Find Jobs", use_container_width=True):
+        if st.button("🔍 Find jobs", use_container_width=True):
             st.session_state.main_tab = "Jobs"
             st.session_state.sub_tab = "Find Jobs"
             st.rerun()
@@ -704,132 +708,146 @@ if current_page == "Dashboard":
             st.session_state.sub_tab = "Messages"
             st.rerun()
     with col3:
-        if st.button("📝 Update Profile", use_container_width=True):
+        if st.button("✏️ Update profile", use_container_width=True):
             st.session_state.main_tab = "Profile"
             st.session_state.sub_tab = "Profile"
             st.rerun()
     with col4:
-        if st.button("📋 My Applications", use_container_width=True):
+        if st.button("📋 Applications", use_container_width=True):
             st.session_state.main_tab = "Applications"
             st.session_state.sub_tab = "My Applications"
             st.rerun()
     
-    # ---- Upcoming Interviews ----
+    # --- Upcoming Interviews (if any) ---
     if upcoming:
-        st.markdown("### 🗓️ Upcoming Interviews")
-        for interview in upcoming[:3]:  # Show max 3
+        st.markdown("### Upcoming interviews")
+        for interview in upcoming[:3]:
             with st.container():
                 col1, col2, col3 = st.columns([3, 2, 1])
                 with col1:
-                    st.markdown(f"**{interview['job_title']}** at {interview['company']}")
+                    st.markdown(f"**{interview['job_title']}** · {interview['company']}")
                 with col2:
-                    st.markdown(f"📅 {interview['datetime'].strftime('%b %d, %Y at %I:%M %p')}")
+                    st.markdown(f"{interview['datetime'].strftime('%b %d, %Y · %I:%M %p')}")
                 with col3:
-                    st.markdown(f"<a href='{interview['link']}' target='_blank'>Join</a>", unsafe_allow_html=True)
+                    st.markdown(f"<a href='{interview['link']}' target='_blank' style='background:#2563EB; color:white; padding:0.2rem 1rem; border-radius:40px; text-decoration:none; font-size:0.8rem;'>Join</a>", unsafe_allow_html=True)
                 st.markdown("---")
-    else:
-        st.info("No upcoming interviews. Keep applying!")
     
-    # ---- Stats Row (Redesigned) ----
+    # --- Stats Row (minimal icons) ---
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.markdown(f"""
-        <div class="stat-card">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📋</div>
-            <h3>Applications</h3>
-            <p>{total_apps}</p>
+        <div style="background: white; padding: 1.2rem; border-radius: 20px; border:1px solid #E2E8F0; text-align:center;">
+            <div style="font-size: 1.8rem; font-weight: 600; color: #2563EB;">{total_apps}</div>
+            <div style="font-size: 0.8rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;">Applications</div>
         </div>
         """, unsafe_allow_html=True)
     with col2:
         st.markdown(f"""
-        <div class="stat-card">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🗓️</div>
-            <h3>Interviews</h3>
-            <p>{interview_count}</p>
+        <div style="background: white; padding: 1.2rem; border-radius: 20px; border:1px solid #E2E8F0; text-align:center;">
+            <div style="font-size: 1.8rem; font-weight: 600; color: #2563EB;">{interview_count}</div>
+            <div style="font-size: 0.8rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;">Interviews</div>
         </div>
         """, unsafe_allow_html=True)
     with col3:
         st.markdown(f"""
-        <div class="stat-card">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">💬</div>
-            <h3>Unread</h3>
-            <p>{unread_msgs}</p>
+        <div style="background: white; padding: 1.2rem; border-radius: 20px; border:1px solid #E2E8F0; text-align:center;">
+            <div style="font-size: 1.8rem; font-weight: 600; color: #2563EB;">{unread_msgs}</div>
+            <div style="font-size: 0.8rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;">Unread messages</div>
         </div>
         """, unsafe_allow_html=True)
     with col4:
         st.markdown(f"""
-        <div class="stat-card">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔖</div>
-            <h3>Saved</h3>
-            <p>{saved_count}</p>
+        <div style="background: white; padding: 1.2rem; border-radius: 20px; border:1px solid #E2E8F0; text-align:center;">
+            <div style="font-size: 1.8rem; font-weight: 600; color: #2563EB;">{saved_count}</div>
+            <div style="font-size: 0.8rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;">Saved jobs</div>
         </div>
         """, unsafe_allow_html=True)
     
-    # ---- Recent Activity Feed ----
-    st.markdown("### 🔔 Recent Activity")
+    # --- Recent Activity Feed ---
+    st.markdown("### Recent activity")
     if activities:
         for act in activities:
+            # Set a subtle left border color based on type
+            border_color = "#2563EB" if act['type'] == 'application' else "#8B5CF6" if act['type'] == 'message' else "#F59E0B"
             with st.container():
-                col1, col2 = st.columns([1, 6])
-                with col1:
-                    st.markdown(f"<div style='font-size:1.5rem;'>{act['icon']}</div>", unsafe_allow_html=True)
-                with col2:
-                    st.markdown(f"**{act['title']}**  \n{act['message']}  \n<small>{act['time'].strftime('%b %d, %H:%M') if act['time'] else ''}</small>", unsafe_allow_html=True)
-                st.markdown("---")
+                st.markdown(f"""
+                <div style="padding: 0.75rem 0; border-left: 3px solid {border_color}; padding-left: 1rem; margin-bottom: 0.5rem;">
+                    <div style="font-weight: 500;">{act['title']}</div>
+                    <div style="font-size: 0.9rem; color: #475569;">{act['message']}</div>
+                    <div style="font-size: 0.7rem; color: #94A3B8;">{act['time'].strftime('%b %d, %H:%M') if act['time'] else ''}</div>
+                </div>
+                """, unsafe_allow_html=True)
     else:
         st.info("No recent activity.")
     
-    # ---- Recommended Jobs ----
-    st.markdown("### ⭐ Recommended for You")
-    jobs = search_jobs(user_id)
+    # --- Recommended Jobs ---
+    st.markdown("### Recommended for you")
     if jobs:
-        # Calculate match scores (already have function)
+        # Build list with match scores
         job_list = []
         for j in jobs:
             job_dict = job_to_dict(j)
             job_dict['match_score'] = calculate_match_score(job_dict['skills_required'], profile[5])
             job_list.append(job_dict)
-        # Sort by match score
         job_list.sort(key=lambda x: x['match_score'], reverse=True)
         top_jobs = job_list[:3]
-        cols = st.columns(3)
-        for idx, job in enumerate(top_jobs):
-            with cols[idx]:
-                st.markdown(f"""
-                <div class="job-card" style="padding: 1rem;">
-                    <h4 style="margin:0 0 0.3rem;">{job['title']}</h4>
-                    <p style="color: var(--primary); font-size:0.9rem;">{job['company_name2']}</p>
-                    <p style="font-size:0.8rem;">📍 {job['location']} | 💼 {job['job_type']}</p>
-                    <p><span style="background: #DBEAFE; padding:0.2rem 0.6rem; border-radius:40px; font-size:0.7rem;">{job['category']}</span></p>
-                    <p><strong>Match: {job['match_score']}%</strong></p>
-                </div>
-                """, unsafe_allow_html=True)
-                if st.button("View", key=f"rec_{job['id']}"):
-                    st.session_state.apply_job_id = job['id']
-                    st.session_state.apply_job_title = job['title']
-                    st.rerun()
+        
+        if top_jobs:
+            cols = st.columns(3)
+            for idx, job in enumerate(top_jobs):
+                with cols[idx]:
+                    # Company initial as a subtle placeholder
+                    company_initial = job['company_name2'][0].upper() if job['company_name2'] else "C"
+                    match_color = "#10B981" if job['match_score'] >= 70 else "#F59E0B" if job['match_score'] >= 40 else "#EF4444"
+                    st.markdown(f"""
+                    <div style="background: white; padding: 1.2rem; border-radius: 20px; border:1px solid #E2E8F0; height: 100%; transition: all 0.2s; hover:shadow-lg;">
+                        <div style="display: flex; align-items: center; margin-bottom: 0.8rem;">
+                            <div style="width: 40px; height: 40px; border-radius: 12px; background: #2563EB; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; margin-right: 0.8rem;">{company_initial}</div>
+                            <div>
+                                <div style="font-weight: 600;">{job['title']}</div>
+                                <div style="font-size: 0.8rem; color: #64748B;">{job['company_name2']}</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.8rem; color: #475569; margin-bottom: 0.5rem;">📍 {job['location']} · 💼 {job['job_type']}</div>
+                        <div style="margin: 0.5rem 0;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem;">
+                                <span>Match</span>
+                                <span style="font-weight: 600; color: {match_color};">{job['match_score']}%</span>
+                            </div>
+                            <div style="height: 4px; background: #E2E8F0; border-radius: 2px; width: 100%; margin-top: 0.2rem;">
+                                <div style="width: {job['match_score']}%; height: 4px; background: {match_color}; border-radius: 2px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if st.button("View job", key=f"rec_{job['id']}"):
+                        st.session_state.apply_job_id = job['id']
+                        st.session_state.apply_job_title = job['title']
+                        st.session_state.main_tab = "Jobs"
+                        st.session_state.sub_tab = "Find Jobs"
+                        st.rerun()
+        else:
+            st.info("No recommendations available.")
     else:
         st.info("No job recommendations available.")
     
-    # ---- Keep existing charts if you want (optional) ----
-    # You can optionally keep the charts below or remove them if the dashboard feels cluttered.
-    # I'll keep them in a collapsible expander to save space.
-    with st.expander("📈 View Detailed Analytics"):
+    # --- Optional: Detailed Charts (collapsible) ---
+    with st.expander("📈 View detailed analytics"):
         col1, col2 = st.columns(2)
         with col1:
             timeline = get_applications_over_time(user_id)
             if timeline:
                 df = pd.DataFrame(timeline, columns=['date', 'count'])
-                fig = px.line(df, x='date', y='count', title='Applications Over Time', markers=True)
-                fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='var(--text)')
+                fig = px.line(df, x='date', y='count', title='Applications over time', markers=True)
+                fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#0F172A')
                 st.plotly_chart(fig, use_container_width=True)
         with col2:
             stats = get_application_stats(user_id)
             if stats:
                 df = pd.DataFrame(stats, columns=['status', 'count'])
-                fig = px.pie(df, values='count', names='status', title='Application Status',
-                             color_discrete_sequence=px.colors.qualitative.Set3)
-                fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='var(--text)')
+                fig = px.pie(df, values='count', names='status', title='Application status',
+                             color_discrete_sequence=['#10B981', '#F59E0B', '#2563EB', '#EF4444'])
+                fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#0F172A')
                 st.plotly_chart(fig, use_container_width=True)
 
 elif current_page == "Find Jobs":
