@@ -21,6 +21,7 @@ from database import (
     delete_job_request, update_job_request, update_user_password
 )
 from database import update_expired_jobs
+from utils import get_resume_goodness_score, parse_resume_with_groq, extract_text_from_pdf
 
 update_expired_jobs()
 
@@ -791,10 +792,6 @@ if current_page == "Dashboard":
         # Compute match score and filter for not applied, good match
         recommendations = []
         for job_tuple in jobs:
-            # job_tuple indices: 0:id,1:company_id,2:company_name,3:title,4:category,5:description,
-            # 6:requirements,7:location,8:job_type,9:salary_range,10:experience_level,
-            # 11:skills_required,12:status,13:created_at,14:deadline,15:company_name2,
-            # 16:logo,17:applied,18:saved
             if job_tuple[17] == 1:  # already applied
                 continue
             match = calculate_match_score(job_tuple[11], employee_skills)
@@ -1530,9 +1527,13 @@ elif current_page == "Notifications":
 
 elif current_page == "Profile":
     st.markdown("## 👤 My Profile")
+
     user = get_user_by_id(user_id)
     profile = get_or_create_profile(user_id)
+
+    # --- Left Column (Avatar, basic info, resume, etc.) ---
     col1, col2 = st.columns([1, 2])
+
     with col1:
         st.markdown(f"""
         <div style="text-align:center;">
@@ -1543,55 +1544,132 @@ elif current_page == "Profile":
             {f'<p>📍 {profile[2]}</p>' if profile[2] else ''}
         </div>
         """, unsafe_allow_html=True)
+
         st.markdown("---")
         st.markdown("#### 📄 Resume/CV")
+
+        # Show current resume download link if exists
         if profile[4]:
             st.markdown(get_resume_download_link(profile[4], "📥 Download Current Resume"), unsafe_allow_html=True)
-        uploaded_file = st.file_uploader("Upload New Resume (PDF)", type=['pdf'])
-        if uploaded_file:
-            resume_dir = "resumes"
-            os.makedirs(resume_dir, exist_ok=True)
-            resume_path = os.path.join(resume_dir, f"{user[2]}_{uploaded_file.name}")
-            with open(resume_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            update_profile(user_id, resume_path=resume_path)
-            st.success("Resume uploaded!")
-            st.rerun()
+
+        # Resume upload handling
+        uploaded_file = st.file_uploader("Upload New Resume (PDF)", type=['pdf'], key="resume_uploader")
+
+        # Initialize session state for resume processing if not present
+        if "uploaded_resume" not in st.session_state:
+            st.session_state.uploaded_resume = None
+        if "show_autofill_buttons" not in st.session_state:
+            st.session_state.show_autofill_buttons = False
+        if "goodness_feedback" not in st.session_state:
+            st.session_state.goodness_feedback = None
+
+        # When a new file is uploaded, store it and show autofill options
+        if uploaded_file is not None:
+            # Read file bytes and store in session state (only if new file)
+            if st.session_state.uploaded_resume != uploaded_file:
+                st.session_state.uploaded_resume = uploaded_file
+                st.session_state.show_autofill_buttons = True
+                st.session_state.goodness_feedback = None  # reset old feedback
+                st.rerun()  # immediately rerun to show buttons
+
+        # If we have a pending upload and autofill buttons are shown
+        if st.session_state.show_autofill_buttons and st.session_state.uploaded_resume:
+            col_a, col_b = st.columns(2)
+            with col_a:
+                if st.button("📄 Autofill Profile with AI", use_container_width=True):
+                    # Process the resume
+                    with st.spinner("Reading resume..."):
+                        file_bytes = st.session_state.uploaded_resume.getvalue()
+                        resume_text = extract_text_from_pdf(file_bytes)
+                        if not resume_text:
+                            st.error("Could not extract text from PDF.")
+                        else:
+                            # Parse with Groq
+                            parsed = parse_resume_with_groq(resume_text)
+                            if parsed:
+                                # Save resume file permanently
+                                resume_dir = "resumes"
+                                os.makedirs(resume_dir, exist_ok=True)
+                                resume_path = os.path.join(resume_dir, f"{user[2]}_{st.session_state.uploaded_resume.name}")
+                                with open(resume_path, "wb") as f:
+                                    f.write(file_bytes)
+
+                                # Update profile with parsed data
+                                update_profile(
+                                    user_id,
+                                    phone=parsed.get("phone_number", ""),
+                                    location=parsed.get("location", ""),
+                                    experience_level=parsed.get("experience_level", ""),
+                                    skills=", ".join(parsed.get("skills", [])),
+                                    bio=parsed.get("bio", ""),
+                                    linkedin_url=parsed.get("linkedin_link", ""),
+                                    github_url=parsed.get("github_link", ""),
+                                    portfolio_url=parsed.get("portfolio_link", ""),
+                                    resume_path=resume_path
+                                )
+                                st.success("✅ Profile autofilled from resume!")
+                                # Clear upload state so buttons disappear
+                                st.session_state.uploaded_resume = None
+                                st.session_state.show_autofill_buttons = False
+                                # Store resume text for possible goodness score
+                                st.session_state.last_resume_text = resume_text
+                                st.rerun()
+            with col_b:
+                if st.button("❌ Cancel", use_container_width=True):
+                    st.session_state.uploaded_resume = None
+                    st.session_state.show_autofill_buttons = False
+                    st.rerun()
+
+        # After autofill, offer goodness score button (if we have resume text)
+        if st.session_state.get("last_resume_text") and not st.session_state.show_autofill_buttons:
+            if st.button("✨ Get Resume Goodness Score", use_container_width=True):
+                with st.spinner("Analyzing..."):
+                    feedback = get_resume_goodness_score(st.session_state.last_resume_text)
+                    st.session_state.goodness_feedback = feedback
+                    st.rerun()
+
+        # Display goodness feedback if available
+        if st.session_state.get("goodness_feedback"):
+            st.markdown(f"""
+            <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 0.8rem; border-radius: 8px; margin-top: 0.5rem;">
+                <p style="font-size:0.85rem; margin:0;"><strong>✨ Resume Insight</strong><br>{st.session_state.goodness_feedback}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
         st.markdown("---")
         st.markdown("#### 🌐 Social Links")
         if profile[10]: st.markdown(f"[LinkedIn]({profile[10]})")
         if profile[11]: st.markdown(f"[GitHub]({profile[11]})")
         if profile[12]: st.markdown(f"[Portfolio]({profile[12]})")
 
-        # --- New: Change Password Section ---
+        # --- Change Password Section (unchanged) ---
         st.markdown("---")
         st.markdown("#### 🔐 Change Password")
         if "password_change_step" not in st.session_state:
-            st.session_state.password_change_step = 1  # 1: request OTP, 2: verify, 3: new password
+            st.session_state.password_change_step = 1
             st.session_state.otp = None
-            st.session_state.otp_sent = False
 
         if st.session_state.password_change_step == 1:
             if st.button("Send Verification Code"):
                 otp = generate_otp()
                 st.session_state.otp = otp
                 if send_otp_email(st.session_state.user_email, otp):
-                    st.success("OTP sent to your email. Please check your inbox.")
+                    st.success("OTP sent to your email.")
                     st.session_state.password_change_step = 2
                     st.rerun()
                 else:
-                    st.error("Failed to send OTP. Try again later.")
+                    st.error("Failed to send OTP.")
         elif st.session_state.password_change_step == 2:
             otp_input = st.text_input("Enter 6-digit OTP", max_chars=6)
             col_a, col_b = st.columns(2)
             with col_a:
                 if st.button("Verify OTP"):
                     if otp_input == st.session_state.otp:
-                        st.success("OTP verified. Now set your new password.")
+                        st.success("OTP verified.")
                         st.session_state.password_change_step = 3
                         st.rerun()
                     else:
-                        st.error("Invalid OTP. Please try again.")
+                        st.error("Invalid OTP.")
             with col_b:
                 if st.button("Cancel"):
                     st.session_state.password_change_step = 1
@@ -1608,11 +1686,9 @@ elif current_page == "Profile":
                     elif len(new_pass) < 8:
                         st.error("Password must be at least 8 characters.")
                     else:
-                        new_pass_hash = hash_password(new_pass)
-                        update_user_password(st.session_state.user_id, new_pass_hash)
-                        st.success("Password updated successfully!")
+                        update_user_password(st.session_state.user_id, hash_password(new_pass))
+                        st.success("Password updated!")
                         st.session_state.password_change_step = 1
-                        time.sleep(2)
                         st.session_state.otp = None
                         st.rerun()
             with col_b:
@@ -1621,6 +1697,7 @@ elif current_page == "Profile":
                     st.session_state.otp = None
                     st.rerun()
 
+    # --- Right Column (Edit Profile Form) ---
     with col2:
         with st.form("profile_edit_form"):
             st.markdown("#### ✏️ Edit Profile")
@@ -1656,7 +1733,7 @@ elif current_page == "Profile":
                 st.success("Profile updated!")
                 st.rerun()
 
-    # --- Logout and Admin buttons (text links) ---
+    # --- Logout and Admin buttons (unchanged) ---
     st.markdown("---")
     col_logout, col_admin = st.columns(2)
     with col_logout:
@@ -1670,6 +1747,7 @@ elif current_page == "Profile":
             if st.button("🛡️ Admin Panel", type="secondary"):
                 st.session_state.previous_page = "pages/employee_dashboard.py"
                 st.switch_page("pages/admin_dashboard.py")
+
 
 elif current_page == "Analytics":
     st.markdown("## 📊 My Analytics")
