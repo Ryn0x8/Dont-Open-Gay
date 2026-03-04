@@ -18,7 +18,7 @@ from database import (
     add_job_request, get_user_requests,
     get_conversations, get_messages, send_message, mark_messages_read,
     get_application_stats, get_applications_over_time, get_interview_count,
-    delete_job_request, update_job_request, update_user_password, get_profile_strength, get_upcoming_interviews, get_recent_activities
+    delete_job_request, update_job_request, update_user_password
 )
 from database import update_expired_jobs
 
@@ -645,137 +645,110 @@ else:
 
 current_page = st.session_state.sub_tab if st.session_state.sub_tab else st.session_state.main_tab
 if current_page == "Dashboard":
-    # --- Data (already fetched) ---
-    user = get_user_by_id(user_id)
-    profile = get_or_create_profile(user_id)
-    profile_strength = get_profile_strength(profile)
-    upcoming = get_upcoming_interviews(user_id)[:2]
-    activities = get_recent_activities(user_id, 3)[:3]
-    jobs = search_jobs(user_id)
+    st.markdown("## 📊 Overview")
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    with kpi1:
+        st.markdown(f'<div class="stat-card"><h3>📋 Applications</h3><p>{total_apps}</p></div>', unsafe_allow_html=True)
+    with kpi2:
+        st.markdown(f'<div class="stat-card"><h3>🗓️ Interviews</h3><p>{interview_count}</p></div>', unsafe_allow_html=True)
+    with kpi3:
+        st.markdown(f'<div class="stat-card"><h3>💬 Unread</h3><p>{unread_msgs}</p></div>', unsafe_allow_html=True)
+    with kpi4:
+        st.markdown(f'<div class="stat-card"><h3>🔖 Saved</h3><p>{saved_count}</p></div>', unsafe_allow_html=True)
 
-    # --- Profile strength (refined) ---
-    strength_color = "#0A84FF" if profile_strength >= 80 else "#FF9F0A" if profile_strength >= 50 else "#FF3B30"
-    st.markdown(f"""
-    <div style="margin-bottom: 1.5rem;">
-        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.3rem;">
-            <span style="font-size: 0.85rem; font-weight: 500; color: #1C1E27;">Profile completeness</span>
-            <span style="font-size: 0.9rem; font-weight: 600; color: {strength_color};">{profile_strength}%</span>
-        </div>
-        <div style="height: 6px; background: #E9ECF0; border-radius: 3px; overflow: hidden;">
-            <div style="width: {profile_strength}%; height: 6px; background: linear-gradient(90deg, {strength_color}, {strength_color}dd); border-radius: 3px;"></div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # --- Key metrics as minimal cards ---
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.markdown("""
-        <div style="background: white; border-radius: 16px; padding: 1rem 0.5rem; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); border: 1px solid #F0F2F5;">
-            <div style="font-size: 1.8rem; font-weight: 600; color: #1C1E27;">{}</div>
-            <div style="font-size: 0.7rem; color: #6C7A8D; letter-spacing: 0.02em;">APPLICATIONS</div>
-        </div>
-        """.format(total_apps), unsafe_allow_html=True)
-    with col2:
-        st.markdown("""
-        <div style="background: white; border-radius: 16px; padding: 1rem 0.5rem; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); border: 1px solid #F0F2F5;">
-            <div style="font-size: 1.8rem; font-weight: 600; color: #1C1E27;">{}</div>
-            <div style="font-size: 0.7rem; color: #6C7A8D; letter-spacing: 0.02em;">INTERVIEWS</div>
-        </div>
-        """.format(interview_count), unsafe_allow_html=True)
-    with col3:
-        st.markdown("""
-        <div style="background: white; border-radius: 16px; padding: 1rem 0.5rem; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); border: 1px solid #F0F2F5;">
-            <div style="font-size: 1.8rem; font-weight: 600; color: #1C1E27;">{}</div>
-            <div style="font-size: 0.7rem; color: #6C7A8D; letter-spacing: 0.02em;">UNREAD</div>
-        </div>
-        """.format(unread_msgs), unsafe_allow_html=True)
-    with col4:
-        st.markdown("""
-        <div style="background: white; border-radius: 16px; padding: 1rem 0.5rem; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); border: 1px solid #F0F2F5;">
-            <div style="font-size: 1.8rem; font-weight: 600; color: #1C1E27;">{}</div>
-            <div style="font-size: 0.7rem; color: #6C7A8D; letter-spacing: 0.02em;">SAVED</div>
-        </div>
-        """.format(saved_count), unsafe_allow_html=True)
-
-    # --- Two‑column layout with refined cards ---
-    col_left, col_right = st.columns(2, gap="medium")
-
-    with col_left:
-        st.markdown("#### ⏳ Upcoming")
-        if upcoming:
-            for inv in upcoming:
-                st.markdown(f"""
-                <div style="background: white; border-radius: 14px; padding: 0.75rem; margin-bottom: 0.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.02); border: 1px solid #F0F2F5;">
-                    <div style="font-weight: 600; font-size: 0.95rem;">{inv['job_title']}</div>
-                    <div style="font-size: 0.8rem; color: #5B6C7E;">{inv['company']}</div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.3rem;">
-                        <span style="font-size: 0.7rem; color: #8A99AA;">{inv['datetime'].strftime('%b %d · %I:%M %p')}</span>
-                        <a href="{inv['link']}" target="_blank" style="font-size: 0.7rem; color: #0A84FF; text-decoration: none;">Join →</a>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.caption("No interviews scheduled")
-
-    with col_right:
-        st.markdown("#### 🔔 Recent")
-        if activities:
-            for act in activities:
-                accent = "#0A84FF" if act['type']=='application' else "#8A56E2"
-                st.markdown(f"""
-                <div style="background: white; border-radius: 14px; padding: 0.75rem; margin-bottom: 0.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.02); border-left: 3px solid {accent};">
-                    <div style="font-weight: 500; font-size: 0.9rem;">{act['title']}</div>
-                    <div style="font-size: 0.75rem; color: #6C7A8D;">{act['message'][:60]}{'…' if len(act['message'])>60 else ''}</div>
-                    <div style="font-size: 0.65rem; color: #9AABBC; margin-top: 0.2rem;">{act['time'].strftime('%b %d · %H:%M') if act['time'] else ''}</div>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.caption("No recent activity")
-
-    # --- Recommended jobs (3 cards, sleek) ---
-    st.markdown("#### 💡 Recommended for you")
-    if jobs:
-        job_list = []
-        for j in jobs:
-            job_dict = job_tuple_to_dict(j)
-            job_dict['match_score'] = calculate_match_score(job_dict['skills_required'], profile[5])
-            job_list.append(job_dict)
-        job_list.sort(key=lambda x: x['match_score'], reverse=True)
-        top = job_list[:3]
-
-        cols = st.columns(3, gap="small")
-        for idx, job in enumerate(top):
-            match_color = "#30B0C0" if job['match_score']>=70 else "#FF9F0A" if job['match_score']>=40 else "#FF5A5A"
-            with cols[idx]:
-                st.markdown(f"""
-                <div style="background: white; border-radius: 18px; padding: 0.9rem; border: 1px solid #F0F2F5; box-shadow: 0 2px 6px rgba(0,0,0,0.02); height: 100%; display: flex; flex-direction: column;">
-                    <div style="font-weight: 600; font-size: 1rem; margin-bottom: 0.2rem;">{job['title']}</div>
-                    <div style="font-size: 0.75rem; color: #5B6C7E;">{job['company_name2']}</div>
-                    <div style="font-size: 0.7rem; color: #8A99AA; margin: 0.3rem 0;">📍 {job['location']}</div>
-                    <div style="margin: 0.3rem 0;">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.65rem;">
-                            <span>Match</span>
-                            <span style="color: {match_color};">{job['match_score']}%</span>
-                        </div>
-                        <div style="height: 3px; background: #E9ECF0; border-radius: 2px; margin-top: 0.1rem;">
-                            <div style="width: {job['match_score']}%; height: 3px; background: {match_color}; border-radius: 2px;"></div>
-                        </div>
-                    </div>
-                    <div style="margin-top: auto; padding-top: 0.5rem;">
-                        <a href="#" style="font-size: 0.7rem; color: #0A84FF; text-decoration: none;" onclick="alert('Apply flow would start')">View →</a>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                # Note: Streamlit buttons break card layout; use a link or keep button small
-                # For proper navigation, use st.button but it will wrap.
-                # I'll keep a simple st.button below the card (outside the HTML) for functionality.
-                if st.button(f"View", key=f"rec_{job['id']}"):
-                    st.session_state.apply_job_id = job['id']
-                    st.session_state.apply_job_title = job['title']
-                    st.rerun()
+    if total_apps > 0:
+        interview_rate = (interview_count / total_apps) * 100
+        pending_rate = (pending_apps / total_apps) * 100
     else:
-        st.caption("No recommendations yet")
+        interview_rate = pending_rate = 0
+
+    m1, m2, m3 = st.columns(3)
+    with m1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="label">Interview Conversion</div>
+            <div class="value">{interview_rate:.1f}%</div>
+            <div class="delta">of all applications</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with m2:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="label">Pending Applications</div>
+            <div class="value">{pending_apps}</div>
+            <div class="delta">{pending_rate:.1f}% of total</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with m3:
+        if applications:
+            dates = [a[7] for a in applications if a[7]]
+            if dates:
+                earliest = min(dates).date()
+                latest = max(dates).date()
+                days_span = (latest - earliest).days or 1
+                apps_per_day = total_apps / days_span
+            else:
+                apps_per_day = 0
+        else:
+            apps_per_day = 0
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="label">Applications / Day</div>
+            <div class="value">{apps_per_day:.1f}</div>
+            <div class="delta">over active period</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        timeline = get_applications_over_time(user_id)
+        if timeline:
+            df = pd.DataFrame(timeline, columns=['date', 'count'])
+            fig = px.line(df, x='date', y='count', title='📈 Applications Over Time',
+                          markers=True, line_shape='linear')
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font_color='var(--text)',
+                margin=dict(l=20, r=20, t=40, b=20)
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No application data yet.")
+    with col2:
+        stats = get_application_stats(user_id)
+        if stats:
+            df = pd.DataFrame(stats, columns=['status', 'count'])
+            fig = px.pie(df, values='count', names='status', title='🥧 Application Status',
+                         color_discrete_sequence=px.colors.qualitative.Set3)
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font_color='var(--text)',
+                margin=dict(l=20, r=20, t=40, b=20)
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No status data.")
+
+    if applications:
+        company_counts = {}
+        for app in applications:
+            company_name = app[10]
+            company_counts[company_name] = company_counts.get(company_name, 0) + 1
+        df = pd.DataFrame(list(company_counts.items()), columns=['Company', 'Applications'])
+        df = df.sort_values('Applications', ascending=True).tail(5)
+        fig = px.bar(df, x='Applications', y='Company', orientation='h',
+                     title='🏆 Top Companies by Applications',
+                     color='Applications', color_continuous_scale='Blues')
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font_color='var(--text)',
+            margin=dict(l=20, r=20, t=40, b=20),
+            yaxis={'categoryorder':'total ascending'}
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 elif current_page == "Find Jobs":
     if "apply_job_id" in st.session_state:
