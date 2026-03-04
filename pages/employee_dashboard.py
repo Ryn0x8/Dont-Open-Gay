@@ -1554,6 +1554,10 @@ elif current_page == "Profile":
 
         uploaded_file = st.file_uploader("Upload New Resume (PDF)", type=['pdf'], key="resume_uploader")
 
+        if not uploaded_file:
+            for states in ["uploaded_resume", "uploaded_resume_name", "show_autofill_buttons", "goodness_feedback"]:
+                if states in st.session_state:
+                    del st.session_state[states]
         # Initialize session state for resume processing if not present
         if "uploaded_resume" not in st.session_state:
             st.session_state.uploaded_resume = None
@@ -1575,7 +1579,7 @@ elif current_page == "Profile":
                 st.session_state.goodness_feedback = None  # reset old feedback
                 time.sleep(0.5)  # slight delay to ensure state updates
                 st.rerun()  # immediately rerun to show buttons
-                
+
         # If we have a pending upload and autofill buttons are shown
         if st.session_state.show_autofill_buttons and st.session_state.uploaded_resume:
             col_a, col_b = st.columns(2)
