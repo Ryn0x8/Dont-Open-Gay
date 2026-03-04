@@ -689,42 +689,32 @@ if current_page == "Dashboard":
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         if st.button("🔍 Find jobs", use_container_width=True):
-            # Clear pills keys
-            if "main_pills" in st.session_state:
-                del st.session_state["main_pills"]
-            if "sub_pills_Jobs" in st.session_state:
-                del st.session_state["sub_pills_Jobs"]
+            st.session_state["main_pills"] = "Jobs"
             st.session_state.main_tab = "Jobs"
+            st.session_state["sub_pills_Jobs"] = "Find Jobs"
             st.session_state.sub_tab = "Find Jobs"
             st.rerun()
     with col2:
         if st.button("💬 Messages", use_container_width=True):
-            if "main_pills" in st.session_state:
-                del st.session_state["main_pills"]
-            if "sub_pills_Profile" in st.session_state:
-                del st.session_state["sub_pills_Profile"]
+            st.session_state["main_pills"] = "Profile"
             st.session_state.main_tab = "Profile"
+            st.session_state["sub_pills_Profile"] = "Messages"
             st.session_state.sub_tab = "Messages"
             st.rerun()
     with col3:
         if st.button("✏️ Update profile", use_container_width=True):
-            if "main_pills" in st.session_state:
-                del st.session_state["main_pills"]
-            if "sub_pills_Profile" in st.session_state:
-                del st.session_state["sub_pills_Profile"]
+            st.session_state["main_pills"] = "Profile"
             st.session_state.main_tab = "Profile"
+            st.session_state["sub_pills_Profile"] = "Profile"
             st.session_state.sub_tab = "Profile"
             st.rerun()
     with col4:
         if st.button("📋 Applications", use_container_width=True):
-            if "main_pills" in st.session_state:
-                del st.session_state["main_pills"]
-            if "sub_pills_Applications" in st.session_state:
-                del st.session_state["sub_pills_Applications"]
+            st.session_state["main_pills"] = "Applications"
             st.session_state.main_tab = "Applications"
+            st.session_state["sub_pills_Applications"] = "My Applications"
             st.session_state.sub_tab = "My Applications"
-            st.rerun()
-    
+            st.rerun()    
     # --- Upcoming Interviews (if any) ---
     if upcoming:
         st.markdown("### Upcoming interviews")
