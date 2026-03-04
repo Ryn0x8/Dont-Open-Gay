@@ -1555,7 +1555,7 @@ elif current_page == "Profile":
         uploaded_file = st.file_uploader("Upload New Resume (PDF)", type=['pdf'], key="resume_uploader")
 
         if not uploaded_file:
-            for states in ["uploaded_resume", "uploaded_resume_name", "show_autofill_buttons", "goodness_feedback"]:
+            for states in ["uploaded_resume", "uploaded_resume_name", "show_autofill_buttons", "goodness_feedback", "last_resume_text"]:
                 if states in st.session_state:
                     del st.session_state[states]
         # Initialize session state for resume processing if not present
