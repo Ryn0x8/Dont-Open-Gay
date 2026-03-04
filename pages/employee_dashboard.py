@@ -7,7 +7,7 @@ import time
 import plotly.express as px
 import random
 import string
-from datetime import datetime
+from datetime import datetime, timezone
 from streamlit_option_menu import option_menu
 from auth_utils import send_email, hash_password  
 from database import (
@@ -673,7 +673,7 @@ if current_page == "Dashboard":
         st.markdown("#### 🗓️ Upcoming Interviews")
         # Filter applications with scheduled interview and future date
         upcoming = []
-        now = datetime.now()
+        now = datetime.now(timezone.utc())
         for app in applications:
             if len(app) > 14 and app[14] == 'scheduled' and app[13]:
                 interview_date = app[13]
