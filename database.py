@@ -1416,3 +1416,54 @@ def update_company_password(company_id, new_password_hash):
         user_doc.reference.update({'password': new_password_hash})
     else:
         raise ValueError(f"No user found for company_id {company_id}")
+
+def get_profile_strength(profile):
+    """Calculate profile completion percentage."""
+    fields = [
+        profile[1],  # phone
+        profile[2],  # location
+        profile[4],  # resume_path
+        profile[5],  # skills
+        profile[6],  # experience_level
+        profile[7],  # preferred_job_type
+        profile[8],  # expected_salary
+        profile[9],  # bio
+    ]
+    filled = sum(1 for f in fields if f and str(f).strip())
+    return int((filled / len(fields)) * 100)
+
+def get_upcoming_interviews(user_id):
+    """Fetch interviews that are scheduled and in the future."""
+    from database import db
+    import datetime
+    now = datetime.datetime.now()
+    interviews = []
+    apps = get_user_applications(user_id)
+    for app in apps:
+        if app[14] == 'scheduled' and app[13] and app[13] > now:
+            interviews.append({
+                'company': app[10],
+                'job_title': app[9],
+                'datetime': app[13],
+                'link': app[15],
+                'application_id': app[0]
+            })
+    return sorted(interviews, key=lambda x: x['datetime'])
+
+def get_recent_activities(user_id, limit=5):
+    """Combine recent notifications and application updates."""
+    from database import db
+    activities = []
+    # Notifications
+    notifs = get_user_notifications(user_id, limit=limit)
+    for n in notifs:
+        activities.append({
+            'type': n[2],
+            'title': n[3],
+            'message': n[4],
+            'time': n[7],
+            'icon': '📝' if n[2]=='application' else '💬' if n[2]=='message' else '🔔'
+        })
+    # Sort by time desc
+    activities.sort(key=lambda x: x['time'] if x['time'] else datetime.datetime.min, reverse=True)
+    return activities[:limit]
