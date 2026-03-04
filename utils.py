@@ -78,6 +78,12 @@ Resume Text:
             temperature=0
         )
         content = response.choices[0].message.content.strip()
+        if content.startswith("```json"):
+            content = content[7:]
+        if content.endswith("```"):
+            content = content[:-3]
+        content = content.strip()
+
         return json.loads(content)
     except Exception as e:
         st.error(f"AI parsing failed: {e}")
