@@ -1567,9 +1567,11 @@ elif current_page == "Profile":
         if uploaded_file is not None:
             # Read file bytes and store in session state (only if new file)
             if st.session_state.uploaded_resume != uploaded_file:
+                st.info("Resume uploaded. You can now autofill your profile or get a goodness score.")
                 st.session_state.uploaded_resume = uploaded_file
                 st.session_state.show_autofill_buttons = True
                 st.session_state.goodness_feedback = None  # reset old feedback
+                time.sleep(0.5)  # slight delay to ensure state updates
                 st.rerun()  # immediately rerun to show buttons
 
         # If we have a pending upload and autofill buttons are shown
