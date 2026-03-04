@@ -1531,7 +1531,6 @@ elif current_page == "Profile":
     user = get_user_by_id(user_id)
     profile = get_or_create_profile(user_id)
 
-    # --- Left Column (Avatar, basic info, resume, etc.) ---
     col1, col2 = st.columns([1, 2])
 
     with col1:
@@ -1548,7 +1547,6 @@ elif current_page == "Profile":
         st.markdown("---")
         st.markdown("#### 📄 Resume/CV")
 
-        # Show current resume download link if exists
         if profile[4]:
             st.markdown(get_resume_download_link(profile[4], "📥 Download Current Resume"), unsafe_allow_html=True)
 
@@ -1558,34 +1556,30 @@ elif current_page == "Profile":
             for states in ["uploaded_resume", "uploaded_resume_name", "show_autofill_buttons", "goodness_feedback", "last_resume_text"]:
                 if states in st.session_state:
                     del st.session_state[states]
-        # Initialize session state for resume processing if not present
+
         if "uploaded_resume" not in st.session_state:
             st.session_state.uploaded_resume = None
-        if "uploaded_resume_name" not in st.session_state:  # store filename
+        if "uploaded_resume_name" not in st.session_state:  
             st.session_state.uploaded_resume_name = None
         if "show_autofill_buttons" not in st.session_state:
             st.session_state.show_autofill_buttons = False
         if "goodness_feedback" not in st.session_state:
             st.session_state.goodness_feedback = None
 
-        # When a new file is uploaded, store it and show autofill options
         if uploaded_file is not None:
-            # Compare using filename instead of object
             if st.session_state.uploaded_resume_name != uploaded_file.name:
                 st.info("Resume uploaded. You can now autofill your profile or get a goodness score.")
                 st.session_state.uploaded_resume = uploaded_file
-                st.session_state.uploaded_resume_name = uploaded_file.name  # save filename
+                st.session_state.uploaded_resume_name = uploaded_file.name  
                 st.session_state.show_autofill_buttons = True
-                st.session_state.goodness_feedback = None  # reset old feedback
-                time.sleep(0.5)  # slight delay to ensure state updates
-                st.rerun()  # immediately rerun to show buttons
+                st.session_state.goodness_feedback = None  
+                time.sleep(0.5)  
+                st.rerun()  
 
-        # If we have a pending upload and autofill buttons are shown
         if st.session_state.show_autofill_buttons and st.session_state.uploaded_resume:
             col_a, col_b = st.columns(2)
             with col_a:
                 if st.button("📄 Autofill Profile with AI", use_container_width=True):
-                    # Process the resume
                     with st.spinner("Reading resume..."):
                         file_bytes = st.session_state.uploaded_resume.getvalue()
                         resume_text = extract_text_from_pdf(file_bytes)
@@ -1620,8 +1614,6 @@ elif current_page == "Profile":
                                 # Clear upload state so buttons disappear
                                 st.session_state.uploaded_resume = None
                                 st.session_state.show_autofill_buttons = False
-                                # Store resume text for possible goodness score
-                                time.sleep(0.5)  # slight delay to ensure state updates
                                 st.session_state.last_resume_text = resume_text
                                 st.rerun()
             with col_b:
