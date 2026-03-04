@@ -646,109 +646,187 @@ else:
 current_page = st.session_state.sub_tab if st.session_state.sub_tab else st.session_state.main_tab
 if current_page == "Dashboard":
     st.markdown("## 📊 Overview")
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-    with kpi1:
-        st.markdown(f'<div class="stat-card"><h3>📋 Applications</h3><p>{total_apps}</p></div>', unsafe_allow_html=True)
-    with kpi2:
+
+    # --- Key Metrics Row (6 cards) ---
+    metric1, metric2, metric3, metric4, metric5, metric6 = st.columns(6)
+    with metric1:
+        st.markdown(f'<div class="stat-card"><h3>📋 Total Apps</h3><p>{total_apps}</p></div>', unsafe_allow_html=True)
+    with metric2:
         st.markdown(f'<div class="stat-card"><h3>🗓️ Interviews</h3><p>{interview_count}</p></div>', unsafe_allow_html=True)
-    with kpi3:
-        st.markdown(f'<div class="stat-card"><h3>💬 Unread</h3><p>{unread_msgs}</p></div>', unsafe_allow_html=True)
-    with kpi4:
+    with metric3:
+        st.markdown(f'<div class="stat-card"><h3>⏳ Pending</h3><p>{pending_apps}</p></div>', unsafe_allow_html=True)
+    with metric4:
+        # Calculate offers (accepted applications)
+        offers = sum(1 for a in applications if a[4] == 'accepted')
+        st.markdown(f'<div class="stat-card"><h3>🎉 Offers</h3><p>{offers}</p></div>', unsafe_allow_html=True)
+    with metric5:
         st.markdown(f'<div class="stat-card"><h3>🔖 Saved</h3><p>{saved_count}</p></div>', unsafe_allow_html=True)
+    with metric6:
+        st.markdown(f'<div class="stat-card"><h3>💬 Unread Msgs</h3><p>{unread_msgs}</p></div>', unsafe_allow_html=True)
 
-    if total_apps > 0:
-        interview_rate = (interview_count / total_apps) * 100
-        pending_rate = (pending_apps / total_apps) * 100
-    else:
-        interview_rate = pending_rate = 0
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    m1, m2, m3 = st.columns(3)
-    with m1:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="label">Interview Conversion</div>
-            <div class="value">{interview_rate:.1f}%</div>
-            <div class="delta">of all applications</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with m2:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="label">Pending Applications</div>
-            <div class="value">{pending_apps}</div>
-            <div class="delta">{pending_rate:.1f}% of total</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with m3:
-        if applications:
-            dates = [a[7] for a in applications if a[7]]
-            if dates:
-                earliest = min(dates).date()
-                latest = max(dates).date()
-                days_span = (latest - earliest).days or 1
-                apps_per_day = total_apps / days_span
-            else:
-                apps_per_day = 0
+    # --- Upcoming Interviews & Recent Activity ---
+    col_left, col_right = st.columns(2)
+
+    with col_left:
+        st.markdown("#### 🗓️ Upcoming Interviews")
+        # Filter applications with scheduled interview and future date
+        upcoming = []
+        now = datetime.now()
+        for app in applications:
+            if len(app) > 14 and app[14] == 'scheduled' and app[13]:
+                interview_date = app[13]
+                if isinstance(interview_date, datetime) and interview_date > now:
+                    upcoming.append(app)
+        if upcoming:
+            for app in upcoming[:3]:  # show max 3
+                company = app[10]
+                job_title = app[9]
+                date_str = app[13].strftime('%b %d, %Y at %I:%M %p')
+                meeting_link = app[15] if len(app) > 15 else None
+                with st.container():
+                    st.markdown(f"""
+                    <div class="job-card" style="margin-bottom: 0.5rem;">
+                        <h4 style="margin-bottom: 0.2rem;">{job_title}</h4>
+                        <p style="color: var(--primary); margin-bottom: 0.3rem;">{company}</p>
+                        <p><strong>📅 {date_str}</strong></p>
+                        {f'<p><a href="{meeting_link}" target="_blank">🔗 Join Meeting</a></p>' if meeting_link else ''}
+                    </div>
+                    """, unsafe_allow_html=True)
         else:
-            apps_per_day = 0
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="label">Applications / Day</div>
-            <div class="value">{apps_per_day:.1f}</div>
-            <div class="delta">over active period</div>
-        </div>
-        """, unsafe_allow_html=True)
+            st.info("No upcoming interviews scheduled.")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        timeline = get_applications_over_time(user_id)
-        if timeline:
-            df = pd.DataFrame(timeline, columns=['date', 'count'])
-            fig = px.line(df, x='date', y='count', title='📈 Applications Over Time',
-                          markers=True, line_shape='linear')
-            fig.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font_color='var(--text)',
-                margin=dict(l=20, r=20, t=40, b=20)
-            )
-            st.plotly_chart(fig, use_container_width=True)
+    with col_right:
+        st.markdown("#### 🔔 Recent Activity")
+        recent_notifications = get_user_notifications(user_id, limit=10)
+        if recent_notifications:
+            for notif in recent_notifications[:5]:  # show latest 5
+                icon = "📝" if notif[2] == 'application' else "💬" if notif[2] == 'message' else "🔔"
+                time_str = notif[7].strftime('%Y-%m-%d %H:%M') if notif[7] else ''
+                st.markdown(f"""
+                <div class="notification-card" style="margin-bottom: 0.5rem; padding: 0.8rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.2rem;">{icon}</span>
+                        <div>
+                            <div style="font-weight: 600;">{notif[3]}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-light);">{notif[4]}</div>
+                            <div style="font-size: 0.7rem; color: var(--text-light);">{time_str}</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
         else:
-            st.info("No application data yet.")
-    with col2:
+            st.info("No recent activity.")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # --- Charts Row ---
+    col_chart1, col_chart2 = st.columns(2)
+
+    with col_chart1:
         stats = get_application_stats(user_id)
         if stats:
-            df = pd.DataFrame(stats, columns=['status', 'count'])
-            fig = px.pie(df, values='count', names='status', title='🥧 Application Status',
-                         color_discrete_sequence=px.colors.qualitative.Set3)
-            fig.update_layout(
+            df_stats = pd.DataFrame(stats, columns=['status', 'count'])
+            fig_pie = px.pie(df_stats, values='count', names='status', title='🥧 Application Status',
+                             color_discrete_sequence=px.colors.qualitative.Set3)
+            fig_pie.update_layout(
                 plot_bgcolor='rgba(0,0,0,0)',
                 paper_bgcolor='rgba(0,0,0,0)',
                 font_color='var(--text)',
                 margin=dict(l=20, r=20, t=40, b=20)
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig_pie, use_container_width=True)
         else:
-            st.info("No status data.")
+            st.info("No application status data.")
 
-    if applications:
-        company_counts = {}
-        for app in applications:
-            company_name = app[10]
-            company_counts[company_name] = company_counts.get(company_name, 0) + 1
-        df = pd.DataFrame(list(company_counts.items()), columns=['Company', 'Applications'])
-        df = df.sort_values('Applications', ascending=True).tail(5)
-        fig = px.bar(df, x='Applications', y='Company', orientation='h',
-                     title='🏆 Top Companies by Applications',
-                     color='Applications', color_continuous_scale='Blues')
-        fig.update_layout(
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font_color='var(--text)',
-            margin=dict(l=20, r=20, t=40, b=20),
-            yaxis={'categoryorder':'total ascending'}
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    with col_chart2:
+        timeline = get_applications_over_time(user_id)
+        if timeline:
+            df_timeline = pd.DataFrame(timeline, columns=['date', 'count'])
+            fig_line = px.line(df_timeline, x='date', y='count', title='📈 Applications Over Time',
+                               markers=True, line_shape='linear')
+            fig_line.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font_color='var(--text)',
+                margin=dict(l=20, r=20, t=40, b=20)
+            )
+            st.plotly_chart(fig_line, use_container_width=True)
+        else:
+            st.info("No application timeline data.")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # --- Bottom Row: Top Companies & Job Recommendations ---
+    col_bottom1, col_bottom2 = st.columns(2)
+
+    with col_bottom1:
+        if applications:
+            company_counts = {}
+            for app in applications:
+                company_name = app[10]
+                company_counts[company_name] = company_counts.get(company_name, 0) + 1
+            df_companies = pd.DataFrame(list(company_counts.items()), columns=['Company', 'Applications'])
+            df_companies = df_companies.sort_values('Applications', ascending=True).tail(5)
+            fig_bar = px.bar(df_companies, x='Applications', y='Company', orientation='h',
+                             title='🏆 Top Companies by Applications',
+                             color='Applications', color_continuous_scale='Blues')
+            fig_bar.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font_color='var(--text)',
+                margin=dict(l=20, r=20, t=40, b=20),
+                yaxis={'categoryorder':'total ascending'}
+            )
+            st.plotly_chart(fig_bar, use_container_width=True)
+        else:
+            st.info("No application data to show top companies.")
+
+    with col_bottom2:
+        st.markdown("#### 💡 Job Recommendations")
+        profile = get_or_create_profile(user_id)
+        employee_skills = profile[5] if profile else ""
+        jobs = search_jobs(user_id)
+        # Compute match score and filter for not applied, good match
+        recommendations = []
+        for job_tuple in jobs:
+            # job_tuple indices: 0:id,1:company_id,2:company_name,3:title,4:category,5:description,
+            # 6:requirements,7:location,8:job_type,9:salary_range,10:experience_level,
+            # 11:skills_required,12:status,13:created_at,14:deadline,15:company_name2,
+            # 16:logo,17:applied,18:saved
+            if job_tuple[17] == 1:  # already applied
+                continue
+            match = calculate_match_score(job_tuple[11], employee_skills)
+            if match >= 70:  # good match threshold
+                recommendations.append({
+                    'id': job_tuple[0],
+                    'title': job_tuple[3],
+                    'company': job_tuple[15],
+                    'location': job_tuple[7],
+                    'job_type': job_tuple[8],
+                    'match': match
+                })
+        recommendations = sorted(recommendations, key=lambda x: x['match'], reverse=True)[:3]
+        if recommendations:
+            for rec in recommendations:
+                st.markdown(f"""
+                <div class="job-card" style="margin-bottom: 0.5rem;">
+                    <h4 style="margin-bottom: 0.2rem;">{rec['title']}</h4>
+                    <p style="color: var(--primary); margin-bottom: 0.3rem;">{rec['company']}</p>
+                    <p style="font-size: 0.9rem;">📍 {rec['location']} | 💼 {rec['job_type']}</p>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 0.8rem;">Match:</span>
+                        <div style="flex:1; height:6px; background:#e2e8f0; border-radius:4px;">
+                            <div style="width:{rec['match']}%; height:6px; background:#10B981; border-radius:4px;"></div>
+                        </div>
+                        <span style="font-size:0.8rem; font-weight:600;">{rec['match']}%</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+           
+        else:
+            st.info("No high‑match job recommendations at the moment. Update your skills to get better matches.")
 
 elif current_page == "Find Jobs":
     if "apply_job_id" in st.session_state:
