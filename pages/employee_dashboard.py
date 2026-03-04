@@ -567,6 +567,29 @@ main_icons = {
     "Profile": "👤"
 }
 
+def job_tuple_to_dict(job_tuple):
+    return {
+        'id': job_tuple[0],
+        'company_id': job_tuple[1],
+        'company_name': job_tuple[2],
+        'company_name2': job_tuple[15],
+        'logo': job_tuple[16],
+        'title': job_tuple[3],
+        'category': job_tuple[4],
+        'description': job_tuple[5],
+        'requirements': job_tuple[6],
+        'location': job_tuple[7],
+        'job_type': job_tuple[8],
+        'salary_range': job_tuple[9],
+        'experience_level': job_tuple[10],
+        'skills_required': job_tuple[11],
+        'status': job_tuple[12],
+        'created_at': job_tuple[13],
+        'deadline': job_tuple[14],
+        'applied': job_tuple[17],
+        'saved': job_tuple[18],
+    }
+
 # --- Main Navigation with pills ---
 selected_main = st.pills(
     "",
@@ -626,90 +649,93 @@ if current_page == "Dashboard":
     user = get_user_by_id(user_id)
     profile = get_or_create_profile(user_id)
     profile_strength = get_profile_strength(profile)
-    upcoming = get_upcoming_interviews(user_id)[:2]      # limit to 2
-    activities = get_recent_activities(user_id, 3)[:3]   # limit to 3
+    upcoming = get_upcoming_interviews(user_id)[:2]
+    activities = get_recent_activities(user_id, 3)[:3]
     jobs = search_jobs(user_id)
 
-    # --- Profile strength bar (compact) ---
-    strength_color = "#10B981" if profile_strength >= 80 else "#F59E0B" if profile_strength >= 50 else "#EF4444"
+    # --- Profile strength (refined) ---
+    strength_color = "#0A84FF" if profile_strength >= 80 else "#FF9F0A" if profile_strength >= 50 else "#FF3B30"
     st.markdown(f"""
-    <div style="margin-bottom: 0.75rem;">
-        <div style="display: flex; justify-content: space-between; font-size:0.8rem;">
-            <span>Profile strength</span>
-            <span style="color:{strength_color};">{profile_strength}%</span>
+    <div style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.3rem;">
+            <span style="font-size: 0.85rem; font-weight: 500; color: #1C1E27;">Profile completeness</span>
+            <span style="font-size: 0.9rem; font-weight: 600; color: {strength_color};">{profile_strength}%</span>
         </div>
-        <div style="height:4px; background:#E2E8F0; border-radius:2px;">
-            <div style="width:{profile_strength}%; height:4px; background:{strength_color}; border-radius:2px;"></div>
+        <div style="height: 6px; background: #E9ECF0; border-radius: 3px; overflow: hidden;">
+            <div style="width: {profile_strength}%; height: 6px; background: linear-gradient(90deg, {strength_color}, {strength_color}dd); border-radius: 3px;"></div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # --- Four key metrics (small cards) ---
+    # --- Key metrics as minimal cards ---
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.markdown(f"<div style='background:white; border:1px solid #E2E8F0; border-radius:12px; padding:0.5rem; text-align:center;'><div style='font-size:1.5rem; font-weight:600;'>{total_apps}</div><div style='font-size:0.7rem; color:#64748B;'>Applications</div></div>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style="background: white; border-radius: 16px; padding: 1rem 0.5rem; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); border: 1px solid #F0F2F5;">
+            <div style="font-size: 1.8rem; font-weight: 600; color: #1C1E27;">{}</div>
+            <div style="font-size: 0.7rem; color: #6C7A8D; letter-spacing: 0.02em;">APPLICATIONS</div>
+        </div>
+        """.format(total_apps), unsafe_allow_html=True)
     with col2:
-        st.markdown(f"<div style='background:white; border:1px solid #E2E8F0; border-radius:12px; padding:0.5rem; text-align:center;'><div style='font-size:1.5rem; font-weight:600;'>{interview_count}</div><div style='font-size:0.7rem; color:#64748B;'>Interviews</div></div>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style="background: white; border-radius: 16px; padding: 1rem 0.5rem; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); border: 1px solid #F0F2F5;">
+            <div style="font-size: 1.8rem; font-weight: 600; color: #1C1E27;">{}</div>
+            <div style="font-size: 0.7rem; color: #6C7A8D; letter-spacing: 0.02em;">INTERVIEWS</div>
+        </div>
+        """.format(interview_count), unsafe_allow_html=True)
     with col3:
-        st.markdown(f"<div style='background:white; border:1px solid #E2E8F0; border-radius:12px; padding:0.5rem; text-align:center;'><div style='font-size:1.5rem; font-weight:600;'>{unread_msgs}</div><div style='font-size:0.7rem; color:#64748B;'>Unread</div></div>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style="background: white; border-radius: 16px; padding: 1rem 0.5rem; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); border: 1px solid #F0F2F5;">
+            <div style="font-size: 1.8rem; font-weight: 600; color: #1C1E27;">{}</div>
+            <div style="font-size: 0.7rem; color: #6C7A8D; letter-spacing: 0.02em;">UNREAD</div>
+        </div>
+        """.format(unread_msgs), unsafe_allow_html=True)
     with col4:
-        st.markdown(f"<div style='background:white; border:1px solid #E2E8F0; border-radius:12px; padding:0.5rem; text-align:center;'><div style='font-size:1.5rem; font-weight:600;'>{saved_count}</div><div style='font-size:0.7rem; color:#64748B;'>Saved</div></div>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style="background: white; border-radius: 16px; padding: 1rem 0.5rem; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); border: 1px solid #F0F2F5;">
+            <div style="font-size: 1.8rem; font-weight: 600; color: #1C1E27;">{}</div>
+            <div style="font-size: 0.7rem; color: #6C7A8D; letter-spacing: 0.02em;">SAVED</div>
+        </div>
+        """.format(saved_count), unsafe_allow_html=True)
 
-    # --- Two‑column: Upcoming Interviews + Recent Activity ---
-    col_left, col_right = st.columns(2)
+    # --- Two‑column layout with refined cards ---
+    col_left, col_right = st.columns(2, gap="medium")
+
     with col_left:
-        st.markdown("##### Upcoming")
+        st.markdown("#### ⏳ Upcoming")
         if upcoming:
             for inv in upcoming:
                 st.markdown(f"""
-                <div style="border-left:3px solid #2563EB; padding-left:0.5rem; margin-bottom:0.5rem;">
-                    <div style="font-weight:500; font-size:0.9rem;">{inv['job_title']}</div>
-                    <div style="font-size:0.8rem; color:#475569;">{inv['company']}</div>
-                    <div style="font-size:0.7rem; color:#64748B;">{inv['datetime'].strftime('%b %d, %I:%M %p')}</div>
+                <div style="background: white; border-radius: 14px; padding: 0.75rem; margin-bottom: 0.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.02); border: 1px solid #F0F2F5;">
+                    <div style="font-weight: 600; font-size: 0.95rem;">{inv['job_title']}</div>
+                    <div style="font-size: 0.8rem; color: #5B6C7E;">{inv['company']}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.3rem;">
+                        <span style="font-size: 0.7rem; color: #8A99AA;">{inv['datetime'].strftime('%b %d · %I:%M %p')}</span>
+                        <a href="{inv['link']}" target="_blank" style="font-size: 0.7rem; color: #0A84FF; text-decoration: none;">Join →</a>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
         else:
-            st.caption("None")
+            st.caption("No interviews scheduled")
+
     with col_right:
-        st.markdown("##### Recent")
+        st.markdown("#### 🔔 Recent")
         if activities:
             for act in activities:
-                color = "#2563EB" if act['type']=='application' else "#8B5CF6"
+                accent = "#0A84FF" if act['type']=='application' else "#8A56E2"
                 st.markdown(f"""
-                <div style="border-left:3px solid {color}; padding-left:0.5rem; margin-bottom:0.5rem;">
-                    <div style="font-weight:500; font-size:0.9rem;">{act['title']}</div>
-                    <div style="font-size:0.7rem; color:#64748B;">{act['time'].strftime('%b %d, %H:%M') if act['time'] else ''}</div>
+                <div style="background: white; border-radius: 14px; padding: 0.75rem; margin-bottom: 0.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.02); border-left: 3px solid {accent};">
+                    <div style="font-weight: 500; font-size: 0.9rem;">{act['title']}</div>
+                    <div style="font-size: 0.75rem; color: #6C7A8D;">{act['message'][:60]}{'…' if len(act['message'])>60 else ''}</div>
+                    <div style="font-size: 0.65rem; color: #9AABBC; margin-top: 0.2rem;">{act['time'].strftime('%b %d · %H:%M') if act['time'] else ''}</div>
                 </div>
                 """, unsafe_allow_html=True)
         else:
-            st.caption("None")
+            st.caption("No recent activity")
 
-    # --- Recommended Jobs (3 cards) ---
-    st.markdown("##### Recommended")
-    def job_tuple_to_dict(job_tuple):
-            return {
-                'id': job_tuple[0],
-                'company_id': job_tuple[1],
-                'company_name': job_tuple[2],
-                'company_name2': job_tuple[15],
-                'logo': job_tuple[16],
-                'title': job_tuple[3],
-                'category': job_tuple[4],
-                'description': job_tuple[5],
-                'requirements': job_tuple[6],
-                'location': job_tuple[7],
-                'job_type': job_tuple[8],
-                'salary_range': job_tuple[9],
-                'experience_level': job_tuple[10],
-                'skills_required': job_tuple[11],
-                'status': job_tuple[12],
-                'created_at': job_tuple[13],
-                'deadline': job_tuple[14],
-                'applied': job_tuple[17],
-                'saved': job_tuple[18],
-            }
+    # --- Recommended jobs (3 cards, sleek) ---
+    st.markdown("#### 💡 Recommended for you")
     if jobs:
-        # Prepare job list with match scores
         job_list = []
         for j in jobs:
             job_dict = job_tuple_to_dict(j)
@@ -718,32 +744,38 @@ if current_page == "Dashboard":
         job_list.sort(key=lambda x: x['match_score'], reverse=True)
         top = job_list[:3]
 
-        cols = st.columns(3)
+        cols = st.columns(3, gap="small")
         for idx, job in enumerate(top):
+            match_color = "#30B0C0" if job['match_score']>=70 else "#FF9F0A" if job['match_score']>=40 else "#FF5A5A"
             with cols[idx]:
-                match_color = "#10B981" if job['match_score']>=70 else "#F59E0B" if job['match_score']>=40 else "#EF4444"
                 st.markdown(f"""
-                <div style="background:white; border:1px solid #E2E8F0; border-radius:12px; padding:0.75rem;">
-                    <div style="font-weight:600; font-size:0.95rem;">{job['title']}</div>
-                    <div style="font-size:0.75rem; color:#475569;">{job['company_name2']}</div>
-                    <div style="font-size:0.7rem; margin:0.25rem 0;">📍 {job['location']}</div>
-                    <div style="margin:0.5rem 0 0.25rem;">
-                        <div style="display:flex; justify-content:space-between; font-size:0.65rem;">
+                <div style="background: white; border-radius: 18px; padding: 0.9rem; border: 1px solid #F0F2F5; box-shadow: 0 2px 6px rgba(0,0,0,0.02); height: 100%; display: flex; flex-direction: column;">
+                    <div style="font-weight: 600; font-size: 1rem; margin-bottom: 0.2rem;">{job['title']}</div>
+                    <div style="font-size: 0.75rem; color: #5B6C7E;">{job['company_name2']}</div>
+                    <div style="font-size: 0.7rem; color: #8A99AA; margin: 0.3rem 0;">📍 {job['location']}</div>
+                    <div style="margin: 0.3rem 0;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.65rem;">
                             <span>Match</span>
-                            <span style="color:{match_color};">{job['match_score']}%</span>
+                            <span style="color: {match_color};">{job['match_score']}%</span>
                         </div>
-                        <div style="height:3px; background:#E2E8F0; border-radius:1.5px;">
-                            <div style="width:{job['match_score']}%; height:3px; background:{match_color}; border-radius:1.5px;"></div>
+                        <div style="height: 3px; background: #E9ECF0; border-radius: 2px; margin-top: 0.1rem;">
+                            <div style="width: {job['match_score']}%; height: 3px; background: {match_color}; border-radius: 2px;"></div>
                         </div>
+                    </div>
+                    <div style="margin-top: auto; padding-top: 0.5rem;">
+                        <a href="#" style="font-size: 0.7rem; color: #0A84FF; text-decoration: none;" onclick="alert('Apply flow would start')">View →</a>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                if st.button("View", key=f"rec_{job['id']}"):
+                # Note: Streamlit buttons break card layout; use a link or keep button small
+                # For proper navigation, use st.button but it will wrap.
+                # I'll keep a simple st.button below the card (outside the HTML) for functionality.
+                if st.button(f"View", key=f"rec_{job['id']}"):
                     st.session_state.apply_job_id = job['id']
                     st.session_state.apply_job_title = job['title']
                     st.rerun()
     else:
-        st.caption("No recommendations")
+        st.caption("No recommendations yet")
 
 elif current_page == "Find Jobs":
     if "apply_job_id" in st.session_state:
