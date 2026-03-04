@@ -667,53 +667,60 @@ if current_page == "Dashboard":
     activities = get_recent_activities(user_id, 5)    # from earlier
     jobs = search_jobs(user_id)
     
-    # --- Hero Section (Welcome + Profile Strength) ---
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        st.markdown(f"""
-        <div style="margin-bottom: 2rem;">
-            <h1 style="font-size: 2.2rem; font-weight: 600; color: #0F172A; margin: 0;">Welcome back, {user[1]} 👋</h1>
-            <p style="font-size: 1rem; color: #475569; margin-top: 0.3rem;">Here's what's happening with your job search.</p>
+    # --- Profile Strength Card (full width, subtle) ---
+    strength_color = "#10B981" if profile_strength >= 80 else "#F59E0B" if profile_strength >= 50 else "#EF4444"
+    st.markdown(f"""
+    <div style="background: white; padding: 1.2rem 1.5rem; border-radius: 20px; border: 1px solid #E2E8F0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem;">
+            <span style="font-size: 0.9rem; font-weight: 500; color: #475569;">Profile strength</span>
+            <span style="font-weight: 600; color: {strength_color};">{profile_strength}%</span>
         </div>
-        """, unsafe_allow_html=True)
-    with col2:
-        # Profile strength as a clean progress bar
-        strength_color = "#10B981" if profile_strength >= 80 else "#F59E0B" if profile_strength >= 50 else "#EF4444"
-        st.markdown(f"""
-        <div style="background: white; padding: 1.2rem 1.5rem; border-radius: 20px; border: 1px solid #E2E8F0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem;">
-                <span style="font-size: 0.9rem; font-weight: 500; color: #475569;">Profile strength</span>
-                <span style="font-weight: 600; color: {strength_color};">{profile_strength}%</span>
-            </div>
-            <div style="height: 6px; background: #E2E8F0; border-radius: 3px; width: 100%;">
-                <div style="width: {profile_strength}%; height: 6px; background: {strength_color}; border-radius: 3px;"></div>
-            </div>
-            <div style="font-size: 0.8rem; color: #64748B; margin-top: 0.5rem;">
-                { "⬆️ Complete your profile to get better matches" if profile_strength < 100 else "✅ Profile complete!"}
-            </div>
+        <div style="height: 6px; background: #E2E8F0; border-radius: 3px; width: 100%;">
+            <div style="width: {profile_strength}%; height: 6px; background: {strength_color}; border-radius: 3px;"></div>
         </div>
-        """, unsafe_allow_html=True)
+        <div style="font-size: 0.8rem; color: #64748B; margin-top: 0.5rem;">
+            { "⬆️ Complete your profile to get better matches" if profile_strength < 100 else "✅ Profile complete!"}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     # --- Quick Actions (clean buttons) ---
     st.markdown("### Quick actions")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         if st.button("🔍 Find jobs", use_container_width=True):
+            # Clear pills keys
+            if "main_pills" in st.session_state:
+                del st.session_state["main_pills"]
+            if "sub_pills_Jobs" in st.session_state:
+                del st.session_state["sub_pills_Jobs"]
             st.session_state.main_tab = "Jobs"
             st.session_state.sub_tab = "Find Jobs"
             st.rerun()
     with col2:
         if st.button("💬 Messages", use_container_width=True):
+            if "main_pills" in st.session_state:
+                del st.session_state["main_pills"]
+            if "sub_pills_Profile" in st.session_state:
+                del st.session_state["sub_pills_Profile"]
             st.session_state.main_tab = "Profile"
             st.session_state.sub_tab = "Messages"
             st.rerun()
     with col3:
         if st.button("✏️ Update profile", use_container_width=True):
+            if "main_pills" in st.session_state:
+                del st.session_state["main_pills"]
+            if "sub_pills_Profile" in st.session_state:
+                del st.session_state["sub_pills_Profile"]
             st.session_state.main_tab = "Profile"
             st.session_state.sub_tab = "Profile"
             st.rerun()
     with col4:
         if st.button("📋 Applications", use_container_width=True):
+            if "main_pills" in st.session_state:
+                del st.session_state["main_pills"]
+            if "sub_pills_Applications" in st.session_state:
+                del st.session_state["sub_pills_Applications"]
             st.session_state.main_tab = "Applications"
             st.session_state.sub_tab = "My Applications"
             st.rerun()
@@ -823,8 +830,6 @@ if current_page == "Dashboard":
                     if st.button("View job", key=f"rec_{job['id']}"):
                         st.session_state.apply_job_id = job['id']
                         st.session_state.apply_job_title = job['title']
-                        st.session_state.main_tab = "Jobs"
-                        st.session_state.sub_tab = "Find Jobs"
                         st.rerun()
         else:
             st.info("No recommendations available.")
