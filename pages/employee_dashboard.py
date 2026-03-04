@@ -701,7 +701,7 @@ if current_page == "Dashboard":
         st.markdown("#### 🔔 Recent Activity")
         recent_notifications = get_user_notifications(user_id, limit=10)
         if recent_notifications:
-            for notif in recent_notifications[:5]:  # show latest 5
+            for notif in recent_notifications[:2]:  # show latest 2
                 icon = "📝" if notif[2] == 'application' else "💬" if notif[2] == 'message' else "🔔"
                 time_str = notif[7].strftime('%Y-%m-%d %H:%M') if notif[7] else ''
                 st.markdown(f"""
@@ -807,7 +807,7 @@ if current_page == "Dashboard":
                     'job_type': job_tuple[8],
                     'match': match
                 })
-        recommendations = sorted(recommendations, key=lambda x: x['match'], reverse=True)[:3]
+        recommendations = sorted(recommendations, key=lambda x: x['match'], reverse=True)[:2]  # top 2 recommendations
         if recommendations:
             for rec in recommendations:
                 st.markdown(f"""
