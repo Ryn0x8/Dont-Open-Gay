@@ -42,10 +42,6 @@ def extract_text_from_pdf(pdf_bytes):
 
 def parse_resume_with_groq(resume_text):
     """Call Groq API to extract structured fields from resume text."""
-    client = OpenAI(
-        api_key=st.secrets["GROQ_API_KEY"],
-        base_url="https://api.groq.com/openai/v1"
-    )
     prompt = f"""
 You are a strict resume parser.
 
@@ -74,7 +70,7 @@ Resume Text:
 """
     try:
         response = client.chat.completions.create(
-            model="llama3-70b-8192",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": "You extract structured data from resumes."},
                 {"role": "user", "content": prompt}
@@ -98,22 +94,18 @@ Resume Text:
 
 def get_resume_goodness_score(resume_text):
     """Get a short, constructive feedback on the resume."""
-    client = OpenAI(
-        api_key=st.secrets["GROQ_API_KEY"],
-        base_url="https://api.groq.com/openai/v1"
-    )
     prompt = f"""
 You are a career coach. Give a very short, constructive feedback (max 2‑3 lines) on this resume. 
 Focus on strengths and one area for improvement. Be concise and encouraging.
 
 Resume:
 \"\"\"
-{resume_text[:2000]}  # limit to avoid token issues
+{resume_text[:5000]}  # limit to avoid token issues
 \"\"\"
 """
     try:
         response = client.chat.completions.create(
-            model="llama3-70b-8192",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": "You give brief, helpful resume feedback."},
                 {"role": "user", "content": prompt}
