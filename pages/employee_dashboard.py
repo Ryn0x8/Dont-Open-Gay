@@ -1608,10 +1608,12 @@ elif current_page == "Profile":
                                     resume_path=resume_path
                                 )
                                 st.success("✅ Profile autofilled from resume!")
+                                time.sleep(2)
                                 # Clear upload state so buttons disappear
                                 st.session_state.uploaded_resume = None
                                 st.session_state.show_autofill_buttons = False
                                 # Store resume text for possible goodness score
+                                time.sleep(0.5)  # slight delay to ensure state updates
                                 st.session_state.last_resume_text = resume_text
                                 st.rerun()
             with col_b:
