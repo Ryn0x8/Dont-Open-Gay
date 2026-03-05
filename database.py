@@ -775,8 +775,12 @@ def get_application_count_for_company(company_id):
     return len(list(apps_ref))
 
 def get_interview_count_for_company(company_id):
-    """Get total interviews for a company's jobs."""
-    interviews_ref = db.collection('interviews').where('company_id', '==', company_id).stream()
+    """Get total scheduled interviews for a company's jobs."""
+    interviews_ref = db.collection('interviews') \
+                       .where('company_id', '==', company_id) \
+                       .where('status', '==', 'scheduled') \
+                       .stream()
+    
     return len(list(interviews_ref))
 
 def get_open_request_count():
