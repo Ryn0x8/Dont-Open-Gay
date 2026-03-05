@@ -122,3 +122,46 @@ Resume:
         return response.choices[0].message.content.strip()
     except Exception as e:
         return "Could not generate score at this time."
+    
+    # --- Helper functions (place after existing helpers) ---
+import requests
+import json
+
+def fetch_github_repos(github_username):
+    if not github_username:
+        return []
+    url = f"https://api.github.com/users/{github_username}/repos"
+    try:
+        resp = requests.get(url)
+        if resp.status_code == 200:
+            repos = resp.json()
+            return [{"name": r["name"], "description": r.get("description", ""), "url": r["html_url"]} for r in repos]
+        else:
+            st.error(f"GitHub API error: {resp.status_code}")
+            return []
+    except Exception as e:
+        st.error(f"Failed to fetch GitHub repos: {e}")
+        return []
+def get_ai_career_suggestions(skills, experience_level, resume_text=""):
+    prompt = f"""
+You are a career advisor. Based on the user's skills, experience level, and resume, suggest 3-4 potential career paths or job titles that would be a good fit. Be specific and concise. Return as a bullet list with short explanations.
+
+Skills: {skills}
+Experience Level: {experience_level}
+Resume excerpt: {resume_text[:2000] if resume_text else "Not provided"}
+
+Suggestions:
+"""
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": "You provide concise career suggestions."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=200
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"Could not generate suggestions: {e}"
