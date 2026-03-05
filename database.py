@@ -70,27 +70,31 @@ def get_or_create_profile(user_id):
             'linkedin_url': '',
             'github_url': '',
             'portfolio_url': '',
+            'projects': '[]',
+            'job_alerts_enabled': False,
             'created_at': firestore.SERVER_TIMESTAMP,
             'updated_at': firestore.SERVER_TIMESTAMP
         }
         profile_ref.set(data)
     # Convert to tuple to match old format (user_id, phone, location, profile_pic, resume_path, skills, experience_level, preferred_job_type, expected_salary, bio, linkedin_url, github_url, portfolio_url, created_at, updated_at)
     return (
-        user_id,
-        data.get('phone', ''),
-        data.get('location', ''),
-        data.get('profile_pic', ''),
-        data.get('resume_path', ''),
-        data.get('skills', ''),
-        data.get('experience_level', ''),
-        data.get('preferred_job_type', ''),
-        data.get('expected_salary', ''),
-        data.get('bio', ''),
-        data.get('linkedin_url', ''),
-        data.get('github_url', ''),
-        data.get('portfolio_url', ''),
-        data.get('created_at'),
-        data.get('updated_at')
+        user_id,                        # 0
+        data.get('phone', ''),          # 1
+        data.get('location', ''),       # 2
+        data.get('profile_pic', ''),    # 3
+        data.get('resume_path', ''),    # 4
+        data.get('skills', ''),         # 5
+        data.get('experience_level', ''),# 6
+        data.get('preferred_job_type', ''),# 7
+        data.get('expected_salary', ''),# 8
+        data.get('bio', ''),            # 9
+        data.get('linkedin_url', ''),   # 10
+        data.get('github_url', ''),     # 11
+        data.get('portfolio_url', ''),  # 12
+        data.get('projects', '[]'),     # 13
+        data.get('job_alerts_enabled', False), # 14
+        data.get('created_at'),         # 15
+        data.get('updated_at')          # 16
     )
 
 def update_user_name(user_id, name):
