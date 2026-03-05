@@ -23,6 +23,7 @@ from database import (
 from database import update_expired_jobs
 from utils import get_resume_goodness_score, parse_resume_with_groq, extract_text_from_pdf, get_ai_career_suggestions, fetch_github_repos
 import json
+import re
 
 update_expired_jobs()
 
@@ -1884,8 +1885,9 @@ elif current_page == "Profile":
         github_username = profile[IDX_GITHUB] if profile[IDX_GITHUB] else ""
         if github_username:
             # Extract username from URL if full URL
-            if "github.com/" in github_username:
-                github_username = github_username.split("github.com/")[-1].split("/")[0]
+            match = re.search(r"github\.com/([A-Za-z0-9-]+)", github_username)
+            if match:
+                github_username = match.group(1)
             if st.button(f"📦 Fetch 3 latest repos from {github_username}"):
                 with st.spinner("Fetching repositories..."):
                     repos = fetch_github_repos(github_username)
