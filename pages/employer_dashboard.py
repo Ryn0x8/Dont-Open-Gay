@@ -890,7 +890,7 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                                 meeting_link = st.text_input("Meeting Link (if video)")
                                 submitted = st.form_submit_button("Schedule", use_container_width=True)
                                 if submitted:
-                                    scheduled_datetime = datetime.combine(scheduled_date, scheduled_time).astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M:%S')
+                                    scheduled_datetime = datetime.combine(scheduled_date, scheduled_time).astimezone(pytz.timezone("Asia/Kathmandu"))
                                     upsert_interview(app[0], app[1], company_id, app[2], scheduled_datetime, interview_type, meeting_link)
                                     add_notification(app[1], "interview", "Interview Scheduled", f"Interview for {app[9]} on {scheduled_date}")
                                     send_email(app[11], "Interview Scheduled", f"Dear {app[10]},\n\nYour interview for {app[9]} has been scheduled on {scheduled_date} at {scheduled_time} UTC.\n\nLink: {meeting_link}")
