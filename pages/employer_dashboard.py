@@ -907,9 +907,9 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                             print(app[13], app[15])
                             st.markdown(f"""
                             <div style="background: #3B82F620; padding: 1rem; border-radius: 16px; margin: 0.5rem 0;">
-                                <h4>🗓️ Interview Scheduled</h4>
-                                <p><strong>Date:</strong> {app[13].strftime('%Y-%m-%d %H:%M')}</p>
-                                <p><strong>Meeting Link:</strong> <a href="{app[15]}" target="_blank">{app[15]}</a></p>
+                                <h4>🗓️ Interview {app[18]}</h4>
+                                <p><strong>Date:</strong> {app[17].strftime('%Y-%m-%d %H:%M')}</p>
+                                <p><strong>Meeting Link:</strong> <a href="{app[19]}" target="_blank">{app[19]}</a></p>
                             </div>
                             """, unsafe_allow_html=True)
 

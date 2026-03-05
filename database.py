@@ -610,6 +610,15 @@ def get_applications_for_company(company_id):
             # Check if interview exists
             interview_ref = db.collection('interviews').where('application_id', '==', app.id).limit(1).get()
             has_interview = 1 if len(list(interview_ref)) > 0 else 0
+            interview = next(iter(interview_ref), None)
+            scheduled_date = None
+            interview_status = None
+            meeting_link = None
+            if interview:
+                int_data = interview.to_dict()
+                scheduled_date = int_data.get('scheduled_date')
+                interview_status = int_data.get('status')
+                meeting_link = int_data.get('meeting_link')
             # Get job title
             job_doc = db.collection('jobs').document(job_id).get()
             job_title = job_doc.to_dict().get('title') if job_doc.exists else ''
@@ -630,7 +639,10 @@ def get_applications_for_company(company_id):
                 resume_path,
                 location,
                 phone,
-                has_interview
+                has_interview,
+                scheduled_date,
+                interview_status,
+                meeting_link
             ))
     return apps
 
@@ -669,6 +681,8 @@ def upsert_interview(application_id, employee_id, company_id, job_id, scheduled_
         })
     else:
         create_interview(application_id, employee_id, company_id, job_id, scheduled_date, interview_type, meeting_link)
+
+    
 
 def mark_expired_interviews():
     """Mark all past interviews as expired."""
