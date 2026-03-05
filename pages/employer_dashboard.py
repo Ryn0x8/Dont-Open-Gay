@@ -883,8 +883,9 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                         if new_status == "interview" or app[4] == "interview":
                             with st.form(key=f"schedule_{app[0]}_{i}"):
                                 st.markdown("#### Schedule Interview")
-                                scheduled_date = st.date_input("Date")
-                                scheduled_time = st.time_input("Time")
+                                nepal_tz = pytz.timezone("Asia/Kathmandu")
+                                scheduled_date = nepal_tz.localize(st.date_input("Date"))
+                                scheduled_time =nepal_tz.localize(st.time_input("Time"))
                                 interview_type = st.selectbox("Type", ["Video Call", "Phone", "In-person"])
                                 meeting_link = st.text_input("Meeting Link (if video)")
                                 submitted = st.form_submit_button("Schedule", use_container_width=True)
