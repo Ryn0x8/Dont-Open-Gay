@@ -271,7 +271,10 @@ def display_recruiter_profile(user, profile):
             except:
                 projects = []
         if projects:
-            for proj in projects:
+            max_visible = 4  # number of projects to show directly
+            num_projects = len(projects)
+
+            for proj in projects[:max_visible]:
                 name = proj.get('name') or 'Unnamed'
                 desc = proj.get('description') or ''
                 url = proj.get('url') or ''
@@ -288,6 +291,11 @@ def display_recruiter_profile(user, profile):
                 html += '</div>'
 
                 st.markdown(html, unsafe_allow_html=True)
+
+            # Show remaining count
+            remaining = num_projects - max_visible
+            if remaining > 0:
+                st.markdown(f"<p>... {remaining} More</p>", unsafe_allow_html=True)
         else:
             st.info("No projects added.")
 
