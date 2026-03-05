@@ -1,3 +1,4 @@
+import pytz
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -942,7 +943,7 @@ if current_page == "Dashboard":
         st.markdown("#### 🗓️ Upcoming Interviews")
         # Filter applications with scheduled interview and future date
         upcoming = []
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc).astimezone(pytz.timezone("Asia/Kathmandu"))
         for app in applications:
             if len(app) > 14 and app[14] == 'scheduled' and app[13]:
                 interview_date = app[13]
@@ -952,7 +953,7 @@ if current_page == "Dashboard":
             for app in upcoming[:2]:  # show max 2
                 company = app[10]
                 job_title = app[9]
-                date_str = app[13].strftime('%b %d, %Y at %I:%M %p')
+                date_str = app[13].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%b %d, %Y at %I:%M %p')
                 meeting_link = app[15] if len(app) > 15 else None
                 with st.container():
                     st.markdown(f"""
@@ -972,7 +973,7 @@ if current_page == "Dashboard":
         if recent_notifications:
             for notif in recent_notifications[:2]:  # show latest 2
                 icon = "📝" if notif[2] == 'application' else "💬" if notif[2] == 'message' else "🔔"
-                time_str = notif[7].strftime('%Y-%m-%d %H:%M') if notif[7] else ''
+                time_str = notif[7].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M') if notif[7] else ''
                 st.markdown(f"""
                 <div class="notification-card" style="margin-bottom: 0.5rem; padding: 0.8rem;">
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -1285,9 +1286,9 @@ elif current_page == "Find Jobs":
                         st.markdown(f"**Job Type:** {job['job_type']}")
                         st.markdown(f"**Location:** {job['location']}")
                         st.markdown(f"**Salary Range:** {job['salary_range']}")
-                        deadline_str = job['deadline'].strftime('%Y-%m-%d') if job['deadline'] else 'Not specified'
+                        deadline_str = job['deadline'].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d') if job['deadline'] else 'Not specified'
                         st.markdown(f"**Application Deadline:** {deadline_str}")
-                        posted_str = job['created_at'].strftime('%Y-%m-%d') if job['created_at'] else ''
+                        posted_str = job['created_at'].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d') if job['created_at'] else ''
                         st.markdown(f"**Posted on:** {posted_str}")
                         if st.button("Close", key=f"close_details_{job['id']}"):
                             st.session_state.show_job_details = None
@@ -1445,9 +1446,9 @@ elif current_page == "Companies":
                         st.markdown(f"**Job Type:** {job_dict['job_type']}")
                         st.markdown(f"**Location:** {job_dict['location']}")
                         st.markdown(f"**Salary Range:** {job_dict['salary_range']}")
-                        deadline_str = job_dict['deadline'].strftime('%Y-%m-%d') if job_dict['deadline'] else 'Not specified'
+                        deadline_str = job_dict['deadline'].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d') if job_dict['deadline'] else 'Not specified'
                         st.markdown(f"**Application Deadline:** {deadline_str}")
-                        posted_str = job_dict['created_at'].strftime('%Y-%m-%d') if job_dict['created_at'] else ''
+                        posted_str = job_dict['created_at'].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d') if job_dict['created_at'] else ''
                         st.markdown(f"**Posted on:** {posted_str}")
                         if st.button("Close", key=f"close_comp_details_{job[0]}"):
                             st.session_state.show_job_details_comp = None
@@ -1564,7 +1565,7 @@ elif current_page == "My Applications":
                 st.markdown(f"""
                 <div style="background: #3B82F620; padding: 1rem; border-radius: 16px; margin: 0.5rem 0;">
                     <h4>🗓️ Interview Scheduled</h4>
-                    <p><strong>Date:</strong> {app[13]}</p>
+                    <p><strong>Date:</strong> {app[13].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M')}</p>
                     <p><strong>Meeting Link:</strong> <a href="{app[15]}" target="_blank">{app[15]}</a></p>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1688,7 +1689,7 @@ elif current_page == "Messages":
         for i, conv in enumerate(conversations):
             col1, col2, col3 = st.columns([3, 1, 1])
             with col1:
-                last_time_str = conv[8].strftime('%Y-%m-%d %H:%M') if conv[8] else ''
+                last_time_str = conv[8].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M') if conv[8] else ''
                 st.markdown(f"""
                 <div class="job-card">
                     <div style="display: flex; justify-content: space-between;">
@@ -1726,7 +1727,7 @@ elif current_page == "Messages":
             mark_messages_read(user_id, st.session_state.chat_company_id)
             st.markdown('<div class="chat-container" id="chat-container">', unsafe_allow_html=True)
             for msg in messages:
-                msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
+                msg_time = msg[9].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M') if msg[9] else ''
                 if msg[2] == "employee":
                     st.markdown(f"""
                     <div style="text-align: right; margin: 0.5rem 0;">
@@ -1779,7 +1780,7 @@ elif current_page == "Notifications":
         for notif in all_notifications:
             icon = "📝" if notif[2] == 'application' else "💬" if notif[2] == 'message' else "🔔"
             bg = "#DCFCE7" if notif[2] == 'application' else "#DBEAFE" if notif[2] == 'message' else "#FEF3C7"
-            time_str = notif[7].strftime('%Y-%m-%d %H:%M') if notif[7] else ''
+            time_str = notif[7].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M') if notif[7] else ''
             is_read = notif[6]  # assuming is_read is at index 6
             opacity = "1" if not is_read else "0.7"
             st.markdown(f"""

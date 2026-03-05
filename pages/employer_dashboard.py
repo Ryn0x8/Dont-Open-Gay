@@ -26,6 +26,7 @@ from database import update_expired_jobs
 from ATSService import evaluate_candidate
 import io
 import time
+import pytz
 
 update_expired_jobs()
 mark_expired_interviews()
@@ -415,7 +416,7 @@ st.markdown(f"""
         <p>Manage your job postings and applicants from one place.</p>
     </div>
     <div class="date-badge">
-        {datetime.now().strftime('%B %d, %Y')}
+        {datetime.now().astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%B %d, %Y')}
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -743,9 +744,9 @@ elif current_page == "Post a Job":
                         st.markdown(f"**Description:** {job.get('description', 'N/A')}")
                         st.markdown(f"**Requirements:** {job.get('requirements', 'N/A')}")
                         st.markdown(f"**Skills Required:** {job.get('skills_required', 'N/A')}")
-                        deadline_str = job['deadline'].strftime('%Y-%m-%d') if job.get('deadline') else 'Not set'
+                        deadline_str = job['deadline'].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d') if job.get('deadline') else 'Not set'
                         st.markdown(f"**Deadline:** {deadline_str}")
-                        st.markdown(f"**Posted:** {job['created_at'].strftime('%Y-%m-%d') if job.get('created_at') else 'Unknown'}")
+                        st.markdown(f"**Posted:** {job['created_at'].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d') if job.get('created_at') else 'Unknown'}")
                     with col2:
                         if st.button(f"🗑️ Delete Job", key=f"delete_job_{job['id']}"):
                             st.session_state.job_to_delete = job['id']
@@ -783,7 +784,7 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
         st.markdown('<div class="chat-container" id="chat-container">', unsafe_allow_html=True)
         for msg in msgs:
             sender = 'company' if msg[2] == 'company' else 'employee'
-            msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
+            msg_time = msg[9].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M') if msg[9] else ''
             if sender == 'company':
                 st.markdown(f"""
                 <div style="text-align: right; margin: 0.5rem 0;">
@@ -837,7 +838,7 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                         st.markdown(f"**Phone:** {app[15]}")
                         st.markdown(f"**Skills:** {app[12]}")
                         st.markdown(f"**Cover Letter:** {app[6]}")
-                        st.markdown(f"**Applied:** {app[7]}")
+                        st.markdown(f"**Applied:** {app[7].astimezone(pytz.timezone("Asia/Kathmandu"))}")
                         st.markdown(f"**Match Score:** {app[5]}%")
                         if app[13]:
                             st.markdown(get_resume_download_link(app[13], "📄 Download Resume"), unsafe_allow_html=True)
@@ -888,7 +889,7 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                                 meeting_link = st.text_input("Meeting Link (if video)")
                                 submitted = st.form_submit_button("Schedule", use_container_width=True)
                                 if submitted:
-                                    scheduled_datetime = datetime.combine(scheduled_date, scheduled_time)
+                                    scheduled_datetime = datetime.combine(scheduled_date, scheduled_time).astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M:%S')
                                     upsert_interview(app[0], app[1], company_id, app[2], scheduled_datetime, interview_type, meeting_link)
                                     add_notification(app[1], "interview", "Interview Scheduled", f"Interview for {app[9]} on {scheduled_date}")
                                     send_email(app[11], "Interview Scheduled", f"Dear {app[10]},\n\nYour interview for {app[9]} has been scheduled on {scheduled_date} at {scheduled_time} UTC.\n\nLink: {meeting_link}")
@@ -908,7 +909,7 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                             st.markdown(f"""
                             <div style="background: #3B82F620; padding: 1rem; border-radius: 16px; margin: 0.5rem 0;">
                                 <h4>🗓️ Interview {app[18]}</h4>
-                                <p><strong>Date:</strong> {app[17].strftime('%Y-%m-%d %H:%M')}</p>
+                                <p><strong>Date:</strong> {app[17].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M')}</p>
                                 <p><strong>Meeting Link:</strong> <a href="{app[19]}" target="_blank">{app[19]}</a></p>
                             </div>
                             """, unsafe_allow_html=True)
@@ -965,7 +966,7 @@ elif current_page in ["Conversations", "Archived"]:
             st.markdown('<div class="chat-container" id="chat-container-msg">', unsafe_allow_html=True)
             for msg in msgs:
                 if msg[2] == 'company':
-                    msg_time = msg[9].strftime('%Y-%m-%d %H:%M') if msg[9] else ''
+                    msg_time = msg[9].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M') if msg[9] else ''
                     st.markdown(f"""
                     <div style="text-align: right; margin: 0.5rem 0;">
                         <div class="chat-bubble-company">{msg[6]}<br><span class="chat-timestamp">{msg_time}</span></div>
@@ -1025,7 +1026,7 @@ elif current_page == "Notifications":
         for act in activities:
             icon = "📝" if act['type'] == 'application' else "💬"
             bg = "#DCFCE7" if act['type'] == 'application' else "#DBEAFE"
-            time_str = act['time'].strftime('%Y-%m-%d %H:%M') if act['time'] else ''
+            time_str = act['time'].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M') if act['time'] else ''
             st.markdown(f"""
             <div class="notification-card" style="margin-bottom: 0.5rem;">
                 <div style="display: flex; align-items: center;">
