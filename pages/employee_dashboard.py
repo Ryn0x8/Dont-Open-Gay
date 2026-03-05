@@ -121,6 +121,174 @@ def get_resume_download_link(resume_path, text="Download Resume"):
         return href
     return None
 
+def display_recruiter_profile(user, profile):
+    # Index constants (should be defined earlier)
+    IDX_PHONE = 1
+    IDX_LOCATION = 2
+    IDX_RESUME = 4
+    IDX_SKILLS = 5
+    IDX_EXP = 6
+    IDX_JOB_TYPE = 7
+    IDX_SALARY = 8
+    IDX_BIO = 9
+    IDX_LINKEDIN = 10
+    IDX_GITHUB = 11
+    IDX_PORTFOLIO = 12
+    IDX_PROJECTS = 13
+    IDX_JOB_ALERTS = 14
+    IDX_VIDEO = 15
+
+    # Cover image placeholder (gradient)
+    st.markdown("""
+    <style>
+    .cover-image {
+        height: 200px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px 16px 0 0;
+        margin-bottom: -60px;
+    }
+    .profile-pic {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 4px solid white;
+        background: linear-gradient(135deg, var(--primary), #3B82F6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 3rem;
+        font-weight: bold;
+        margin-left: 2rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .section-title {
+        font-size: 1.4rem;
+        font-weight: 600;
+        margin: 1.5rem 0 1rem;
+        color: var(--text);
+    }
+    .skill-tag {
+        background: #e2e8f0;
+        padding: 0.3rem 1rem;
+        border-radius: 30px;
+        font-size: 0.9rem;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+        display: inline-block;
+    }
+    .project-card {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: var(--shadow-sm);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Cover
+    st.markdown('<div class="cover-image"></div>', unsafe_allow_html=True)
+
+    # Profile pic and name row
+    col_pic, col_name = st.columns([1, 3])
+    with col_pic:
+        st.markdown(f'<div class="profile-pic">{user[1][0].upper() if user[1] else "U"}</div>', unsafe_allow_html=True)
+    with col_name:
+        st.markdown(f"## {user[1]}")
+        # Generate headline from experience level and preferred job type
+        headline_parts = []
+        if profile[IDX_EXP]:
+            headline_parts.append(profile[IDX_EXP])
+        if profile[IDX_JOB_TYPE]:
+            headline_parts.append(profile[IDX_JOB_TYPE])
+        if profile[IDX_SKILLS]:
+            top_skills = profile[IDX_SKILLS].split(',')[:3]
+            headline_parts.append(" | ".join(top_skills))
+        headline = " ".join(headline_parts) if headline_parts else "Professional"
+        st.markdown(f"**{headline}**")
+        # Location
+        if profile[IDX_LOCATION]:
+            st.markdown(f"📍 {profile[IDX_LOCATION]}")
+        # Contact
+        contact = []
+        if user[2]:
+            contact.append(f"📧 {user[2]}")
+        if profile[IDX_PHONE]:
+            contact.append(f"📱 {profile[IDX_PHONE]}")
+        if contact:
+            st.markdown(" | ".join(contact))
+
+    st.markdown("---")
+
+    # About
+    if profile[IDX_BIO]:
+        st.markdown("### 📝 About")
+        st.markdown(profile[IDX_BIO])
+        st.markdown("---")
+
+    # Two columns for Skills and Details
+    col_left, col_right = st.columns(2)
+
+    with col_left:
+        st.markdown("### 🛠️ Skills")
+        if profile[IDX_SKILLS]:
+            skills = [s.strip() for s in profile[IDX_SKILLS].split(',') if s.strip()]
+            for skill in skills:
+                st.markdown(f'<span class="skill-tag">{skill}</span>', unsafe_allow_html=True)
+        else:
+            st.info("No skills added.")
+
+        st.markdown("### 💼 Experience Level")
+        st.markdown(profile[IDX_EXP] if profile[IDX_EXP] else "Not specified")
+        st.markdown("### ⏳ Preferred Job Type")
+        st.markdown(profile[IDX_JOB_TYPE] if profile[IDX_JOB_TYPE] else "Not specified")
+        st.markdown("### 💰 Expected Salary")
+        st.markdown(profile[IDX_SALARY] if profile[IDX_SALARY] else "Not specified")
+
+    with col_right:
+        # Projects
+        st.markdown("### 🚀 Projects")
+        projects = []
+        if len(profile) > IDX_PROJECTS and profile[IDX_PROJECTS]:
+            try:
+                projects = json.loads(profile[IDX_PROJECTS])
+            except:
+                projects = []
+        if projects:
+            for proj in projects:
+                st.markdown(f"""
+                <div class="project-card">
+                    <h4>{proj.get('name', 'Unnamed')}</h4>
+                    <p>{proj.get('description', '')[:150]}...</p>
+                    {f'<p><a href="{proj["url"]}" target="_blank">🔗 Project Link</a></p>' if proj.get('url') else ''}
+                    {f'<p><strong>Tech:</strong> {proj["technologies"]}</p>' if proj.get('technologies') else ''}
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("No projects added.")
+
+        # Video Introduction
+        if len(profile) > IDX_VIDEO and profile[IDX_VIDEO] and os.path.exists(profile[IDX_VIDEO]):
+            st.markdown("### 🎥 Video Introduction")
+            st.video(profile[IDX_VIDEO])
+
+    st.markdown("---")
+
+    # Social Links
+    social_links = []
+    if profile[IDX_LINKEDIN]:
+        social_links.append(f"[LinkedIn]({profile[IDX_LINKEDIN]})")
+    if profile[IDX_GITHUB]:
+        social_links.append(f"[GitHub]({profile[IDX_GITHUB]})")
+    if profile[IDX_PORTFOLIO]:
+        social_links.append(f"[Portfolio]({profile[IDX_PORTFOLIO]})")
+    if social_links:
+        st.markdown("### 🌐 Connect")
+        st.markdown(" | ".join(social_links))
+
 # --- Custom CSS (softer, less blue, buttons auto width) ---
 st.markdown("""
 <style>
@@ -1554,6 +1722,8 @@ elif current_page == "Profile":
 
     # --- Left Column ---
     col1, col2 = st.columns([1, 2])
+    if "recruiter_view" not in st.session_state:
+        st.session_state.recruiter_view = False
 
     with col1:
         st.markdown(f"""
@@ -1565,6 +1735,10 @@ elif current_page == "Profile":
             {f'<p>📍 {profile[IDX_LOCATION]}</p>' if profile[IDX_LOCATION] else ''}
         </div>
         """, unsafe_allow_html=True)
+
+        if st.button("👁️ View Profile as Recruiter", use_container_width=True):
+            st.session_state.recruiter_view = not st.session_state.recruiter_view
+            st.rerun()
 
         # --- Profile Completion Meter ---
         st.markdown("#### 📊 Profile Completion")
@@ -1625,6 +1799,7 @@ elif current_page == "Profile":
             st.session_state.show_autofill_buttons = False
         if "goodness_feedback" not in st.session_state:
             st.session_state.goodness_feedback = None
+        
 
         if uploaded_file is not None:
             if st.session_state.uploaded_resume_name != uploaded_file.name:
@@ -1818,165 +1993,173 @@ elif current_page == "Profile":
 
     # --- Right Column ---
     with col2:
+        if st.session_state.recruiter_view:
+            # Back button
+            if st.button("← Back to Edit Profile", use_container_width=True):
+                st.session_state.recruiter_view = False
+                st.rerun()
+            # Render recruiter view
+            display_recruiter_profile(user, profile)
+        else:
         # --- Edit Profile Form ---
-        with st.form("profile_edit_form"):
-            st.markdown("#### ✏️ Edit Profile")
-            col_a, col_b = st.columns(2)
-            with col_a:
-                name = st.text_input("Full Name", value=user[1] or "")
-                phone = st.text_input("Phone", value=profile[IDX_PHONE] or "")
-                location = st.text_input("Location", value=profile[IDX_LOCATION] or "")
-            with col_b:
-                exp_levels = ["Entry", "Junior", "Mid", "Senior", "Lead"]
-                exp_index = exp_levels.index(profile[IDX_EXP]) if profile[IDX_EXP] in exp_levels else 0
-                experience = st.selectbox("Experience Level", exp_levels, index=exp_index)
-                job_types = ["Full-time", "Part-time", "Remote", "Hybrid", "Contract"]
-                pref_index = job_types.index(profile[IDX_JOB_TYPE]) if profile[IDX_JOB_TYPE] in job_types else 0
-                job_type = st.selectbox("Preferred Job Type", job_types, index=pref_index)
-                salary = st.text_input("Expected Salary", value=profile[IDX_SALARY] or "")
-            skills = st.text_area("Skills (comma separated)", value=profile[IDX_SKILLS] or "")
-            bio = st.text_area("Bio/Summary", value=profile[IDX_BIO] or "", height=100)
-            st.markdown("#### Social Links")
-            col_c, col_d = st.columns(2)
-            with col_c:
-                linkedin = st.text_input("LinkedIn URL", value=profile[IDX_LINKEDIN] or "")
-                github = st.text_input("GitHub URL", value=profile[IDX_GITHUB] or "")
-            with col_d:
-                portfolio = st.text_input("Portfolio URL", value=profile[IDX_PORTFOLIO] or "")
-            submitted = st.form_submit_button("💾 Save Changes")
-            if submitted:
-                update_user_name(user_id, name)
-                update_profile(user_id,
-                               phone=phone, location=location, experience_level=experience,
-                               preferred_job_type=job_type, expected_salary=salary, skills=skills,
-                               bio=bio, linkedin_url=linkedin, github_url=github, portfolio_url=portfolio)
-                st.success("Profile updated!")
-                st.rerun()
+            with st.form("profile_edit_form"):
+                st.markdown("#### ✏️ Edit Profile")
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    name = st.text_input("Full Name", value=user[1] or "")
+                    phone = st.text_input("Phone", value=profile[IDX_PHONE] or "")
+                    location = st.text_input("Location", value=profile[IDX_LOCATION] or "")
+                with col_b:
+                    exp_levels = ["Entry", "Junior", "Mid", "Senior", "Lead"]
+                    exp_index = exp_levels.index(profile[IDX_EXP]) if profile[IDX_EXP] in exp_levels else 0
+                    experience = st.selectbox("Experience Level", exp_levels, index=exp_index)
+                    job_types = ["Full-time", "Part-time", "Remote", "Hybrid", "Contract"]
+                    pref_index = job_types.index(profile[IDX_JOB_TYPE]) if profile[IDX_JOB_TYPE] in job_types else 0
+                    job_type = st.selectbox("Preferred Job Type", job_types, index=pref_index)
+                    salary = st.text_input("Expected Salary", value=profile[IDX_SALARY] or "")
+                skills = st.text_area("Skills (comma separated)", value=profile[IDX_SKILLS] or "")
+                bio = st.text_area("Bio/Summary", value=profile[IDX_BIO] or "", height=100)
+                st.markdown("#### Social Links")
+                col_c, col_d = st.columns(2)
+                with col_c:
+                    linkedin = st.text_input("LinkedIn URL", value=profile[IDX_LINKEDIN] or "")
+                    github = st.text_input("GitHub URL", value=profile[IDX_GITHUB] or "")
+                with col_d:
+                    portfolio = st.text_input("Portfolio URL", value=profile[IDX_PORTFOLIO] or "")
+                submitted = st.form_submit_button("💾 Save Changes")
+                if submitted:
+                    update_user_name(user_id, name)
+                    update_profile(user_id,
+                                phone=phone, location=location, experience_level=experience,
+                                preferred_job_type=job_type, expected_salary=salary, skills=skills,
+                                bio=bio, linkedin_url=linkedin, github_url=github, portfolio_url=portfolio)
+                    st.success("Profile updated!")
+                    st.rerun()
 
-        # --- Projects Section ---
-        st.markdown("---")
-        st.markdown("#### 🚀 Projects")
+            # --- Projects Section ---
+            st.markdown("---")
+            st.markdown("#### 🚀 Projects")
 
-        # Parse existing projects
-        projects = []
-        if len(profile) > IDX_PROJECTS and profile[IDX_PROJECTS]:
-            try:
-                projects = json.loads(profile[IDX_PROJECTS])
-            except:
-                projects = []
+            # Parse existing projects
+            projects = []
+            if len(profile) > IDX_PROJECTS and profile[IDX_PROJECTS]:
+                try:
+                    projects = json.loads(profile[IDX_PROJECTS])
+                except:
+                    projects = []
 
-        # Display projects
-        if projects:
-            for idx, proj in enumerate(projects):
-                with st.expander(f"📁 {proj.get('name', 'Unnamed')}"):
-                    st.markdown(f"**Description:** {proj.get('description', '')}")
-                    if proj.get('url'):
-                        st.markdown(f"**Link:** [{proj['url']}]({proj['url']})")
-                    if proj.get('technologies'):
-                        st.markdown(f"**Technologies:** {proj['technologies']}")
-                    col_edit, col_del = st.columns(2)
-                    with col_edit:
-                        if st.button("✏️ Edit", key=f"edit_proj_{idx}"):
-                            st.session_state.edit_project_idx = idx
-                            st.rerun()
-                    with col_del:
-                        if st.button("🗑️ Delete", key=f"del_proj_{idx}"):
-                            projects.pop(idx)
+            # Display projects
+            if projects:
+                for idx, proj in enumerate(projects):
+                    with st.expander(f"📁 {proj.get('name', 'Unnamed')}"):
+                        st.markdown(f"**Description:** {proj.get('description', '')}")
+                        if proj.get('url'):
+                            st.markdown(f"**Link:** [{proj['url']}]({proj['url']})")
+                        if proj.get('technologies'):
+                            st.markdown(f"**Technologies:** {proj['technologies']}")
+                        col_edit, col_del = st.columns(2)
+                        with col_edit:
+                            if st.button("✏️ Edit", key=f"edit_proj_{idx}"):
+                                st.session_state.edit_project_idx = idx
+                                st.rerun()
+                        with col_del:
+                            if st.button("🗑️ Delete", key=f"del_proj_{idx}"):
+                                projects.pop(idx)
+                                update_profile(user_id, projects=json.dumps(projects))
+                                st.rerun()
+            else:
+                st.info("No projects added yet.")
+
+            # Add/Edit project form
+            if "edit_project_idx" in st.session_state:
+                idx = st.session_state.edit_project_idx
+                proj = projects[idx] if idx < len(projects) else {}
+                with st.form("edit_project_form"):
+                    name = st.text_input("Project Name", value=proj.get("name", ""))
+                    desc = st.text_area("Description", value=proj.get("description", ""))
+                    url = st.text_input("Project URL", value=proj.get("url", ""))
+                    tech = st.text_input("Technologies (comma separated)", value=proj.get("technologies", ""))
+                    col_save, col_cancel = st.columns(2)
+                    with col_save:
+                        if st.form_submit_button("💾 Save"):
+                            proj_new = {
+                                "name": name,
+                                "description": desc,
+                                "url": url,
+                                "technologies": tech
+                            }
+
+                            if idx < len(projects):
+                                projects[idx] = proj_new
+                            else:
+                                projects.append(proj_new)
                             update_profile(user_id, projects=json.dumps(projects))
+                            del st.session_state.edit_project_idx
                             st.rerun()
-        else:
-            st.info("No projects added yet.")
-
-        # Add/Edit project form
-        if "edit_project_idx" in st.session_state:
-            idx = st.session_state.edit_project_idx
-            proj = projects[idx] if idx < len(projects) else {}
-            with st.form("edit_project_form"):
-                name = st.text_input("Project Name", value=proj.get("name", ""))
-                desc = st.text_area("Description", value=proj.get("description", ""))
-                url = st.text_input("Project URL", value=proj.get("url", ""))
-                tech = st.text_input("Technologies (comma separated)", value=proj.get("technologies", ""))
-                col_save, col_cancel = st.columns(2)
-                with col_save:
-                    if st.form_submit_button("💾 Save"):
-                        proj_new = {
-                            "name": name,
-                            "description": desc,
-                            "url": url,
-                            "technologies": tech
-                        }
-
-                        if idx < len(projects):
-                            projects[idx] = proj_new
-                        else:
-                            projects.append(proj_new)
-                        update_profile(user_id, projects=json.dumps(projects))
-                        del st.session_state.edit_project_idx
-                        st.rerun()
-                with col_cancel:
-                    if st.form_submit_button("❌ Cancel"):
-                        del st.session_state.edit_project_idx
-                        st.rerun()
-        else:
-            # Button to add new project
-            if st.button("➕ Add Project"):
-                st.session_state.edit_project_idx = len(projects)  # new project at end
-                st.rerun()
-
-        # GitHub Import
-        st.markdown("#### ⬇️ Import from GitHub")
-        github_username = profile[IDX_GITHUB] if profile[IDX_GITHUB] else ""
-        if github_username:
-            # Extract username from URL if full URL
-            match = re.search(r"github\.com/([A-Za-z0-9-]+)", github_username)
-            if match:
-                github_username = match.group(1)
-            if st.button(f"📦 Fetch 3 latest repos from {github_username}"):
-                with st.spinner("Fetching repositories..."):
-                    repos = fetch_github_repos(github_username)
-                    if repos:
-                        existing_names = {p.get("name") for p in projects}
-                        new_projects = [{"name": r["name"], "description": r["description"], "url": r["url"], "technologies": ""} for r in repos if r["name"] not in existing_names]
-                        if new_projects:
-                            projects.extend(new_projects)
-                            update_profile(user_id, projects=json.dumps(projects))
-                            st.success(f"Added {len(new_projects)} projects from GitHub!")
+                    with col_cancel:
+                        if st.form_submit_button("❌ Cancel"):
+                            del st.session_state.edit_project_idx
                             st.rerun()
-                        else:
-                            st.info("No new projects to add.")
-        else:
-            st.info("Add your GitHub URL in the profile to enable import.")
+            else:
+                # Button to add new project
+                if st.button("➕ Add Project"):
+                    st.session_state.edit_project_idx = len(projects)  # new project at end
+                    st.rerun()
 
-        # --- AI Career Suggestions ---
+            # GitHub Import
+            st.markdown("#### ⬇️ Import from GitHub")
+            github_username = profile[IDX_GITHUB] if profile[IDX_GITHUB] else ""
+            if github_username:
+                # Extract username from URL if full URL
+                match = re.search(r"github\.com/([A-Za-z0-9-]+)", github_username)
+                if match:
+                    github_username = match.group(1)
+                if st.button(f"📦 Fetch 3 latest repos from {github_username}"):
+                    with st.spinner("Fetching repositories..."):
+                        repos = fetch_github_repos(github_username)
+                        if repos:
+                            existing_names = {p.get("name") for p in projects}
+                            new_projects = [{"name": r["name"], "description": r["description"], "url": r["url"], "technologies": ""} for r in repos if r["name"] not in existing_names]
+                            if new_projects:
+                                projects.extend(new_projects)
+                                update_profile(user_id, projects=json.dumps(projects))
+                                st.success(f"Added {len(new_projects)} projects from GitHub!")
+                                st.rerun()
+                            else:
+                                st.info("No new projects to add.")
+            else:
+                st.info("Add your GitHub URL in the profile to enable import.")
+
+            # --- AI Career Suggestions ---
+            st.markdown("---")
+            st.markdown("#### ✨ AI Career Suggestions")
+            if st.button("🎯 Get Personalized Suggestions"):
+                with st.spinner("Analyzing your profile..."):
+                    skills = profile[IDX_SKILLS] or ""
+                    exp = profile[IDX_EXP] or ""
+                    resume_text = st.session_state.get("last_resume_text", "")
+                    suggestions = get_ai_career_suggestions(skills, exp, resume_text)
+                    st.markdown(f"""
+                    <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 1rem; border-radius: 8px; margin-top: 0.5rem;">
+                        {suggestions}
+                    </div>
+                    """, unsafe_allow_html=True)
+
+        # --- Logout and Admin buttons (unchanged) ---
         st.markdown("---")
-        st.markdown("#### ✨ AI Career Suggestions")
-        if st.button("🎯 Get Personalized Suggestions"):
-            with st.spinner("Analyzing your profile..."):
-                skills = profile[IDX_SKILLS] or ""
-                exp = profile[IDX_EXP] or ""
-                resume_text = st.session_state.get("last_resume_text", "")
-                suggestions = get_ai_career_suggestions(skills, exp, resume_text)
-                st.markdown(f"""
-                <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 1rem; border-radius: 8px; margin-top: 0.5rem;">
-                    {suggestions}
-                </div>
-                """, unsafe_allow_html=True)
-
-    # --- Logout and Admin buttons (unchanged) ---
-    st.markdown("---")
-    col_logout, col_admin = st.columns(2)
-    with col_logout:
-        if st.button("🚪 Logout", type="secondary"):
-            for key in ['authenticated', 'user_id', 'user_name', 'user_email', 'main_tab', 'sub_tab', 'reg_face', 'verify_img']:
-                if key in st.session_state:
-                    del st.session_state[key]
-            st.switch_page("app.py")
-    with col_admin:
-        if st.session_state.get("is_admin", False):
-            if st.button("🛡️ Admin Panel", type="secondary"):
-                st.session_state.previous_page = "pages/employee_dashboard.py"
-                st.switch_page("pages/admin_dashboard.py")
-                
+        col_logout, col_admin = st.columns(2)
+        with col_logout:
+            if st.button("🚪 Logout", type="secondary"):
+                for key in ['authenticated', 'user_id', 'user_name', 'user_email', 'main_tab', 'sub_tab', 'reg_face', 'verify_img']:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                st.switch_page("app.py")
+        with col_admin:
+            if st.session_state.get("is_admin", False):
+                if st.button("🛡️ Admin Panel", type="secondary"):
+                    st.session_state.previous_page = "pages/employee_dashboard.py"
+                    st.switch_page("pages/admin_dashboard.py")
+                    
 elif current_page == "Analytics":
     st.markdown("## 📊 My Analytics")
     stats = get_application_stats(user_id)
