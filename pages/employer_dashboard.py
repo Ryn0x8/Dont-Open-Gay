@@ -884,13 +884,13 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                             with st.form(key=f"schedule_{app[0]}_{i}"):
                                 st.markdown("#### Schedule Interview")
                                 nepal_tz = pytz.timezone("Asia/Kathmandu")
-                                scheduled_date = nepal_tz.localize(st.date_input("Date"))
-                                scheduled_time =nepal_tz.localize(st.time_input("Time"))
+                                scheduled_date = st.date_input("Date")
+                                scheduled_time =st.time_input("Time")
                                 interview_type = st.selectbox("Type", ["Video Call", "Phone", "In-person"])
                                 meeting_link = st.text_input("Meeting Link (if video)")
                                 submitted = st.form_submit_button("Schedule", use_container_width=True)
                                 if submitted:
-                                    scheduled_datetime = datetime.combine(scheduled_date, scheduled_time)
+                                    scheduled_datetime = nepal_tz.localize(datetime.combine(scheduled_date, scheduled_time))
                                     upsert_interview(app[0], app[1], company_id, app[2], scheduled_datetime, interview_type, meeting_link)
                                     add_notification(app[1], "interview", "Interview Scheduled", f"Interview for {app[9]} on {scheduled_date}")
                                     send_email(app[11], "Interview Scheduled", f"Dear {app[10]},\n\nYour interview for {app[9]} has been scheduled on {scheduled_date} at {scheduled_time} NPT.\n\nLink: {meeting_link}")
