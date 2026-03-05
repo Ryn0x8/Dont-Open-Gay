@@ -900,6 +900,15 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                             st.session_state.chat_employee_name = app[10]
                             st.session_state.chat_application_id = app[0]
                             st.rerun()
+                        
+                        if app[4] == "interview":
+                            st.markdown(f"""
+                            <div style="background: #3B82F620; padding: 1rem; border-radius: 16px; margin: 0.5rem 0;">
+                                <h4>🗓️ Interview Scheduled</h4>
+                                <p><strong>Date:</strong> {app[13].strftime('%Y-%m-%d %H:%M')}</p>
+                                <p><strong>Meeting Link:</strong> <a href="{app[15]}" target="_blank">{app[15]}</a></p>
+                            </div>
+                            """, unsafe_allow_html=True)
 
 elif current_page in ["Open Requests", "My Interests"]:
     if current_page == "Open Requests":
