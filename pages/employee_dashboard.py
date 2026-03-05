@@ -1845,8 +1845,17 @@ elif current_page == "Profile":
                 col_save, col_cancel = st.columns(2)
                 with col_save:
                     if st.form_submit_button("💾 Save"):
-                        proj_new = {"name": name, "description": desc, "url": url, "technologies": tech}
-                        projects[idx] = proj_new
+                        proj_new = {
+                            "name": name,
+                            "description": desc,
+                            "url": url,
+                            "technologies": tech
+                        }
+
+                        if idx < len(projects):
+                            projects[idx] = proj_new
+                        else:
+                            projects.append(proj_new)
                         update_profile(user_id, projects=json.dumps(projects))
                         del st.session_state.edit_project_idx
                         st.rerun()
