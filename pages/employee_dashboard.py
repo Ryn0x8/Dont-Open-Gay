@@ -234,10 +234,23 @@ def display_recruiter_profile(user, profile):
 
     with col_left:
         st.markdown("### 🛠️ Skills")
+        
         if profile[IDX_SKILLS]:
+            # Split and clean skills
             skills = [s.strip() for s in profile[IDX_SKILLS].split(',') if s.strip()]
-            for skill in skills:
-                st.markdown(f'<span class="skill-tag">{skill}</span>', unsafe_allow_html=True)
+            mid = (len(skills) + 1) // 2  # Middle index, extra goes to first column
+            
+            col_sk1, col_sk2 = st.columns(2)
+
+            # Column 1
+            with col_sk1:
+                for skill in skills[:mid]:
+                    st.markdown(f'<span class="skill-tag">{skill}</span>', unsafe_allow_html=True)
+            
+            # Column 2
+            with col_sk2:
+                for skill in skills[mid:]:
+                    st.markdown(f'<span class="skill-tag">{skill}</span>', unsafe_allow_html=True)
         else:
             st.info("No skills added.")
 
@@ -259,12 +272,17 @@ def display_recruiter_profile(user, profile):
                 projects = []
         if projects:
             for proj in projects:
+                name = proj.get('name') or 'Unnamed'
+                desc = proj.get('description') or ''
+                url = proj.get('url') or ''
+                tech = proj.get('technologies') or ''
+
                 st.markdown(f"""
                 <div class="project-card">
-                    <h4>{proj.get('name', 'Unnamed')}</h4>
-                    <p>{proj.get('description', '')[:150]}...</p>
-                    {f'<p><a href="{proj["url"]}" target="_blank">🔗 Project Link</a></p>' if proj.get('url') else ''}
-                    {f'<p><strong>Tech:</strong> {proj["technologies"]}</p>' if proj.get('technologies') else ''}
+                    <h4>{name}</h4>
+                    <p>{desc[:150]}{ '...' if desc else ''}</p>
+                    {f'<p><a href="{url}" target="_blank">🔗 Project Link</a></p>' if url else ''}
+                    {f'<p><strong>Tech:</strong> {tech}</p>' if tech else ''}
                 </div>
                 """, unsafe_allow_html=True)
         else:
