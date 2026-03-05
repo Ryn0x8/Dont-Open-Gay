@@ -900,8 +900,11 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                             st.session_state.chat_employee_name = app[10]
                             st.session_state.chat_application_id = app[0]
                             st.rerun()
+
+                        
                         
                         if app[4] == "interview":
+                            print(app[13], app[15])
                             st.markdown(f"""
                             <div style="background: #3B82F620; padding: 1rem; border-radius: 16px; margin: 0.5rem 0;">
                                 <h4>🗓️ Interview Scheduled</h4>
