@@ -19,7 +19,7 @@ from database import (
     delete_job, get_company_jobs_all,
     get_new_applications_count, get_unread_messages_count, get_recent_activities,
     get_job_by_id, get_users_by_role, get_or_create_profile,
-    update_company_password, 
+    update_company_password, is_receiving_alerts
 )
 import random
 from database import update_expired_jobs
@@ -702,18 +702,19 @@ elif current_page == "Post a Job":
                             if emp_skills and skills_required:
                                 match_score = calculate_match_score(job, profile)
                                 if match_score >= 60:
-                                    success = send_job_alert_email(
-                                        to_email=emp_email,
-                                        job_title=title,
-                                        company_name=st.session_state.employer_name,
-                                        description=description,
-                                        requirements=requirements,
-                                        location=location,
-                                        job_type=job_type,
-                                        salary_range=salary_range
-                                    )
-                                    if success:
-                                        matched_count += 1
+                                    if is_receiving_alerts(emp_email):
+                                        success = send_job_alert_email(
+                                            to_email=emp_email,
+                                            job_title=title,
+                                            company_name=st.session_state.employer_name,
+                                            description=description,
+                                            requirements=requirements,
+                                            location=location,
+                                            job_type=job_type,
+                                            salary_range=salary_range
+                                        )
+                                        if success:
+                                            matched_count += 1
 
                         if matched_count > 0:
                             st.info(f"📧 Job alerts sent to {matched_count} matching candidate(s).")

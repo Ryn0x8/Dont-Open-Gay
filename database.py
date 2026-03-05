@@ -546,6 +546,13 @@ def get_interview_count(employee_id):
     
     return len(list(interviews_ref))
 
+def is_receiving_alerts(employee_id):
+    """Check if employee has job alerts enabled."""
+    profile_ref = db.collection('employee_profiles').document(employee_id).get()
+    if profile_ref.exists:
+        return profile_ref.to_dict().get('job_alerts_enabled', False)
+    return False
+
 # ========== COMPANY FUNCTIONS (for employer dashboard) ==========
 def get_company_by_email(email):
     """Get company by email."""

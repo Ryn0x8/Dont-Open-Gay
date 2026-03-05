@@ -19,9 +19,9 @@ from database import (
     add_job_request, get_user_requests,
     get_conversations, get_messages, send_message, mark_messages_read,
     get_application_stats, get_applications_over_time, get_interview_count,
-    delete_job_request, update_job_request, update_user_password, mark_expired_interviews
+    delete_job_request, update_job_request, update_user_password, mark_expired_interviews, update_expired_jobs
 )
-from database import update_expired_jobs
+
 from utils import get_resume_goodness_score, parse_resume_with_groq, extract_text_from_pdf, get_ai_career_suggestions, fetch_github_repos
 import json
 import re
@@ -129,6 +129,7 @@ def calculate_match_score(job, profile):
                     break
 
         skill_score = matched / len(job_list)
+        print(f"Skill Score: {skill_score*60}")
         score += skill_score * 60
 
     # ---------------- EXPERIENCE MATCH (15%) ----------------
@@ -138,7 +139,8 @@ def calculate_match_score(job, profile):
         "entry": 1,
         "junior": 2,
         "mid": 3,
-        "senior": 4
+        "senior": 4,
+        "lead": 5
     }
 
     if job_exp and emp_exp:
@@ -147,8 +149,10 @@ def calculate_match_score(job, profile):
 
         if job_val == emp_val:
             score += 15
+            print("Experience Score: 15")
         elif abs(job_val - emp_val) == 1:
             score += 8
+            print("Experience Score: 8")
 
     # ---------------- LOCATION MATCH (10%) ----------------
     job_location = job.get("location")
@@ -158,8 +162,10 @@ def calculate_match_score(job, profile):
 
         if similarity >= 80:
             score += 10
+            print(f"Location Score: 10")
         elif similarity >= 50:
             score += 5
+            print(f"Location Score: 5")
 
     # ---------------- JOB TYPE MATCH (5%) ----------------
     job_type = job.get("job_type")
@@ -167,6 +173,8 @@ def calculate_match_score(job, profile):
     if job_type and emp_job_type:
         if job_type.lower() == emp_job_type.lower():
             score += 5
+            print(f"Job Type Score: {score}")
+
 
     # ---------------- DESCRIPTION KEYWORDS (10%) ----------------
     description = job.get("description")
@@ -178,9 +186,11 @@ def calculate_match_score(job, profile):
         matched = sum(1 for skill in emp_list if skill in desc)
 
         keyword_score = min(matched / len(emp_list), 1)
+        print(f"Description Score: {keyword_score*10}")
         score += keyword_score * 10
 
     return int(score)
+
 
 def get_resume_download_link(resume_path, text="Download Resume"):
     if resume_path and os.path.exists(resume_path):
