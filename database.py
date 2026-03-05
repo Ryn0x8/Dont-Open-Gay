@@ -538,8 +538,12 @@ def get_applications_over_time(employee_id):
     return [(date, count) for date, count in sorted(dates.items())]
 
 def get_interview_count(employee_id):
-    """Count interviews for an employee."""
-    interviews_ref = db.collection('interviews').where('employee_id', '==', employee_id).stream()
+    """Count scheduled interviews for an employee."""
+    interviews_ref = db.collection('interviews') \
+                       .where('employee_id', '==', employee_id) \
+                       .where('status', '==', 'scheduled') \
+                       .stream()
+    
     return len(list(interviews_ref))
 
 # ========== COMPANY FUNCTIONS (for employer dashboard) ==========
