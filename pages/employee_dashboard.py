@@ -94,23 +94,91 @@ if "authenticated" not in st.session_state or not st.session_state.authenticated
 
 from rapidfuzz import fuzz
 
-def calculate_match_score(job_skills, employee_skills, threshold=70):
-    if not job_skills or not employee_skills:
-        return 0
+def calculate_match_score(job, profile):
 
-    job_list = [s.strip().lower() for s in job_skills.split(',')]
-    emp_list = [s.strip().lower() for s in employee_skills.split(',')]
+    score = 0
 
-    matched = 0
+    IDX_LOCATION = 2
+    IDX_SKILLS = 5
+    IDX_EXP = 6
+    IDX_JOB_TYPE = 7
 
-    for job_skill in job_list:
-        for emp_skill in emp_list:
-            similarity = fuzz.token_sort_ratio(job_skill, emp_skill)
-            if similarity >= threshold:
-                matched += 1
-                break
 
-    return int((matched / len(job_list)) * 100)
+    # Extract employee info from profile
+    emp_skills = profile[IDX_SKILLS]
+    emp_location = profile[IDX_LOCATION]
+    emp_exp = profile[IDX_EXP]
+    emp_job_type = profile[IDX_JOB_TYPE]
+
+    job_skills = job.get("skills_required")
+
+    if job_skills and emp_skills:
+        job_list = [s.strip().lower() for s in job_skills.split(',')]
+        emp_list = [s.strip().lower() for s in emp_skills.split(',')]
+
+        matched = 0
+
+        for job_skill in job_list:
+            for emp_skill in emp_list:
+                similarity = fuzz.token_sort_ratio(job_skill, emp_skill)
+
+                if similarity >= 70:
+                    matched += 1
+                    break
+
+        skill_score = matched / len(job_list)
+        score += skill_score * 60
+
+    # ---------------- EXPERIENCE MATCH (15%) ----------------
+    job_exp = job.get("experience_level")
+
+    exp_map = {
+        "entry": 1,
+        "junior": 2,
+        "mid": 3,
+        "senior": 4
+    }
+
+    if job_exp and emp_exp:
+        job_val = exp_map.get(job_exp.lower(), 0)
+        emp_val = exp_map.get(emp_exp.lower(), 0)
+
+        if job_val == emp_val:
+            score += 15
+        elif abs(job_val - emp_val) == 1:
+            score += 8
+
+    # ---------------- LOCATION MATCH (10%) ----------------
+    job_location = job.get("location")
+
+    if job_location and emp_location:
+        similarity = fuzz.token_sort_ratio(job_location.lower(), emp_location.lower())
+
+        if similarity >= 80:
+            score += 10
+        elif similarity >= 50:
+            score += 5
+
+    # ---------------- JOB TYPE MATCH (5%) ----------------
+    job_type = job.get("job_type")
+
+    if job_type and emp_job_type:
+        if job_type.lower() == emp_job_type.lower():
+            score += 5
+
+    # ---------------- DESCRIPTION KEYWORDS (10%) ----------------
+    description = job.get("description")
+
+    if description and emp_skills:
+        desc = description.lower()
+        emp_list = [s.strip().lower() for s in emp_skills.split(',')]
+
+        matched = sum(1 for skill in emp_list if skill in desc)
+
+        keyword_score = min(matched / len(emp_list), 1)
+        score += keyword_score * 10
+
+    return int(score)
 
 def get_resume_download_link(resume_path, text="Download Resume"):
     if resume_path and os.path.exists(resume_path):
@@ -993,7 +1061,7 @@ if current_page == "Dashboard":
         for job_tuple in jobs:
             if job_tuple[17] == 1:  # already applied
                 continue
-            match = calculate_match_score(job_tuple[11], employee_skills)
+            match = calculate_match_score(job_tuple_to_dict(job_tuple), profile)
             if match >= 70:  # good match threshold
                 recommendations.append({
                     'id': job_tuple[0],
@@ -1054,7 +1122,7 @@ elif current_page == "Find Jobs":
         profile = get_or_create_profile(user_id)
         st.markdown(f"### {job['title']} at {job['company_name']}")
         with st.form("application_form"):
-            match_score = calculate_match_score(job['skills_required'], profile[5])
+            match_score = calculate_match_score(job, profile)
             if match_score > 0:
                 st.markdown(f"""
                 <div style="margin: 1rem 0;">
@@ -1145,7 +1213,7 @@ elif current_page == "Find Jobs":
         if selected_locs:
             filtered = [j for j in filtered if j['location'] in selected_locs]
         for job in filtered:
-            job['match_score'] = calculate_match_score(job['skills_required'], employee_skills)
+            job['match_score'] = calculate_match_score(job, profile)
         filtered.sort(key=lambda x: x['match_score'], reverse=True)
         st.markdown(f"### Found {len(filtered)} jobs")
 
@@ -1256,7 +1324,7 @@ elif current_page == "Companies":
         profile = get_or_create_profile(user_id)
         st.markdown(f"### {job['title']} at {job['company_name']}")
         with st.form("application_form"):
-            match_score = calculate_match_score(job['skills_required'], profile[5])
+            match_score = calculate_match_score(job, profile)
             if match_score > 0:
                 st.markdown(f"""
                 <div style="margin: 1rem 0;">

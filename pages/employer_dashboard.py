@@ -669,6 +669,27 @@ elif current_page == "Post a Job":
                     with st.spinner("🔍 Finding matching candidates and sending alerts..."):
                         employees = get_users_by_role('employee')
                         matched_count = 0
+                        job = {
+                            'id': None,  
+                            'company_id': st.session_state.company_id,
+                            'company_name': st.session_state.employer_name,
+                            'company_name2': st.session_state.employer_name,
+                            'logo':None,
+                            'title': title,
+                            'category': category,
+                            'description': description,
+                            'requirements': requirements,
+                            'location': location,
+                            'job_type': job_type,
+                            'salary_range': salary_range,
+                            'experience_level': experience,
+                            'skills_required': skills_required,
+                            'status': 'active',
+                            'created_at': datetime.now(),
+                            'deadline': deadline,
+                            'applied': 0,
+                            'saved': 0,
+                        }
 
                         for emp in employees:
                             emp_email = emp['email']
@@ -676,7 +697,7 @@ elif current_page == "Post a Job":
                             emp_skills = profile[5] if len(profile) > 5 else ''
                             
                             if emp_skills and skills_required:
-                                match_score = calculate_match_score(skills_required, emp_skills)
+                                match_score = calculate_match_score(job, profile)
                                 if match_score >= 60:
                                     success = send_job_alert_email(
                                         to_email=emp_email,
