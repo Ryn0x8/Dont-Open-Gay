@@ -1880,7 +1880,6 @@ elif current_page == "Profile":
                 with st.spinner("Fetching repositories..."):
                     repos = fetch_github_repos(github_username)
                     if repos:
-                        # Convert to project format and add (avoid duplicates)
                         existing_names = {p.get("name") for p in projects}
                         new_projects = [{"name": r["name"], "description": r["description"], "url": r["url"], "technologies": ""} for r in repos if r["name"] not in existing_names]
                         if new_projects:

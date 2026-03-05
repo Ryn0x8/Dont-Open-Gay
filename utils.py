@@ -130,7 +130,7 @@ import json
 def fetch_github_repos(github_username):
     if not github_username:
         return []
-    url = f"https://api.github.com/users/{github_username}/repos"
+    url = f"https://api.github.com/users/{github_username}/repos?sort=updated&per_page=3"
     try:
         resp = requests.get(url)
         if resp.status_code == 200:
