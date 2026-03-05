@@ -18,7 +18,7 @@ from database import (
     add_job_request, get_user_requests,
     get_conversations, get_messages, send_message, mark_messages_read,
     get_application_stats, get_applications_over_time, get_interview_count,
-    delete_job_request, update_job_request, update_user_password
+    delete_job_request, update_job_request, update_user_password, mark_expired_interviews
 )
 from database import update_expired_jobs
 from utils import get_resume_goodness_score, parse_resume_with_groq, extract_text_from_pdf, get_ai_career_suggestions, fetch_github_repos
@@ -26,6 +26,7 @@ import json
 import re
 
 update_expired_jobs()
+mark_expired_interviews()
 
 # --- EMAIL FUNCTION (place in auth_utils.py, but included here for completeness) ---
 from email.message import EmailMessage

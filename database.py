@@ -670,6 +670,24 @@ def upsert_interview(application_id, employee_id, company_id, job_id, scheduled_
     else:
         create_interview(application_id, employee_id, company_id, job_id, scheduled_date, interview_type, meeting_link)
 
+def mark_expired_interviews():
+    """Mark all past interviews as expired."""
+    now_utc = datetime.now(timezone.utc)
+    
+    # Query interviews with status 'scheduled' or 'interview'
+    interviews = db.collection('interviews') \
+                   .where('status', 'in', ['scheduled', 'interview']) \
+                   .stream()
+    
+    for doc in interviews:
+        data = doc.to_dict()
+        scheduled_date = data.get('scheduled_date')
+        
+        if scheduled_date and scheduled_date <= now_utc:
+            # Update status to expired
+            doc.reference.update({'status': 'expired'})
+            print(f"Interview {doc.id} marked as expired")
+
 def get_all_open_job_requests():
     """Get all open job requests with employee details."""
     reqs_ref = db.collection('job_requests').where('status', '==', 'open').order_by('created_at', direction=firestore.Query.DESCENDING).stream()

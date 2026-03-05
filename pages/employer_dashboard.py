@@ -8,7 +8,7 @@ from datetime import datetime
 from auth_utils import send_email, send_job_alert_email, calculate_match_score, hash_password
 from streamlit_autorefresh import st_autorefresh
 from database import (
-    get_company_by_id, update_company_profile,
+    get_company_by_id, mark_expired_interviews, update_company_profile,
     get_applications_for_company, update_application_status,
     get_all_open_job_requests, express_interest_in_request,
     get_messages_between_company_and_employee, send_message_from_company,
@@ -19,7 +19,7 @@ from database import (
     delete_job, get_company_jobs_all,
     get_new_applications_count, get_unread_messages_count, get_recent_activities,
     get_job_by_id, get_users_by_role, get_or_create_profile,
-    update_company_password  # you need to implement this function (see note)
+    update_company_password, 
 )
 import random
 from database import update_expired_jobs
@@ -28,6 +28,8 @@ import io
 import time
 
 update_expired_jobs()
+mark_expired_interviews()
+    
 
 # --- Page config ---
 st.set_page_config(
@@ -889,13 +891,13 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                                     scheduled_datetime = datetime.combine(scheduled_date, scheduled_time)
                                     upsert_interview(app[0], app[1], company_id, app[2], scheduled_datetime, interview_type, meeting_link)
                                     add_notification(app[1], "interview", "Interview Scheduled", f"Interview for {app[9]} on {scheduled_date}")
-                                    send_email(app[12], "Interview Scheduled", f"Dear {app[11]},\n\nYour interview for {app[9]} has been scheduled on {scheduled_date} at {scheduled_time}.\n\nLink: {meeting_link}")
+                                    send_email(app[11], "Interview Scheduled", f"Dear {app[10]},\n\nYour interview for {app[9]} has been scheduled on {scheduled_date} at {scheduled_time} UTC.\n\nLink: {meeting_link}")
                                     st.success("Interview scheduled!")
                                     st.rerun()
 
                         if st.button("💬 Chat with Applicant", key=f"chat_{app[0]}_{i}"):
                             st.session_state.chat_employee_id = app[1]
-                            st.session_state.chat_employee_name = app[11]
+                            st.session_state.chat_employee_name = app[10]
                             st.session_state.chat_application_id = app[0]
                             st.rerun()
 
