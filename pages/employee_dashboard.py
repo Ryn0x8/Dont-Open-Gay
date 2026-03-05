@@ -280,8 +280,8 @@ def display_recruiter_profile(user, profile):
                 st.markdown(f"""
                 <div class="project-card">
                     <h4>{name}</h4>
-                    <p>{desc[:150]}{ '...' if desc else ''}</p>
-                    {f'<p><strong>Tech:</strong> {tech}</p>' if tech else ''}
+                    <p>{desc[:150]}{ '...' if desc else ""}</p>
+                    {f'<p><strong>Tech:</strong> {tech}</p>' if tech else ""}
                     {f'<p><a href="{url}" target="_blank">🔗 Project Link</a></p>' if url else ''}
                 </div>
                 """, unsafe_allow_html=True)
