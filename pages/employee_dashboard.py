@@ -1550,6 +1550,7 @@ elif current_page == "Profile":
     IDX_PORTFOLIO = 12
     IDX_PROJECTS = 13
     IDX_JOB_ALERTS = 14
+    IDX_VIDEO = 15  
 
     # --- Left Column ---
     col1, col2 = st.columns([1, 2])
@@ -1700,6 +1701,48 @@ elif current_page == "Profile":
                 <p style="font-size:0.85rem; margin:0;"><strong>✨ Resume Insight</strong><br>{st.session_state.goodness_feedback}</p>
             </div>
             """, unsafe_allow_html=True)
+
+        # --- Video Introduction ---
+        st.markdown("---")
+        st.markdown("#### 🎥 Video Introduction (30 sec - 2 min)")
+
+        video_path = profile[IDX_VIDEO] if len(profile) > IDX_VIDEO else None
+
+        if video_path and os.path.exists(video_path):
+            st.video(video_path)
+            col_dl, col_del = st.columns(2)
+            with col_dl:
+                with open(video_path, "rb") as f:
+                    video_bytes = f.read()
+                st.download_button("📥 Download Video", data=video_bytes,
+                                   file_name=os.path.basename(video_path),
+                                   use_container_width=True)
+            with col_del:
+                if st.button("🗑️ Delete Video", use_container_width=True):
+                    os.remove(video_path)
+                    update_profile(user_id, video_path="")
+                    st.rerun()
+        else:
+            st.info("No video introduction uploaded.")
+
+        uploaded_video = st.file_uploader("Upload a short video (MP4, MOV, WebM) - max 50MB",
+                                          type=['mp4', 'mov', 'webm'],
+                                          key="video_uploader")
+
+        if uploaded_video is not None:
+            if uploaded_video.size > 50 * 1024 * 1024:
+                st.error("File too large. Please keep under 50MB.")
+            else:
+                if st.button("💾 Save Video Introduction"):
+                    video_dir = "videos"
+                    os.makedirs(video_dir, exist_ok=True)
+                    video_filename = f"{user[2]}_{uploaded_video.name}"
+                    video_path_save = os.path.join(video_dir, video_filename)
+                    with open(video_path_save, "wb") as f:
+                        f.write(uploaded_video.getbuffer())
+                    update_profile(user_id, video_path=video_path_save)
+                    st.success("Video uploaded successfully!")
+                    st.rerun()
 
         st.markdown("---")
         st.markdown("#### 🌐 Social Links")

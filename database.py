@@ -72,6 +72,7 @@ def get_or_create_profile(user_id):
             'portfolio_url': '',
             'projects': '[]',
             'job_alerts_enabled': False,
+            'video_path': '',
             'created_at': firestore.SERVER_TIMESTAMP,
             'updated_at': firestore.SERVER_TIMESTAMP
         }
@@ -93,8 +94,9 @@ def get_or_create_profile(user_id):
         data.get('portfolio_url', ''),  # 12
         data.get('projects', '[]'),     # 13
         data.get('job_alerts_enabled', False), # 14
-        data.get('created_at'),         # 15
-        data.get('updated_at')          # 16
+        data.get('video_path', ''),     # 15
+        data.get('created_at'),         # 16
+        data.get('updated_at')          # 17
     )
 
 def update_user_name(user_id, name):
