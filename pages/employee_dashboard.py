@@ -277,14 +277,16 @@ def display_recruiter_profile(user, profile):
                 url = proj.get('url') or ''
                 tech = proj.get('technologies') or ''
 
-                html = f"""
-                <div class="project-card">
-                    <h4>{name}</h4>
-                    {f'<p>{desc[:150]}{"..." if desc else ""}</p>' if desc else ""}
-                    {f'<strong>Tech:</strong> {tech}<br>' if tech else ""}
-                    {f'<a href="{url}" target="_blank">🔗 Project Link</a>' if url else ""}
-                </div>
-                """
+                html = f'<div class="project-card">'
+                html += f'<h4>{name}</h4>'
+                if desc:
+                    html += f'<p>{desc[:150]}{"..." if len(desc) > 150 else ""}</p>'
+                if tech:
+                    html += f'<strong>Tech:</strong> {tech}<br>'
+                if url:
+                    html += f'<a href="{url}" target="_blank">🔗 Project Link</a>'
+                html += '</div>'
+
                 st.markdown(html, unsafe_allow_html=True)
         else:
             st.info("No projects added.")
