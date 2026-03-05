@@ -905,7 +905,7 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
 
                         
                         
-                        if app[4] == "interview":
+                        if app[4] == "interview" and app[16]:
                             print(app[13], app[15])
                             st.markdown(f"""
                             <div style="background: #3B82F620; padding: 1rem; border-radius: 16px; margin: 0.5rem 0;">
