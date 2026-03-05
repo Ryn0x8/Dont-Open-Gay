@@ -277,7 +277,6 @@ def display_recruiter_profile(user, profile):
                 url = proj.get('url') or ''
                 tech = proj.get('technologies') or ''
 
-                # Build HTML for project card
                 html = f"""
                 <div class="project-card">
                     <h4>{name}</h4>
