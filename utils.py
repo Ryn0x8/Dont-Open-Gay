@@ -41,7 +41,8 @@ def extract_text_from_pdf(pdf_bytes):
     return sanitize_text(text)
 
 def parse_resume_with_groq(resume_text):
-    """Call Groq API to extract structured fields from resume text."""
+    """Call Groq API to extract structured fields from resume text, including projects."""
+    
     prompt = f"""
 You are a strict resume parser.
 
@@ -56,10 +57,25 @@ Fields:
 - github_link
 - linkedin_link
 - portfolio_link
+- projects (array)
+
+Projects format:
+[
+  {{
+    "name": "project name",
+    "description": "short description from resume only",
+    "url": "project link if available",
+    "technologies": "comma separated technologies"
+  }}
+]
 
 Rules:
 - If a field cannot be found, return "".
-- Do NOT guess missing information.
+- If projects are not clearly mentioned, return [].
+- DO NOT invent project descriptions.
+- DO NOT summarize or guess missing project details.
+- Only include projects explicitly mentioned in the resume.
+- Maximum 5 projects.
 - Return ONLY valid JSON.
 - No explanations.
 
@@ -78,13 +94,31 @@ Resume Text:
             temperature=0
         )
         content = response.choices[0].message.content.strip()
+
+        # Clean markdown formatting if present
         if content.startswith("```json"):
             content = content[7:]
         if content.endswith("```"):
             content = content[:-3]
         content = content.strip()
 
-        return json.loads(content)
+        parsed = json.loads(content)
+
+        # Safeguard: ensure projects is a list of valid entries
+        projects = parsed.get("projects", [])
+        clean_projects = []
+        for p in projects:
+            if isinstance(p, dict) and p.get("name") and len(p.get("description", "")) > 10:
+                clean_projects.append({
+                    "name": p["name"],
+                    "description": p["description"],
+                    "url": p.get("url", ""),
+                    "technologies": p.get("technologies", "")
+                })
+        parsed["projects"] = clean_projects
+
+        return parsed
+
     except Exception as e:
         st.error(f"AI parsing failed: {e}")
         return {
@@ -95,7 +129,8 @@ Resume Text:
             "bio": "",
             "github_link": "",
             "linkedin_link": "",
-            "portfolio_link": ""
+            "portfolio_link": "",
+            "projects": []
         }
 
 def get_resume_goodness_score(resume_text):

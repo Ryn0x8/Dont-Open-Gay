@@ -1636,11 +1636,13 @@ elif current_page == "Profile":
 
         if st.session_state.show_autofill_buttons and st.session_state.uploaded_resume:
             col_a, col_b = st.columns(2)
+
             with col_a:
                 if st.button("📄 Autofill Profile with AI", use_container_width=True):
                     with st.spinner("Reading resume..."):
                         file_bytes = st.session_state.uploaded_resume.getvalue()
                         resume_text = extract_text_from_pdf(file_bytes)
+
                         if not resume_text:
                             st.error("Could not extract text from PDF.")
                         else:
@@ -1652,6 +1654,12 @@ elif current_page == "Profile":
                                 with open(resume_path, "wb") as f:
                                     f.write(file_bytes)
 
+                                # Filter projects
+                                projects = [
+                                    p for p in parsed.get("projects", [])
+                                    if p.get("name") and len(p.get("description", "")) > 10
+                                ]
+
                                 update_profile(
                                     user_id,
                                     phone=parsed.get("phone_number", ""),
@@ -1662,14 +1670,16 @@ elif current_page == "Profile":
                                     linkedin_url=parsed.get("linkedin_link", ""),
                                     github_url=parsed.get("github_link", ""),
                                     portfolio_url=parsed.get("portfolio_link", ""),
+                                    projects=json.dumps(projects),
                                     resume_path=resume_path
                                 )
+
                                 st.success("✅ Profile autofilled from resume!")
-                                time.sleep(2)
                                 st.session_state.uploaded_resume = None
                                 st.session_state.show_autofill_buttons = False
                                 st.session_state.last_resume_text = resume_text
                                 st.rerun()
+
             with col_b:
                 if st.button("❌ Cancel", use_container_width=True):
                     st.session_state.uploaded_resume = None
@@ -1876,7 +1886,7 @@ elif current_page == "Profile":
             # Extract username from URL if full URL
             if "github.com/" in github_username:
                 github_username = github_username.split("github.com/")[-1].split("/")[0]
-            if st.button(f"📦 Fetch repos from {github_username}"):
+            if st.button(f"📦 Fetch 3 latest repos from {github_username}"):
                 with st.spinner("Fetching repositories..."):
                     repos = fetch_github_repos(github_username)
                     if repos:
