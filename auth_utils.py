@@ -104,12 +104,14 @@ def send_job_alert_email(to_email, job_title, company_name, description,
     return send_email(to_email, subject, body, is_html=True)
 
 def calculate_match_score(job, profile):
-    """Calculate job match score for a profile with debug output."""
+
     score = 0
+
     IDX_LOCATION = 2
     IDX_SKILLS = 5
     IDX_EXP = 6
     IDX_JOB_TYPE = 7
+
 
     # Extract employee info from profile
     emp_skills = profile[IDX_SKILLS]
@@ -119,25 +121,26 @@ def calculate_match_score(job, profile):
 
     job_skills = job.get("skills_required")
 
-    # ---------------- SKILL MATCH (60%) ----------------
     if job_skills and emp_skills:
         job_list = [s.strip().lower() for s in job_skills.split(',')]
         emp_list = [s.strip().lower() for s in emp_skills.split(',')]
 
         matched = 0
+
         for job_skill in job_list:
             for emp_skill in emp_list:
                 similarity = fuzz.token_sort_ratio(job_skill, emp_skill)
+
                 if similarity >= 70:
                     matched += 1
                     break
 
         skill_score = matched / len(job_list)
-        st.write(f"Skill Score: {skill_score*60}")
         score += skill_score * 60
 
     # ---------------- EXPERIENCE MATCH (15%) ----------------
     job_exp = job.get("experience_level")
+
     exp_map = {
         "entry": 1,
         "junior": 2,
@@ -152,42 +155,41 @@ def calculate_match_score(job, profile):
 
         if job_val == emp_val:
             score += 15
-            st.write("Experience Score: 15")
         elif abs(job_val - emp_val) == 1:
             score += 8
-            st.write("Experience Score: 8")
 
     # ---------------- LOCATION MATCH (10%) ----------------
     job_location = job.get("location")
+
     if job_location and emp_location:
         similarity = fuzz.token_sort_ratio(job_location.lower(), emp_location.lower())
+
         if similarity >= 80:
             score += 10
-            st.write("Location Score: 10")
         elif similarity >= 50:
             score += 5
-            st.write("Location Score: 5")
 
     # ---------------- JOB TYPE MATCH (5%) ----------------
     job_type = job.get("job_type")
+
     if job_type and emp_job_type:
         if job_type.lower() == emp_job_type.lower():
             score += 5
-            st.write("Job Type Score: 5")
 
     # ---------------- DESCRIPTION KEYWORDS (10%) ----------------
     description = job.get("description")
+
     if description and emp_skills:
         desc = description.lower()
         emp_list = [s.strip().lower() for s in emp_skills.split(',')]
 
         matched = sum(1 for skill in emp_list if skill in desc)
+
         keyword_score = min(matched / len(emp_list), 1)
-        st.write(f"Description Score: {keyword_score*10}")
         score += keyword_score * 10
 
-    st.write(f"Total Match Score: {int(score)}")
     return int(score)
+
 
 # ===== OTP =====
 def generate_otp():
