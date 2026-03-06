@@ -1095,390 +1095,464 @@ if current_page == "Dashboard":
             st.info("No high‑match job recommendations at the moment. Update your skills to get better matches.")
 
 elif current_page == "Find Jobs":
-    # ------------------------------------------------------------------
-    # Job Details Page (profile style)
-    # ------------------------------------------------------------------
-    if "view_job_id" in st.session_state:
-        job_id = st.session_state.view_job_id
-        job_tuple = get_job_by_id(job_id)
-        if not job_tuple:
-            st.error("Job not found")
-            del st.session_state.view_job_id
-            st.rerun()
 
-        # Convert tuple to dict for easy access
+    # ---------------------------------------------------------
+    # Helper
+    # ---------------------------------------------------------
+    def get_score_color(score):
+        if score >= 70:
+            return "#10B981"
+        elif score >= 40:
+            return "#F59E0B"
+        return "#EF4444"
+
+
+    # ---------------------------------------------------------
+    # VIEW JOB PAGE
+    # ---------------------------------------------------------
+    if "view_job_id" in st.session_state and "job_view" in st.session_state:
+
         job = st.session_state.job_view
-        
 
-        # Check application and saved status
         already_applied = job["applied"] == 1
         already_saved = job["saved"] == 1
 
-        # ---------- Styling (reused from recruiter profile) ----------
         st.markdown("""
         <style>
-        .job-cover {
-            height: 200px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 16px 16px 0 0;
-            margin-bottom: -60px;
+
+        .job-cover{
+        height:200px;
+        background:linear-gradient(135deg,#667eea,#764ba2);
+        border-radius:16px 16px 0 0;
+        margin-bottom:-60px;
         }
-        .job-avatar {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            border: 4px solid white;
-            background: linear-gradient(135deg, var(--primary), #3B82F6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 3rem;
-            font-weight: bold;
-            margin-left: 2rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+
+        .job-avatar{
+        width:120px;
+        height:120px;
+        border-radius:50%;
+        border:4px solid white;
+        background:linear-gradient(135deg,var(--primary),#3B82F6);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        color:white;
+        font-size:3rem;
+        font-weight:bold;
+        margin-left:2rem;
         }
-        .skill-tag {
-            background: #e2e8f0;
-            padding: 0.3rem 1rem;
-            border-radius: 30px;
-            font-size: 0.9rem;
-            margin-right: 0.5rem;
-            margin-bottom: 0.5rem;
-            display: inline-block;
+
+        .skill-tag{
+        background:#e2e8f0;
+        padding:0.3rem 1rem;
+        border-radius:30px;
+        font-size:0.9rem;
+        margin:0.2rem;
+        display:inline-block;
         }
+
         </style>
         """, unsafe_allow_html=True)
 
-        # ---------- Cover and Header ----------
         st.markdown('<div class="job-cover"></div>', unsafe_allow_html=True)
-        col_pic, col_name = st.columns([1, 3])
+
+        col_pic,col_name = st.columns([1,3])
+
         with col_pic:
-            st.markdown(f'<div class="job-avatar">{job["company_name"][0].upper()}</div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="job-avatar">{job["company_name"][0].upper()}</div>',
+                unsafe_allow_html=True
+            )
+
         with col_name:
             st.markdown(f"## {job['title']}")
-            st.markdown(f"**{job['company_name']}**  ")
-            st.markdown(f"📍 {job['location']}  ")
-            st.markdown(f"💼 {job['job_type']}  ")
+            st.markdown(f"**{job['company_name']}**")
+            st.markdown(f"📍 {job['location']}")
+            st.markdown(f"💼 {job['job_type']}")
             st.markdown(f"💰 {job['salary_range']}")
 
         st.markdown("---")
 
-        # ---------- Description ----------
-        st.markdown("### 📝 Job Description")
-        st.markdown(job['description'])
+        st.subheader("📝 Job Description")
+        st.write(job["description"])
 
-        # ---------- Requirements ----------
-        st.markdown("### 📋 Requirements")
-        st.markdown(job['requirements'])
+        st.subheader("📋 Requirements")
+        st.write(job["requirements"])
 
-        # ---------- Skills (as tags) ----------
-        st.markdown("### 🛠️ Skills Required")
-        if job['skills_required']:
-            skills = [s.strip() for s in job['skills_required'].split(',') if s.strip()]
-            cols = st.columns(2)
-            mid = (len(skills) + 1) // 2
-            with cols[0]:
-                for skill in skills[:mid]:
-                    st.markdown(f'<span class="skill-tag">{skill}</span>', unsafe_allow_html=True)
-            with cols[1]:
-                for skill in skills[mid:]:
-                    st.markdown(f'<span class="skill-tag">{skill}</span>', unsafe_allow_html=True)
+        st.subheader("🛠 Skills")
+
+        if job["skills_required"]:
+            skills = [s.strip() for s in job["skills_required"].split(",") if s.strip()]
+            for skill in skills:
+                st.markdown(
+                    f'<span class="skill-tag">{skill}</span>',
+                    unsafe_allow_html=True
+                )
         else:
-            st.info("No specific skills listed.")
+            st.info("No specific skills listed")
 
         st.markdown("---")
 
-        # ---------- Additional Details (two columns) ----------
-        col_left, col_right = st.columns(2)
-        with col_left:
-            st.markdown("**Category**")
-            st.markdown(job['category'])
-            st.markdown("**Experience Level**")
-            st.markdown(job['experience_level'])
-        with col_right:
-            st.markdown("**Application Deadline**")
-            deadline_str = job['deadline'].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d') if job['deadline'] else 'Not specified'
-            st.markdown(deadline_str)
-            st.markdown("**Posted on**")
-            posted_str = job['created_at'].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d') if job['created_at'] else ''
-            st.markdown(posted_str)
+        col1,col2 = st.columns(2)
 
-        st.markdown("---")
-
-        # ---------- Action Buttons with applied/saved awareness ----------
-        col1, col2, col3 = st.columns(3)
         with col1:
+            st.markdown("**Category**")
+            st.write(job["category"])
+
+            st.markdown("**Experience Level**")
+            st.write(job["experience_level"])
+
+        with col2:
+
+            deadline = (
+                job["deadline"]
+                .astimezone(pytz.timezone("Asia/Kathmandu"))
+                .strftime("%Y-%m-%d")
+                if job["deadline"] else "Not specified"
+            )
+
+            posted = (
+                job["created_at"]
+                .astimezone(pytz.timezone("Asia/Kathmandu"))
+                .strftime("%Y-%m-%d")
+                if job["created_at"] else ""
+            )
+
+            st.markdown("**Application Deadline**")
+            st.write(deadline)
+
+            st.markdown("**Posted On**")
+            st.write(posted)
+
+        st.markdown("---")
+
+        b1,b2,b3 = st.columns(3)
+
+        with b1:
+
             if already_applied:
-                st.success("✅ Applied", help="You have already applied for this job")
+                st.success("✅ Applied")
+
+            elif job["status"] == "expired":
+                st.warning("Job Expired")
+
             else:
-                if st.button("📝 Apply for this Job", use_container_width=True):
-                    st.session_state.apply_job_id = job['id']
-                    st.session_state.apply_job_title = job['title']
+                if st.button("Apply"):
+                    st.session_state.apply_job_id = job["id"]
+                    st.session_state.apply_job_title = job["title"]
                     del st.session_state.view_job_id
                     st.rerun()
-        with col2:
+
+        with b2:
+
             if already_saved:
-                if st.button("📌 Unsave Job", use_container_width=True):
-                    unsave_job(user_id, job['id'])
-                    st.success("Job removed from saved")
+                if st.button("Unsave"):
+                    unsave_job(user_id, job["id"])
                     st.rerun()
+
             else:
-                if st.button("🔖 Save Job", use_container_width=True):
-                    save_job(user_id, job['id'])
-                    add_notification(user_id, "save", "Job Saved", f"You saved {job['title']}")
-                    st.success("Job saved!")
+                if st.button("Save"):
+                    save_job(user_id, job["id"])
                     st.rerun()
-        with col3:
-            if st.button("← Back to Listings", use_container_width=True):
+
+        with b3:
+            if st.button("Back"):
                 del st.session_state.view_job_id
                 del st.session_state.job_view
                 st.rerun()
 
-    # ------------------------------------------------------------------
-    # Apply for a specific job (existing flow)
-    # ------------------------------------------------------------------
+
+    # ---------------------------------------------------------
+    # APPLY PAGE
+    # ---------------------------------------------------------
     elif "apply_job_id" in st.session_state:
-        # (Keep your existing application form code here – unchanged)
+
         st.markdown("## 📝 Apply for Job")
+
         job_tuple = get_job_by_id(st.session_state.apply_job_id)
+
         if not job_tuple:
             st.error("Job not found")
             del st.session_state.apply_job_id
-            del st.session_state.apply_job_title
             st.rerun()
-        job = {
-            'id': job_tuple[0],
-            'company_id': job_tuple[1],
-            'company_name': job_tuple[2],
-            'title': job_tuple[3],
-            'category': job_tuple[4],
-            'description': job_tuple[5],
-            'requirements': job_tuple[6],
-            'location': job_tuple[7],
-            'job_type': job_tuple[8],
-            'salary_range': job_tuple[9],
-            'experience_level': job_tuple[10],
-            'skills_required': job_tuple[11],
-            'status': job_tuple[12],
-            'created_at': job_tuple[13],
-            'deadline': job_tuple[14],
-        }
+
+        job = job_tuple_to_dict(job_tuple)
+
         profile = get_or_create_profile(user_id)
+
         st.markdown(f"### {job['title']} at {job['company_name']}")
+
         with st.form("application_form"):
+
             match_score = calculate_match_score(job, profile)
+
             if match_score > 0:
+
+                color = get_score_color(match_score)
+
                 st.markdown(f"""
-                <div style="margin: 1rem 0;">
-                    <div style="display: flex; justify-content: space-between;">
-                        <span>AI Match Score</span>
-                        <span style="font-weight: 600; color: {'#10B981' if match_score >= 70 else '#F59E0B' if match_score >= 40 else '#EF4444'};">{match_score}%</span>
-                    </div>
-                    <div style="height:8px; background:#e2e8f0; border-radius:4px; width:100%;">
-                        <div style="width:{match_score}%; height:8px; background:{'#10B981' if match_score >= 70 else '#F59E0B' if match_score >= 40 else '#EF4444'}; border-radius:4px;"></div>
-                    </div>
+                <div style="margin:1rem 0">
+
+                <div style="display:flex;justify-content:space-between">
+                <span>AI Match</span>
+                <span style="color:{color};font-weight:600">
+                {match_score}%
+                </span>
+                </div>
+
+                <div style="height:8px;background:#e2e8f0;border-radius:4px">
+
+                <div style="width:{match_score}%;height:8px;background:{color};border-radius:4px"></div>
+
+                </div>
                 </div>
                 """, unsafe_allow_html=True)
-            cover_letter = st.text_area("Cover Letter", height=200,
-                                       placeholder="Write a brief cover letter...")
+
+            cover_letter = st.text_area("Cover Letter", height=200)
+
             if not profile[4]:
-                st.warning("⚠️ Please upload your resume in Profile section before applying")
-            col_a, col_b = st.columns(2)
-            with col_a:
-                submitted = st.form_submit_button("✅ Submit Application")
-            with col_b:
-                if st.form_submit_button("❌ Cancel"):
-                    del st.session_state.apply_job_id
-                    del st.session_state.apply_job_title
-                    st.rerun()
+                st.warning("Upload resume in profile first")
+
+            c1,c2 = st.columns(2)
+
+            with c1:
+                submitted = st.form_submit_button("Submit")
+
+            with c2:
+                cancel = st.form_submit_button("Cancel")
+
+            if cancel:
+                del st.session_state.apply_job_id
+                st.rerun()
+
             if submitted:
+
                 if not profile[4]:
-                    st.error("Please upload your resume first")
+                    st.error("Upload resume first")
+
                 else:
-                    add_application(job['id'], user_id, job['company_id'], match_score, cover_letter)
-                    add_notification(user_id, "application", "Application Submitted",
-                                   f"You applied for {job['title']} at {job['company_name']}")
-                    send_email(
-                        st.session_state.user_email,
-                        "Application Submitted",
-                        f"Hi {st.session_state.user_name},\n\nYour application for '{job['title']}' at {job['company_name']} has been received.\n\nWe'll notify you of any updates.\n\nThanks,\nAnvaya Team"
+
+                    add_application(
+                        job["id"],
+                        user_id,
+                        job["company_id"],
+                        match_score,
+                        cover_letter
                     )
-                    st.success("✅ Application submitted successfully!")
-                    time.sleep(2)
+
+                    st.success("Application submitted")
+
                     del st.session_state.apply_job_id
-                    del st.session_state.apply_job_title
                     st.rerun()
 
-    # ------------------------------------------------------------------
-    # Job Listings with 3‑column square cards
-    # ------------------------------------------------------------------
+
+    # ---------------------------------------------------------
+    # JOB LISTINGS
+    # ---------------------------------------------------------
     else:
-        # ---------- Helper functions for listing ----------
-        def get_score_color(score):
-            return "#10B981" if score >= 70 else "#F59E0B" if score >= 40 else "#EF4444"
 
-        def filter_jobs(jobs, search="", job_types=[], exp_levels=[], locations=[]):
-            filtered = jobs
-            if search:
-                search_lower = search.lower()
-                filtered = [j for j in filtered if search_lower in j['title'].lower() or search_lower in j['description'].lower()]
-            if job_types:
-                filtered = [j for j in filtered if j['job_type'] in job_types]
-            if exp_levels:
-                filtered = [j for j in filtered if j['experience_level'] in exp_levels]
-            if locations:
-                filtered = [j for j in filtered if j['location'] in locations]
-            return filtered
-
-        # ---------- Main section ----------
         st.markdown("## 🔍 Find Jobs")
 
         profile = get_or_create_profile(user_id)
+
         jobs = search_jobs(user_id)
+
         job_dicts = [job_tuple_to_dict(j) for j in jobs]
 
-        # Store filters in session state to persist when returning from details
         if "job_filters" not in st.session_state:
             st.session_state.job_filters = {
-                "search": "",
-                "job_types": [],
-                "exp_levels": [],
-                "locations": []
+                "search":"",
+                "job_types":[],
+                "exp_levels":[],
+                "locations":[]
             }
 
-        with st.expander("🔎 Filters", expanded=True):
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                search = st.text_input("Search jobs", placeholder="Title, skills...",
-                                       value=st.session_state.job_filters["search"])
-            with col2:
-                job_types = st.multiselect("Job Type", ["Full-time", "Part-time", "Remote", "Hybrid", "Contract"],
-                                           default=st.session_state.job_filters["job_types"])
-            with col3:
-                exp_levels = st.multiselect("Experience", ["Entry", "Junior", "Mid", "Senior", "Lead"],
-                                            default=st.session_state.job_filters["exp_levels"])
-            with col4:
-                locations = sorted(set(j['location'] for j in job_dicts if j['location']))
-                selected_locs = st.multiselect("Location", locations,
-                                               default=st.session_state.job_filters["locations"])
+        with st.expander("Filters", expanded=True):
 
-        # Update session state filters
-        st.session_state.job_filters["search"] = search
-        st.session_state.job_filters["job_types"] = job_types
-        st.session_state.job_filters["exp_levels"] = exp_levels
-        st.session_state.job_filters["locations"] = selected_locs
+            c1,c2,c3,c4 = st.columns(4)
 
-        # Apply filters and compute match scores
-        filtered = filter_jobs(job_dicts, search, job_types, exp_levels, selected_locs)
+            with c1:
+                search = st.text_input(
+                    "Search",
+                    value=st.session_state.job_filters["search"]
+                )
+
+            with c2:
+                job_types = st.multiselect(
+                    "Job Type",
+                    ["Full-time","Part-time","Remote","Hybrid","Contract"],
+                    default=st.session_state.job_filters["job_types"]
+                )
+
+            with c3:
+                exp_levels = st.multiselect(
+                    "Experience",
+                    ["Entry","Junior","Mid","Senior","Lead"],
+                    default=st.session_state.job_filters["exp_levels"]
+                )
+
+            with c4:
+
+                locations = sorted(
+                    set(j["location"] for j in job_dicts if j["location"])
+                )
+
+                selected_locs = st.multiselect(
+                    "Location",
+                    locations,
+                    default=st.session_state.job_filters["locations"]
+                )
+
+        st.session_state.job_filters = {
+            "search":search,
+            "job_types":job_types,
+            "exp_levels":exp_levels,
+            "locations":selected_locs
+        }
+
+        filtered = job_dicts
+
+        if search:
+            filtered = [
+                j for j in filtered
+                if search.lower() in j["title"].lower()
+                or search.lower() in j["description"].lower()
+            ]
+
+        if job_types:
+            filtered = [j for j in filtered if j["job_type"] in job_types]
+
+        if exp_levels:
+            filtered = [j for j in filtered if j["experience_level"] in exp_levels]
+
+        if selected_locs:
+            filtered = [j for j in filtered if j["location"] in selected_locs]
+
         for job in filtered:
-            job['match_score'] = calculate_match_score(job, profile)
-        filtered.sort(key=lambda x: x['match_score'], reverse=True)
-        st.markdown(f"### Found {len(filtered)} jobs")
+            job["match_score"] = calculate_match_score(job, profile)
 
-        # ---------- CSS for square cards ----------
+        filtered.sort(key=lambda x: x["match_score"], reverse=True)
+
+        st.markdown(f"### {len(filtered)} Jobs Found")
+
+        # ---------- CSS ----------
         st.markdown("""
         <style>
-        .job-card {
-            aspect-ratio: 1 / 1;
-            border-radius: 12px;
-            padding: 1rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            background: #fff;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            margin-bottom: 0.5rem;
+
+        .job-card{
+        border-radius:12px;
+        padding:1rem;
+        background:white;
+        box-shadow:0 2px 6px rgba(0,0,0,0.08);
+        margin-bottom:0.6rem;
         }
-        .job-card h3 {
-            margin: 0 0 0.3rem 0;
-            font-size: 1.1rem;
+
+        .job-title{
+        font-weight:600;
+        font-size:1rem;
         }
-        .job-card p {
-            margin: 0.2rem 0;
-            font-size: 0.9rem;
+
+        .job-company{
+        color:var(--primary);
+        font-size:0.9rem;
         }
-        .job-card .company {
-            color: var(--primary);
-            font-weight: 500;
+
+        .job-meta{
+        font-size:0.8rem;
+        color:#6b7280;
         }
-        .job-card .meta {
-            font-size: 0.8rem;
-            color: #4b5563;
-        }
-        .job-card .match-bar {
-            height: 6px;
-            background: #e2e8f0;
-            border-radius: 3px;
-            margin: 0.5rem 0;
-        }
-        .job-card .match-fill {
-            height: 6px;
-            border-radius: 3px;
-        }
-        .job-card .match-score {
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
+
         </style>
         """, unsafe_allow_html=True)
 
-        # ---------- Display jobs in 3 columns ----------
+        # ---------- 3 COLUMN GRID ----------
         for i in range(0, len(filtered), 3):
-            cols = st.columns(3)
-            for j, col in enumerate(cols):
-                idx = i + j
-                if idx < len(filtered):
-                    job = filtered[idx]
-                    with col:
-                        # Square card
-                        match_color = get_score_color(job['match_score'])
-                        card_html = f"""
-                        <div class="job-card">
-                            <h3>{job['title']}</h3>
-                            <p class="company">{job['company_name']}</p>
-                            <p class="meta">📍 {job['location']} | 💼 {job['job_type']}</p>
-                            <p class="meta">💰 {job['salary_range']}</p>
-                            <p style="font-size:0.85rem; margin-top:0.3rem;">{job['description'][:100]}...</p>
-                            <div style="margin-top:auto;">
-                                <div class="match-bar">
-                                    <div class="match-fill" style="width:{job['match_score']}%; background:{match_color};"></div>
-                                </div>
-                                <p class="match-score" style="color:{match_color};">Match: {job['match_score']}%</p>
-                            </div>
-                        </div>
-                        """
-                        st.markdown(card_html, unsafe_allow_html=True)
 
-                        # Three buttons below card
-                        btn_cols = st.columns(3)
-                        with btn_cols[0]:
-                            if job['applied'] == 0:
-                                if st.button("📝", key=f"apply_{job['id']}", help="Apply"):
-                                    st.session_state.apply_job_id = job['id']
-                                    st.session_state.apply_job_title = job['title']
-                                    st.rerun()
-                            else:
-                                st.success("✅", help="Applied")
-                        with btn_cols[1]:
-                            if job['saved'] == 0:
-                                if st.button("🔖", key=f"save_{job['id']}", help="Save"):
-                                    save_job(user_id, job['id'])
-                                    add_notification(user_id, "save", "Job Saved", f"You saved {job['title']}")
-                                    st.rerun()
-                            else:
-                                if st.button("📌", key=f"unsave_{job['id']}", help="Saved"):
-                                    unsave_job(user_id, job['id'])
-                                    st.rerun()
-                        with btn_cols[2]:
-                            if st.button("👁️", key=f"view_{job['id']}", help="View Details"):
-                                st.session_state.view_job_id = job['id']
-                                st.session_state.job_view = job
+            cols = st.columns(3)
+
+            for j in range(3):
+
+                idx = i + j
+
+                if idx >= len(filtered):
+                    continue
+
+                job = filtered[idx]
+
+                with cols[j]:
+
+                    color = get_score_color(job["match_score"])
+
+                    desc = job["description"].replace("\n"," ")
+
+                    st.markdown(f"""
+                    <div class="job-card">
+
+                    <div class="job-title">{job['title']}</div>
+
+                    <div class="job-company">{job['company_name']}</div>
+
+                    <div class="job-meta">
+                    📍 {job['location']} | 💼 {job['job_type']}
+                    </div>
+
+                    <div class="job-meta">
+                    💰 {job['salary_range']}
+                    </div>
+
+                    <div style="font-size:0.85rem;margin-top:0.4rem">
+                    {desc[:90]}...
+                    </div>
+
+                    <div style="margin-top:0.5rem;height:6px;background:#e5e7eb;border-radius:4px">
+
+                    <div style="width:{job['match_score']}%;height:6px;background:{color};border-radius:4px"></div>
+
+                    </div>
+
+                    <div style="font-size:0.75rem;font-weight:600;color:{color}">
+                    Match {job['match_score']}%
+                    </div>
+
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    b1,b2,b3 = st.columns(3)
+
+                    with b1:
+
+                        if job["status"] == "expired":
+                            st.warning("Expired")
+
+                        elif job["applied"] == 1:
+                            st.success("Applied")
+
+                        else:
+                            if st.button("Apply", key=f"apply_{job['id']}"):
+                                st.session_state.apply_job_id = job["id"]
+                                st.session_state.apply_job_title = job["title"]
                                 st.rerun()
-                else:
-                    # Empty column (fill with blank space)
-                    col.markdown("")
+
+                    with b2:
+
+                        if job["saved"] == 1:
+
+                            if st.button("Saved", key=f"unsave_{job['id']}"):
+                                unsave_job(user_id, job["id"])
+                                st.rerun()
+
+                        else:
+
+                            if st.button("Save", key=f"save_{job['id']}"):
+                                save_job(user_id, job["id"])
+                                st.rerun()
+
+                    with b3:
+
+                        if st.button("View", key=f"view_{job['id']}"):
+                            st.session_state.view_job_id = job["id"]
+                            st.session_state.job_view = job
+                            st.rerun()
                     
 elif current_page == "Companies":
     st.markdown("## 🏢 Recruiting Companies")
