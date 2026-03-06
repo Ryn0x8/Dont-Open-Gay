@@ -1096,25 +1096,6 @@ if current_page == "Dashboard":
 
 elif current_page == "Find Jobs":
     # ------------------------------------------------------------------
-    # Helper functions for applied/saved status (used in details view)
-    # ------------------------------------------------------------------
-    # def has_user_applied(user_id, job_id):
-    #     conn = get_connection()
-    #     c = conn.cursor()
-    #     c.execute("SELECT 1 FROM applications WHERE user_id=? AND job_id=?", (user_id, job_id))
-    #     result = c.fetchone() is not None
-    #     conn.close()
-    #     return result
-
-    # def is_job_saved(user_id, job_id):
-    #     conn = get_connection()
-    #     c = conn.cursor()
-    #     c.execute("SELECT 1 FROM saved_jobs WHERE user_id=? AND job_id=?", (user_id, job_id))
-    #     result = c.fetchone() is not None
-    #     conn.close()
-    #     return result
-
-    # ------------------------------------------------------------------
     # Job Details Page (profile style)
     # ------------------------------------------------------------------
     if "view_job_id" in st.session_state:
@@ -1126,28 +1107,12 @@ elif current_page == "Find Jobs":
             st.rerun()
 
         # Convert tuple to dict for easy access
-        job = {
-            'id': job_tuple[0],
-            'company_id': job_tuple[1],
-            'company_name': job_tuple[2],
-            'title': job_tuple[3],
-            'category': job_tuple[4],
-            'description': job_tuple[5],
-            'requirements': job_tuple[6],
-            'location': job_tuple[7],
-            'job_type': job_tuple[8],
-            'salary_range': job_tuple[9],
-            'experience_level': job_tuple[10],
-            'skills_required': job_tuple[11],
-            'status': job_tuple[12],
-            'created_at': job_tuple[13],
-            'deadline': job_tuple[14],
-        }
+        job = st.session_state.job_view
         
 
         # Check application and saved status
-        already_applied = job_tuple[17] == 1  
-        already_saved = job_tuple[18] == 1
+        already_applied = job["applied"] == 1
+        already_saved = job["saved"] == 1
 
         # ---------- Styling (reused from recruiter profile) ----------
         st.markdown("""
@@ -1508,6 +1473,7 @@ elif current_page == "Find Jobs":
                         with btn_cols[2]:
                             if st.button("👁️", key=f"view_{job['id']}", help="View Details"):
                                 st.session_state.view_job_id = job['id']
+                                st.session_state.job_view = job
                                 st.rerun()
                 else:
                     # Empty column (fill with blank space)
