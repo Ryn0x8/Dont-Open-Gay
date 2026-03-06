@@ -1574,43 +1574,43 @@ elif current_page == "My Applications":
 
                 applied_at = app[7].strftime('%Y-%m-%d') if app[7] else ""
 
-                st.markdown(f"""
-                <div style="
-                    background:white;
-                    padding:1.2rem;
-                    border-radius:14px;
-                    box-shadow:0 4px 10px rgba(0,0,0,0.05);
-                    margin-bottom:1rem;
-                    border:1px solid #eee;
-                ">
+                st.markdown(
+                f"""
+                <div style="background:white;
+                padding:1.2rem;
+                border-radius:14px;
+                box-shadow:0 4px 10px rgba(0,0,0,0.05);
+                margin-bottom:1rem;
+                border:1px solid #eee;">
 
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h4 style="margin:0;">{app[9]}</h4>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h4 style="margin:0;">{app[9]}</h4>
 
-                        <span style="
-                            background:{color}20;
-                            color:{color};
-                            padding:0.2rem 0.7rem;
-                            border-radius:20px;
-                            font-size:0.75rem;
-                            font-weight:600;">
-                            {icon} {status.upper()}
-                        </span>
-                    </div>
+                <span style="
+                background:{color}20;
+                color:{color};
+                padding:0.2rem 0.7rem;
+                border-radius:20px;
+                font-size:0.75rem;
+                font-weight:600;">
+                {icon} {status.upper()}
+                </span>
+                </div>
 
-                    <p style="margin:4px 0; color:#666;">🏢 {app[10]}</p>
+                <p style="margin:4px 0; color:#666;">🏢 {app[10]}</p>
 
-                    <p style="font-size:0.85rem; color:#555;">
-                        📍 {app[11]} &nbsp;&nbsp; 💰 {app[12]}
-                    </p>
+                <p style="font-size:0.85rem; color:#555;">
+                📍 {app[11]} &nbsp;&nbsp; 💰 {app[12]}
+                </p>
 
-                    <p style="font-size:0.75rem; color:#888;">
-                        Applied {applied_at}
-                    </p>
+                <p style="font-size:0.75rem; color:#888;">
+                Applied {applied_at}
+                </p>
 
                 </div>
-                """, unsafe_allow_html=True)
-
+                """,
+                unsafe_allow_html=True
+                )
                 # Interview section
                 if app[14] == "scheduled" and app[13]:
 
