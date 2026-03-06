@@ -1587,15 +1587,16 @@ elif current_page == "My Applications":
                 <h4 style="margin:0;">{app[9]}</h4>
 
                 <span style="
+                flex-shrink:0;
                 background:{color}20;
                 color:{color};
-                padding:0.2rem 0.7rem;
+                padding:0.25rem 0.8rem;
                 border-radius:20px;
                 font-size:0.75rem;
-                font-weight:600;">
+                font-weight:600;
+                white-space:nowrap;">
                 {icon} {status.upper()}
                 </span>
-                </div>
 
                 <p style="margin:4px 0; color:#666;">🏢 {app[10]}</p>
 
