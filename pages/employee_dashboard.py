@@ -1657,34 +1657,115 @@ elif current_page == "Job Requests":
             st.rerun()
     st.markdown("---")
     if st.session_state.job_request_tab == "My Requests":
+
         my_requests = get_user_requests(user_id)
+
         if not my_requests:
             st.info("You haven't posted any job requests yet.")
+
         else:
-            for req in my_requests:
-                with st.expander(f"{req[2]} ({req[7].upper()}) - {req[5]}"):
-                    st.markdown(f"**Description:** {req[3]}")
-                    st.markdown(f"**Category:** {req[4]}")
-                    st.markdown(f"**Location:** {req[5]}")
-                    st.markdown(f"**Budget:** {req[6]}")
-                    posted_at_str = req[8].strftime('%Y-%m-%d') if req[8] else ''
-                    st.markdown(f"**Posted on:** {posted_at_str}")
-                    col1, col2, col3 = st.columns([1,1,2])
+
+            cols = st.columns(3)
+
+            for i, req in enumerate(my_requests):
+
+                col = cols[i % 3]
+
+                with col:
+
+                    status_color = "#10B981" if req[7] == "open" else "#EF4444"
+                    status_icon = "🟢" if req[7] == "open" else "🔴"
+
+                    posted_at = req[8].strftime('%Y-%m-%d') if req[8] else ""
+
+                    st.markdown(f"""
+                    <div style="
+                    background:white;
+                    padding:1.2rem;
+                    border-radius:14px;
+                    border:1px solid #eee;
+                    box-shadow:0 4px 12px rgba(0,0,0,0.05);
+                    margin-bottom:1rem;
+                    height:230px;
+                    display:flex;
+                    flex-direction:column;
+                    justify-content:space-between;
+                    ">
+
+                    <div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+
+                    <h4 style="margin:0; font-size:1rem; line-height:1.3;">
+                    {req[2]}
+                    </h4>
+
+                    <span style="
+                    background:{status_color}20;
+                    color:{status_color};
+                    padding:0.2rem 0.7rem;
+                    border-radius:20px;
+                    font-size:0.75rem;
+                    font-weight:600;
+                    white-space:nowrap;">
+                    {status_icon} {req[7].upper()}
+                    </span>
+
+                    </div>
+
+                    <p style="font-size:0.85rem; color:#666; margin-top:6px;">
+                    {req[3][:90]}...
+                    </p>
+
+                    <p style="font-size:0.85rem; color:#555;">
+                    📂 {req[4]} &nbsp;&nbsp; 📍 {req[5]}
+                    </p>
+
+                    <p style="font-size:0.85rem;">
+                    💰 {req[6]}
+                    </p>
+
+                    <p style="font-size:0.75rem; color:#888;">
+                    Posted {posted_at}
+                    </p>
+
+                    </div>
+
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    col1, col2, col3 = st.columns(3)
+
                     with col1:
-                        if st.button("✏️ Edit", key=f"edit_{req[0]}"):
+                        if st.button("✏️", key=f"edit_{req[0]}"):
                             st.session_state.edit_request_id = req[0]
                             st.rerun()
+
                     with col2:
-                        if st.button("🗑️ Delete", key=f"del_{req[0]}"):
+                        if st.button("🗑️", key=f"del_{req[0]}"):
                             delete_job_request(req[0])
-                            add_notification(user_id, "request", "Request Deleted",
-                                           f"Your request '{req[2]}' has been deleted.")
+                            add_notification(
+                                user_id,
+                                "request",
+                                "Request Deleted",
+                                f"Your request '{req[2]}' has been deleted."
+                            )
                             st.rerun()
+
                     with col3:
                         new_status = "closed" if req[7] == "open" else "open"
-                        btn_label = "🔒 Close" if req[7] == "open" else "🔓 Reopen"
+                        btn_label = "🔒" if req[7] == "open" else "🔓"
+
                         if st.button(btn_label, key=f"status_{req[0]}"):
-                            update_job_request(req[0], req[2], req[3], req[4], req[5], req[6], new_status)
+                            update_job_request(
+                                req[0],
+                                req[2],
+                                req[3],
+                                req[4],
+                                req[5],
+                                req[6],
+                                new_status
+                            )
                             st.rerun()
             if "edit_request_id" in st.session_state:
                 st.markdown("---")
