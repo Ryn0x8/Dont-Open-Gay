@@ -1233,6 +1233,7 @@ elif current_page == "Find Jobs":
         with col3:
             if st.button("← Back to Listings", use_container_width=True):
                 del st.session_state.view_job_id
+                del st.session_state.job_view
                 st.rerun()
 
     # ------------------------------------------------------------------
