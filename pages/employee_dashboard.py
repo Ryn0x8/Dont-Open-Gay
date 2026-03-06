@@ -1537,49 +1537,166 @@ elif current_page == "Saved Jobs":
 
 elif current_page == "My Applications":
     st.markdown("## 📋 My Applications")
+
     applications = get_user_applications(user_id)
+
     if not applications:
         st.info("You haven't applied to any jobs yet.")
     else:
-        statuses = ["All", "Pending", "Reviewed", "Interview", "Accepted", "Rejected"]
-        selected_status = st.selectbox("Filter by status", statuses)
-        filtered = applications if selected_status == "All" else [a for a in applications if a[4].capitalize() == selected_status]
-        for i, app in enumerate(filtered):
-            status_color = {
-                "pending": "warning",
-                "reviewed": "info",
-                "interview": "success",
-                "accepted": "success",
-                "rejected": "danger"
-            }.get(app[4], "info")
-            applied_at_str = app[7].strftime('%Y-%m-%d') if app[7] else ''
-            st.markdown(f"""
-            <div class="job-card">
-                <h3>{app[9]}</h3>
-                <p style="color: var(--primary);">{app[10]}</p>
-                <p>📍 {app[11]} | 💰 {app[12]}</p>
-                <p><strong>Applied:</strong> {applied_at_str}</p>
-                <p><strong>Status:</strong> <span style="background:{ '#10B98120' if app[4]=='accepted' else '#F59E0B20' if app[4]=='interview' else '#EF444420' if app[4]=='rejected' else '#3B82F620' }; color:{ '#10B981' if app[4]=='accepted' else '#F59E0B' if app[4]=='interview' else '#EF4444' if app[4]=='rejected' else '#3B82F6' }; padding:0.2rem 1rem; border-radius:40px;">{app[4].upper()}</span></p>
-            """, unsafe_allow_html=True)
-            if app[14] == "scheduled":  # interview_status
+
+        # ---------------- SEARCH + FILTER ----------------
+        col1, col2 = st.columns([2,1])
+
+        with col1:
+            search = st.text_input("🔍 Search Job Title")
+
+        with col2:
+            statuses = ["All", "Pending", "Reviewed", "Interview", "Accepted", "Rejected"]
+            selected_status = st.selectbox("Filter by Status", statuses)
+
+        filtered = applications
+
+        if selected_status != "All":
+            filtered = [a for a in filtered if a[4].capitalize() == selected_status]
+
+        if search:
+            filtered = [a for a in filtered if search.lower() in a[9].lower()]
+
+        # ---------------- SORT LATEST ----------------
+        filtered = sorted(filtered, key=lambda x: x[7] or datetime.min, reverse=True)
+
+        if not filtered:
+            st.info("No applications match your filter.")
+        else:
+
+            progress_map = {
+                "pending": 20,
+                "reviewed": 40,
+                "interview": 70,
+                "accepted": 100,
+                "rejected": 100
+            }
+
+            status_colors = {
+                "pending": "#F59E0B",
+                "reviewed": "#3B82F6",
+                "interview": "#8B5CF6",
+                "accepted": "#10B981",
+                "rejected": "#EF4444"
+            }
+
+            status_icons = {
+                "pending": "⏳",
+                "reviewed": "👀",
+                "interview": "🎤",
+                "accepted": "✅",
+                "rejected": "❌"
+            }
+
+            for i, app in enumerate(filtered):
+
+                applied_at = app[7].strftime('%Y-%m-%d') if app[7] else ""
+
+                status = app[4]
+                color = status_colors.get(status, "#3B82F6")
+                icon = status_icons.get(status, "📄")
+
                 st.markdown(f"""
-                <div style="background: #3B82F620; padding: 1rem; border-radius: 16px; margin: 0.5rem 0;">
-                    <h4>🗓️ Interview Scheduled</h4>
-                    <p><strong>Date:</strong> {app[13].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M')}</p>
-                    <p><strong>Meeting Link:</strong> <a href="{app[15]}" target="_blank">{app[15]}</a></p>
+                <div style="
+                    background: white;
+                    padding: 1.4rem;
+                    border-radius: 18px;
+                    margin-bottom: 1rem;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                    border:1px solid #f0f0f0;
+                ">
+
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <h3 style="margin-bottom:0;">{app[9]}</h3>
+                            <p style="color:#666; margin:0;">🏢 {app[10]}</p>
+                        </div>
+
+                        <span style="
+                            background:{color}20;
+                            color:{color};
+                            padding:0.3rem 0.9rem;
+                            border-radius:30px;
+                            font-size:0.8rem;
+                            font-weight:600;">
+                            {icon} {status.upper()}
+                        </span>
+                    </div>
+
+                    <p style="margin-top:0.6rem; color:#555;">
+                        📍 {app[11]} &nbsp;&nbsp; 💰 {app[12]}
+                    </p>
+
+                    <p style="font-size:0.85rem; color:#888;">
+                        Applied on {applied_at}
+                    </p>
+
                 </div>
                 """, unsafe_allow_html=True)
-            if st.button("📋 Details", key=f"details_{app[0]}_{i}"):
-                st.session_state.show_details_for = app[0]
-                st.rerun()
-            if st.session_state.get("show_details_for") == app[0]:
-                with st.expander("Application Details", expanded=True):
-                    st.markdown(f"**Cover Letter:** {app[6]}")
-                if st.button("Close", key=f"close_{app[0]}"):
-                    del st.session_state.show_details_for
-                    st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
 
+                # -------- Progress --------
+                st.progress(progress_map.get(status, 0))
+
+                # -------- Interview Info --------
+                if app[14] == "scheduled" and app[13]:
+
+                    interview_time = app[13].astimezone(pytz.timezone("Asia/Kathmandu"))
+
+                    st.markdown(f"""
+                    <div style="
+                        background:#EEF2FF;
+                        padding:1rem;
+                        border-radius:12px;
+                        margin-bottom:0.6rem;
+                    ">
+                        <b>🎤 Interview Scheduled</b><br>
+                        🗓 {interview_time.strftime('%Y-%m-%d %H:%M')} (NPT)<br>
+                        🔗 <a href="{app[15]}" target="_blank">Join Meeting</a>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                # -------- Buttons --------
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    if st.button("📄 View Details", key=f"details_{app[0]}_{i}"):
+                        st.session_state.show_details_for = app[0]
+
+                with col2:
+                    if status == "pending":
+                        if st.button("❌ Withdraw", key=f"withdraw_{app[0]}_{i}"):
+                            withdraw_application(app[0])
+                            st.success("Application withdrawn.")
+                            st.rerun()
+
+                # -------- Details Section --------
+                if st.session_state.get("show_details_for") == app[0]:
+
+                    st.markdown("### 📝 Cover Letter")
+
+                    st.markdown(f"""
+                    <div style="
+                        background:#f8f9fb;
+                        padding:1rem;
+                        border-radius:12px;
+                        margin-bottom:1rem;
+                    ">
+                        {app[6]}
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    if st.button("Close", key=f"close_{app[0]}"):
+                        del st.session_state.show_details_for
+                        st.rerun()
+
+                st.markdown("<br>", unsafe_allow_html=True)
+
+                
 elif current_page == "Job Requests":
     st.markdown("## 📝 My Job Requests")
     if "job_request_tab" not in st.session_state:
