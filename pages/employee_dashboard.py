@@ -1544,105 +1544,74 @@ elif current_page == "My Applications":
         st.info("You haven't applied to any jobs yet.")
     else:
 
-        # ---------------- SEARCH + FILTER ----------------
-        col1, col2 = st.columns([2,1])
+        cols = st.columns(3)
 
-        with col1:
-            search = st.text_input("🔍 Search Job Title")
+        status_colors = {
+            "pending": "#F59E0B",
+            "reviewed": "#3B82F6",
+            "interview": "#8B5CF6",
+            "accepted": "#10B981",
+            "rejected": "#EF4444"
+        }
 
-        with col2:
-            statuses = ["All", "Pending", "Reviewed", "Interview", "Accepted", "Rejected"]
-            selected_status = st.selectbox("Filter by Status", statuses)
+        status_icons = {
+            "pending": "⏳",
+            "reviewed": "👀",
+            "interview": "🎤",
+            "accepted": "✅",
+            "rejected": "❌"
+        }
 
-        filtered = applications
+        for i, app in enumerate(applications):
 
-        if selected_status != "All":
-            filtered = [a for a in filtered if a[4].capitalize() == selected_status]
+            col = cols[i % 3]
 
-        if search:
-            filtered = [a for a in filtered if search.lower() in a[9].lower()]
-
-        # ---------------- SORT LATEST ----------------
-        filtered = sorted(filtered, key=lambda x: x[7] or datetime.min, reverse=True)
-
-        if not filtered:
-            st.info("No applications match your filter.")
-        else:
-
-            progress_map = {
-                "pending": 20,
-                "reviewed": 40,
-                "interview": 70,
-                "accepted": 100,
-                "rejected": 100
-            }
-
-            status_colors = {
-                "pending": "#F59E0B",
-                "reviewed": "#3B82F6",
-                "interview": "#8B5CF6",
-                "accepted": "#10B981",
-                "rejected": "#EF4444"
-            }
-
-            status_icons = {
-                "pending": "⏳",
-                "reviewed": "👀",
-                "interview": "🎤",
-                "accepted": "✅",
-                "rejected": "❌"
-            }
-
-            for i, app in enumerate(filtered):
-
-                applied_at = app[7].strftime('%Y-%m-%d') if app[7] else ""
+            with col:
 
                 status = app[4]
                 color = status_colors.get(status, "#3B82F6")
                 icon = status_icons.get(status, "📄")
 
+                applied_at = app[7].strftime('%Y-%m-%d') if app[7] else ""
+
                 st.markdown(f"""
                 <div style="
-                    background: white;
-                    padding: 1.4rem;
-                    border-radius: 18px;
-                    margin-bottom: 1rem;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-                    border:1px solid #f0f0f0;
+                    background:white;
+                    padding:1.2rem;
+                    border-radius:14px;
+                    box-shadow:0 4px 10px rgba(0,0,0,0.05);
+                    margin-bottom:1rem;
+                    border:1px solid #eee;
                 ">
 
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <h3 style="margin-bottom:0;">{app[9]}</h3>
-                            <p style="color:#666; margin:0;">🏢 {app[10]}</p>
-                        </div>
+                        <h4 style="margin:0;">{app[9]}</h4>
 
                         <span style="
                             background:{color}20;
                             color:{color};
-                            padding:0.3rem 0.9rem;
-                            border-radius:30px;
-                            font-size:0.8rem;
+                            padding:0.2rem 0.7rem;
+                            border-radius:20px;
+                            font-size:0.75rem;
                             font-weight:600;">
                             {icon} {status.upper()}
                         </span>
                     </div>
 
-                    <p style="margin-top:0.6rem; color:#555;">
+                    <p style="margin:4px 0; color:#666;">🏢 {app[10]}</p>
+
+                    <p style="font-size:0.85rem; color:#555;">
                         📍 {app[11]} &nbsp;&nbsp; 💰 {app[12]}
                     </p>
 
-                    <p style="font-size:0.85rem; color:#888;">
-                        Applied on {applied_at}
+                    <p style="font-size:0.75rem; color:#888;">
+                        Applied {applied_at}
                     </p>
 
                 </div>
                 """, unsafe_allow_html=True)
 
-                # -------- Progress --------
-                st.progress(progress_map.get(status, 0))
-
-                # -------- Interview Info --------
+                # Interview section
                 if app[14] == "scheduled" and app[13]:
 
                     interview_time = app[13].astimezone(pytz.timezone("Asia/Kathmandu"))
@@ -1650,53 +1619,23 @@ elif current_page == "My Applications":
                     st.markdown(f"""
                     <div style="
                         background:#EEF2FF;
-                        padding:1rem;
-                        border-radius:12px;
-                        margin-bottom:0.6rem;
+                        padding:0.7rem;
+                        border-radius:10px;
+                        font-size:0.8rem;
+                        margin-bottom:0.5rem;
                     ">
-                        <b>🎤 Interview Scheduled</b><br>
-                        🗓 {interview_time.strftime('%Y-%m-%d %H:%M')} (NPT)<br>
-                        🔗 <a href="{app[15]}" target="_blank">Join Meeting</a>
+                        🎤 Interview <br>
+                        🗓 {interview_time.strftime('%Y-%m-%d %H:%M')} <br>
+                        <a href="{app[15]}" target="_blank">Join Meeting</a>
                     </div>
                     """, unsafe_allow_html=True)
 
-                # -------- Buttons --------
-                col1, col2 = st.columns(2)
+                if st.button("Details", key=f"details_{app[0]}_{i}"):
+                    st.session_state.show_details_for = app[0]
 
-                with col1:
-                    if st.button("📄 View Details", key=f"details_{app[0]}_{i}"):
-                        st.session_state.show_details_for = app[0]
-
-                with col2:
-                    if status == "pending":
-                        if st.button("❌ Withdraw", key=f"withdraw_{app[0]}_{i}"):
-                            withdraw_application(app[0])
-                            st.success("Application withdrawn.")
-                            st.rerun()
-
-                # -------- Details Section --------
                 if st.session_state.get("show_details_for") == app[0]:
+                    st.info(app[6])
 
-                    st.markdown("### 📝 Cover Letter")
-
-                    st.markdown(f"""
-                    <div style="
-                        background:#f8f9fb;
-                        padding:1rem;
-                        border-radius:12px;
-                        margin-bottom:1rem;
-                    ">
-                        {app[6]}
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    if st.button("Close", key=f"close_{app[0]}"):
-                        del st.session_state.show_details_for
-                        st.rerun()
-
-                st.markdown("<br>", unsafe_allow_html=True)
-
-                
 elif current_page == "Job Requests":
     st.markdown("## 📝 My Job Requests")
     if "job_request_tab" not in st.session_state:
