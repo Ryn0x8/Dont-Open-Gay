@@ -1907,7 +1907,7 @@ elif current_page == "Messages":
                 <p style="font-size: 0.9rem;">{conv[7][:100] if conv[7] else 'No messages'}...</p>
                 <p style="font-size:0.7rem; color:var(--text-light);">{last_time_str}</p>
                 </div>
-                {f'<span style="background:#EF4444; color:white; padding:0.2rem 0.6rem; border-radius:40px; font-size:0.7rem; align-self:center;">{conv[9]} new</span>' if conv[9] > 0 else ''}
+                {f'<span style="background:#EF4444; color:white; padding:0.2rem 0.6rem; border-radius:40px; font-size:0.7rem; align-self:center;">{conv[9]} new</span>' if conv[9] > 0 else 'No'}
                 </div>
                 </div>
                 """, unsafe_allow_html=True)
