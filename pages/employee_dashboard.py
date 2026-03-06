@@ -1201,7 +1201,7 @@ elif current_page == "Find Jobs":
         profile = get_or_create_profile(user_id)
         employee_skills = profile[5] if profile else ""
         jobs = search_jobs(user_id)
-        job_dicts = [job_to_dict(j) for j in jobs]
+        job_dicts = [job_tuple_to_dict(j) for j in jobs]
 
         # --- Filters ---
         with st.expander("🔎 Filters", expanded=True):
