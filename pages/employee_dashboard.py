@@ -1900,15 +1900,15 @@ elif current_page == "Messages":
                 last_time_str = conv[8].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M') if conv[8] else ''
                 st.markdown(f"""
                 <div class="job-card">
-                    <div style="display: flex; justify-content: space-between;">
-                        <div>
-                            <h4>{conv[5]}</h4>
-                            <p style="color: var(--text-light);">{conv[6]}</p>
-                            <p style="font-size: 0.9rem;">{conv[7][:100] if conv[7] else 'No messages'}...</p>
-                            <p style="font-size:0.7rem; color:var(--text-light);">{last_time_str}</p>
-                        </div>
-                        {f'<span style="background:#EF4444; color:white; padding:0.2rem 0.6rem; border-radius:40px; font-size:0.7rem; align-self:center;">{conv[9]} new</span>' if conv[9] > 0 else ''}
-                    </div>
+                <div style="display: flex; justify-content: space-between;">
+                <div>
+                <h4>{conv[5]}</h4>
+                <p style="color: var(--text-light);">{conv[6]}</p>
+                <p style="font-size: 0.9rem;">{conv[7][:100] if conv[7] else 'No messages'}...</p>
+                <p style="font-size:0.7rem; color:var(--text-light);">{last_time_str}</p>
+                </div>
+                {f'<span style="background:#EF4444; color:white; padding:0.2rem 0.6rem; border-radius:40px; font-size:0.7rem; align-self:center;">{conv[9]} new</span>' if conv[9] > 0 else ''}
+                </div>
                 </div>
                 """, unsafe_allow_html=True)
             with col2:
