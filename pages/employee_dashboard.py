@@ -1167,134 +1167,152 @@ elif current_page == "Find Jobs":
                     del st.session_state.apply_job_title
                     st.rerun()
     else:
-        st.markdown("## 🔍 Find Jobs")
-        profile = get_or_create_profile(user_id)
-        employee_skills = profile[5] if profile else ""
-        jobs = search_jobs(user_id)
-        def job_to_dict(job_tuple):
-            return {
-                'id': job_tuple[0],
-                'company_id': job_tuple[1],
-                'company_name': job_tuple[2],
-                'company_name2': job_tuple[15],
-                'logo': job_tuple[16],
-                'title': job_tuple[3],
-                'category': job_tuple[4],
-                'description': job_tuple[5],
-                'requirements': job_tuple[6],
-                'location': job_tuple[7],
-                'job_type': job_tuple[8],
-                'salary_range': job_tuple[9],
-                'experience_level': job_tuple[10],
-                'skills_required': job_tuple[11],
-                'status': job_tuple[12],
-                'created_at': job_tuple[13],
-                'deadline': job_tuple[14],
-                'applied': job_tuple[17],
-                'saved': job_tuple[18],
-            }
-        job_dicts = [job_to_dict(j) for j in jobs]
-        with st.expander("🔎 Filters", expanded=True):
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                search = st.text_input("Search jobs", placeholder="Title, skills...")
-            with col2:
-                job_types = st.multiselect("Job Type", ["Full-time", "Part-time", "Remote", "Hybrid", "Contract"])
-            with col3:
-                exp_levels = st.multiselect("Experience", ["Entry", "Junior", "Mid", "Senior", "Lead"])
-            with col4:
-                locations = list(set(j['location'] for j in job_dicts if j['location']))
-                selected_locs = st.multiselect("Location", locations)
-        filtered = job_dicts
+    def get_score_color(score):
+        if score >= 70:
+            return "#10B981"  # green
+        elif score >= 40:
+            return "#F59E0B"  # yellow
+        else:
+            return "#EF4444"  # red
+
+    def human_readable_date(dt):
+        if not dt: return "Not specified"
+        now = st.session_state.get("now_dt")
+        if not now:
+            now = datetime.datetime.now(pytz.timezone("Asia/Kathmandu"))
+            st.session_state.now_dt = now
+        delta = now - dt
+        if delta.days == 0: return "Today"
+        elif delta.days == 1: return "Yesterday"
+        elif delta.days < 7: return f"{delta.days} days ago"
+        else: return dt.strftime('%b %d, %Y')
+
+    def filter_jobs(jobs, search="", job_types=[], exp_levels=[], locations=[]):
+        filtered = jobs
         if search:
-            filtered = [j for j in filtered if search.lower() in j['title'].lower() or search.lower() in j['description'].lower()]
+            search_lower = search.lower()
+            filtered = [j for j in filtered if search_lower in j['title'].lower() or search_lower in j['description'].lower()]
         if job_types:
             filtered = [j for j in filtered if j['job_type'] in job_types]
         if exp_levels:
             filtered = [j for j in filtered if j['experience_level'] in exp_levels]
-        if selected_locs:
-            filtered = [j for j in filtered if j['location'] in selected_locs]
-        for job in filtered:
-            job['match_score'] = calculate_match_score(job, profile)
-        filtered.sort(key=lambda x: x['match_score'], reverse=True)
-        st.markdown(f"### Found {len(filtered)} jobs")
+        if locations:
+            filtered = [j for j in filtered if j['location'] in locations]
+        return filtered
 
-        if "show_job_details" not in st.session_state:
-            st.session_state.show_job_details = None
+    # --- Main Section ---
+    st.markdown("## 🔍 Find Jobs")
 
-        for job in filtered:
-            with st.container():
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    match_score = job['match_score']
+    profile = get_or_create_profile(user_id)
+    employee_skills = profile[5] if profile else ""
+    jobs = search_jobs(user_id)
+    job_dicts = [job_to_dict(j) for j in jobs]
+
+    # --- Filters ---
+    with st.expander("🔎 Filters", expanded=True):
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            search = st.text_input("Search jobs", placeholder="Title, skills...")
+        with col2:
+            job_types = st.multiselect("Job Type", ["Full-time", "Part-time", "Remote", "Hybrid", "Contract"])
+        with col3:
+            exp_levels = st.multiselect("Experience", ["Entry", "Junior", "Mid", "Senior", "Lead"])
+        with col4:
+            locations = sorted(set(j['location'] for j in job_dicts if j['location']))
+            selected_locs = st.multiselect("Location", locations)
+
+    # --- Filter & Match Score ---
+    filtered = filter_jobs(job_dicts, search, job_types, exp_levels, selected_locs)
+
+    # Calculate match score only for filtered jobs
+    for job in filtered:
+        job['match_score'] = calculate_match_score(job, profile)
+
+    # Sort by match_score descending
+    filtered.sort(key=lambda x: x['match_score'], reverse=True)
+    st.markdown(f"### Found {len(filtered)} jobs")
+
+    # --- Job Details State ---
+    if "show_job_details" not in st.session_state:
+        st.session_state.show_job_details = None
+
+    # --- Display Jobs ---
+    for job in filtered:
+        with st.container():
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                match_color = get_score_color(job['match_score'])
+                st.markdown(f"""
+                <div class="job-card" style="margin-bottom:0.5rem;">
+                    <h3>{job['title']}</h3>
+                    <p style="color: var(--primary);">{job['company_name2']}</p>
+                    <p>📍 {job['location']} | 💼 {job['job_type']} | 💰 {job['salary_range']}</p>
+                    <p>{job['description'][:150]}...</p>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <span style="background:#DBEAFE; padding:0.2rem 0.8rem; border-radius:40px; font-size:0.8rem;">{job['category']}</span>
+                        <span style="background:#FEF3C7; padding:0.2rem 0.8rem; border-radius:40px; font-size:0.8rem;">{job['experience_level']}</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                if job['match_score'] > 0:
                     st.markdown(f"""
-                    <div class="job-card">
-                        <h3>{job['title']}</h3>
-                        <p style="color: var(--primary);">{job['company_name2']}</p>
-                        <p>📍 {job['location']} | 💼 {job['job_type']} | 💰 {job['salary_range']}</p>
-                        <p>{job['description'][:200]}...</p>
-                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                            <span style="background:#DBEAFE; padding:0.2rem 0.8rem; border-radius:40px; font-size:0.8rem;">{job['category']}</span>
-                            <span style="background:#FEF3C7; padding:0.2rem 0.8rem; border-radius:40px; font-size:0.8rem;">{job['experience_level']}</span>
+                    <div style="margin: 0.5rem 0;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>AI Match Score</span>
+                            <span style="font-weight: 600; color: {match_color};">{job['match_score']}%</span>
+                        </div>
+                        <div style="height:8px; background:#e2e8f0; border-radius:4px; width:100%;">
+                            <div style="width:{job['match_score']}%; height:8px; background:{match_color}; border-radius:4px;"></div>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-                    if match_score > 0:
-                        st.markdown(f"""
-                        <div style="margin: 0.5rem 0;">
-                            <div style="display: flex; justify-content: space-between;">
-                                <span>AI Match Score</span>
-                                <span style="font-weight: 600; color: {'#10B981' if match_score >= 70 else '#F59E0B' if match_score >= 40 else '#EF4444'};">{match_score}%</span>
-                            </div>
-                            <div style="height:8px; background:#e2e8f0; border-radius:4px; width:100%;">
-                                <div style="width:{match_score}%; height:8px; background:{'#10B981' if match_score >= 70 else '#F59E0B' if match_score >= 40 else '#EF4444'}; border-radius:4px;"></div>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                with col2:
-                    if job['applied'] == 0:
-                        if st.button("📝 Apply Now", key=f"apply_{job['id']}"):
-                            st.session_state.apply_job_id = job['id']
-                            st.session_state.apply_job_title = job['title']
-                            st.rerun()
-                    else:
-                        st.success("✅ Applied")
-                    if job['saved'] == 0:
-                        if st.button("🔖 Save", key=f"save_{job['id']}"):
-                            save_job(user_id, job['id'])
-                            add_notification(user_id, "save", "Job Saved",
-                                           f"You saved {job['title']}")
-                            st.rerun()
-                    else:
-                        if st.button("📌 Saved", key=f"unsave_{job['id']}"):
-                            unsave_job(user_id, job['id'])
-                            st.rerun()
-                    if st.button("📋 View Details", key=f"details_{job['id']}"):
-                        if st.session_state.show_job_details == job['id']:
-                            st.session_state.show_job_details = None
-                        else:
-                            st.session_state.show_job_details = job['id']
+
+            with col2:
+                # --- Apply / Save Buttons ---
+                if job['applied'] == 0:
+                    if st.button("📝 Apply Now", key=f"apply_{job['id']}"):
+                        st.session_state.apply_job_id = job['id']
+                        st.session_state.apply_job_title = job['title']
+                        st.rerun()
+                else:
+                    st.success("✅ Applied")
+
+                if job['saved'] == 0:
+                    if st.button("🔖 Save", key=f"save_{job['id']}"):
+                        save_job(user_id, job['id'])
+                        add_notification(user_id, "save", "Job Saved", f"You saved {job['title']}")
+                        st.rerun()
+                else:
+                    if st.button("📌 Saved", key=f"unsave_{job['id']}"):
+                        unsave_job(user_id, job['id'])
                         st.rerun()
 
-                if st.session_state.show_job_details == job['id']:
-                    with st.expander("Job Details", expanded=True):
-                        st.markdown(f"**Description:**\n{job['description']}")
-                        st.markdown(f"**Requirements:**\n{job['requirements']}")
-                        st.markdown(f"**Skills Required:** {job['skills_required']}")
-                        st.markdown(f"**Category:** {job['category']}")
-                        st.markdown(f"**Experience Level:** {job['experience_level']}")
-                        st.markdown(f"**Job Type:** {job['job_type']}")
-                        st.markdown(f"**Location:** {job['location']}")
-                        st.markdown(f"**Salary Range:** {job['salary_range']}")
-                        deadline_str = job['deadline'].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d') if job['deadline'] else 'Not specified'
-                        st.markdown(f"**Application Deadline:** {deadline_str}")
-                        posted_str = job['created_at'].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d') if job['created_at'] else ''
-                        st.markdown(f"**Posted on:** {posted_str}")
-                        if st.button("Close", key=f"close_details_{job['id']}"):
-                            st.session_state.show_job_details = None
-                            st.rerun()
-                st.markdown("---")
+                # --- View Details ---
+                if st.button("📋 View Details", key=f"details_{job['id']}"):
+                    st.session_state.show_job_details = job['id'] if st.session_state.show_job_details != job['id'] else None
+                    st.rerun()
 
+            # --- Expandable Job Details ---
+            if st.session_state.show_job_details == job['id']:
+                with st.expander("Job Details", expanded=True):
+                    st.markdown(f"**Description:** {job['description']}")
+                    st.markdown(f"**Requirements:** {job['requirements']}")
+                    st.markdown(f"**Skills Required:** {job['skills_required']}")
+                    st.markdown(f"**Category:** {job['category']}")
+                    st.markdown(f"**Experience Level:** {job['experience_level']}")
+                    st.markdown(f"**Job Type:** {job['job_type']}")
+                    st.markdown(f"**Location:** {job['location']}")
+                    st.markdown(f"**Salary Range:** {job['salary_range']}")
+                    deadline_str = job['deadline'].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d') if job['deadline'] else 'Not specified'
+                    st.markdown(f"**Application Deadline:** {deadline_str}")
+                    posted_str = job['created_at'].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d') if job['created_at'] else ''
+                    st.markdown(f"**Posted on:** {posted_str}")
+                    if st.button("Close", key=f"close_details_{job['id']}"):
+                        st.session_state.show_job_details = None
+                        st.rerun()
+
+            st.markdown("---")
 elif current_page == "Companies":
     st.markdown("## 🏢 Recruiting Companies")
     if "apply_job_id" in st.session_state:
