@@ -1488,12 +1488,20 @@ elif current_page == "Companies":
                     st.rerun()
 
 elif current_page == "Saved Jobs":
+
     st.markdown("## 🔖 Saved Jobs")
+
     saved = get_saved_jobs(user_id)
+
     if not saved:
         st.info("No saved jobs yet.")
+
     else:
-        for job in saved:
+
+        cols = st.columns(3)
+
+        for i, job in enumerate(saved):
+
             job_dict = {
                 'id': job[0],
                 'company_id': job[1],
@@ -1513,27 +1521,86 @@ elif current_page == "Saved Jobs":
                 'company_name': job[15],
                 'applied': job[16],
             }
-            st.markdown(f"""
-            <div class="job-card">
-                <h3>{job_dict['title']}</h3>
-                <p style="color: var(--primary);">{job_dict['company_name']}</p>
-                <p>📍 {job_dict['location']} | 💼 {job_dict['job_type']} | 💰 {job_dict['salary_range']}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                if job_dict['applied'] == 0:
-                    if st.button("📝 Apply", key=f"apply_saved_{job_dict['id']}"):
-                        st.session_state.apply_job_id = job_dict['id']
-                        st.session_state.apply_job_title = job_dict['title']
+
+            col = cols[i % 3]
+
+            with col:
+
+                badge_color = "#10B981" if job_dict['applied'] else "#3B82F6"
+                badge_text = "APPLIED" if job_dict['applied'] else "SAVED"
+
+                st.markdown(f"""
+                <div style="
+                background:white;
+                padding:1.2rem;
+                border-radius:14px;
+                border:1px solid #eee;
+                box-shadow:0 4px 12px rgba(0,0,0,0.05);
+                margin-bottom:1rem;
+                height:200px;
+                display:flex;
+                flex-direction:column;
+                justify-content:space-between;
+                ">
+
+                <div>
+
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+
+                <h4 style="margin:0; font-size:1rem; line-height:1.3;">
+                {job_dict['title']}
+                </h4>
+
+                <span style="
+                background:{badge_color}20;
+                color:{badge_color};
+                padding:0.2rem 0.8rem;
+                border-radius:20px;
+                font-size:0.75rem;
+                font-weight:600;
+                white-space:nowrap;">
+                {badge_text}
+                </span>
+
+                </div>
+
+                <p style="color:#666; font-size:0.85rem; margin:4px 0;">
+                🏢 {job_dict['company_name']}
+                </p>
+
+                <p style="font-size:0.85rem; color:#555;">
+                📍 {job_dict['location']} &nbsp;&nbsp; 💼 {job_dict['job_type']}
+                </p>
+
+                <p style="font-size:0.85rem;">
+                💰 {job_dict['salary_range']}
+                </p>
+
+                </div>
+
+                </div>
+                """, unsafe_allow_html=True)
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+
+                    if job_dict['status'] == "expired":
+                        st.error("Job Expired")
+
+                    elif job_dict['applied'] == 0:
+                        if st.button("📝 Apply", key=f"apply_saved_{job_dict['id']}"):
+                            st.session_state.apply_job_id = job_dict['id']
+                            st.session_state.apply_job_title = job_dict['title']
+                            st.rerun()
+                    else:
+                        st.success("Applied")
+
+                with col2:
+
+                    if st.button("❌ Remove", key=f"remove_saved_{job_dict['id']}"):
+                        unsave_job(user_id, job_dict['id'])
                         st.rerun()
-                else:
-                    st.info("✅ Applied")
-            with col2:
-                if st.button("❌ Remove", key=f"remove_saved_{job_dict['id']}"):
-                    unsave_job(user_id, job_dict['id'])
-                    st.rerun()
-            st.markdown("---")
 
 elif current_page == "My Applications":
     st.markdown("## 📋 My Applications")
