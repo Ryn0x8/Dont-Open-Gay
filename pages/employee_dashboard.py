@@ -1574,8 +1574,7 @@ elif current_page == "My Applications":
 
                 applied_at = app[7].strftime('%Y-%m-%d') if app[7] else ""
 
-                st.markdown(
-                f"""
+                st.markdown(f"""
                 <div style="background:white;
                 padding:1.2rem;
                 border-radius:14px;
@@ -1583,8 +1582,14 @@ elif current_page == "My Applications":
                 margin-bottom:1rem;
                 border:1px solid #eee;">
 
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h4 style="margin:0;">{app[9]}</h4>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+
+                <div style="flex:1;">
+                <h4 style="margin:0; line-height:1.3; word-break:break-word;">
+                {app[9]}
+                </h4>
+                <p style="margin:4px 0; color:#666;">🏢 {app[10]}</p>
+                </div>
 
                 <span style="
                 flex-shrink:0;
@@ -1598,9 +1603,9 @@ elif current_page == "My Applications":
                 {icon} {status.upper()}
                 </span>
 
-                <p style="margin:4px 0; color:#666;">🏢 {app[10]}</p>
+                </div>
 
-                <p style="font-size:0.85rem; color:#555;">
+                <p style="font-size:0.85rem; color:#555; margin-top:6px;">
                 📍 {app[11]} &nbsp;&nbsp; 💰 {app[12]}
                 </p>
 
@@ -1609,9 +1614,7 @@ elif current_page == "My Applications":
                 </p>
 
                 </div>
-                """,
-                unsafe_allow_html=True
-                )
+                """, unsafe_allow_html=True)
                 # Interview section
                 if app[14] == "scheduled" and app[13]:
 
