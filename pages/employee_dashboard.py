@@ -829,13 +829,6 @@ if "sub_tab" not in st.session_state:
     st.session_state.sub_tab = None
 
 main_tabs = ["Dashboard", "Jobs", "Applications", "Notifications", "Profile"]
-main_icons = {
-    "Dashboard": "📊",
-    "Jobs": "🔍",
-    "Applications": "📋",
-    "Notifications": "🔔",
-    "Profile": "👤"
-}
 
 def job_tuple_to_dict(job_tuple):
     return {
@@ -860,32 +853,28 @@ def job_tuple_to_dict(job_tuple):
         'saved': job_tuple[18],
     }
 
-# --- Main Navigation with pills ---
+# --- Main Navigation with pills (emoji removed) ---
 selected_main = st.pills(
     "",
     options=main_tabs,
     default=st.session_state.main_tab,
     selection_mode="single",
-    format_func=lambda tab: f"{main_icons[tab]} {tab}" + 
+    format_func=lambda tab: f"{tab}" + 
         (f" ({unread_notifications})" if tab == "Notifications" and unread_notifications > 0 else ""),
     label_visibility="collapsed",
-    key="main_pills"   # this creates class st-key-main_pills
+    key="main_pills"
 )
 st.session_state.main_tab = selected_main
 
-# --- Sub Navigation with pills (only when needed) ---
+# --- Sub Navigation with pills (emoji removed) ---
 if st.session_state.main_tab == "Jobs":
     sub_tabs = ["Find Jobs", "Companies", "Saved Jobs"]
-    sub_icons = {"Find Jobs": "🔍", "Companies": "🏢", "Saved Jobs": "🔖"}
 elif st.session_state.main_tab == "Applications":
     sub_tabs = ["My Applications", "Job Requests"]
-    sub_icons = {"My Applications": "📋", "Job Requests": "📝"}
 elif st.session_state.main_tab == "Profile":
     sub_tabs = ["Profile", "Messages", "Analytics"]
-    sub_icons = {"Profile": "👤", "Messages": "💬", "Analytics": "📈"}
 else:
     sub_tabs = []
-    sub_icons = {}
 
 if sub_tabs:
     # Prepare badges for sub tabs
@@ -904,10 +893,10 @@ if sub_tabs:
         options=sub_tabs,
         default=st.session_state.sub_tab,
         selection_mode="single",
-        format_func=lambda tab: f"{sub_icons[tab]} {tab}" + 
+        format_func=lambda tab: f"{tab}" + 
             (f" ({sub_badges[tab]})" if sub_badges.get(tab) else ""),
         label_visibility="collapsed",
-        key=f"sub_pills_{st.session_state.main_tab}"  # creates class like st-key-sub_pills_Jobs
+        key=f"sub_pills_{st.session_state.main_tab}"
     )
     st.session_state.sub_tab = selected_sub
 else:
@@ -2539,4 +2528,3 @@ elif current_page == "Analytics":
             </div>
         </div>
         """, unsafe_allow_html=True)
-
