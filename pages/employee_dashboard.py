@@ -281,13 +281,13 @@ def display_recruiter_profile(user, profile):
         st.markdown(f"**{headline}**")
         # Location
         if profile[IDX_LOCATION]:
-            st.markdown(f"📍 {profile[IDX_LOCATION]}")
+            st.markdown(f" {profile[IDX_LOCATION]}")
         # Contact
         contact = []
         if user[2]:
-            contact.append(f"📧 {user[2]}")
+            contact.append(f" {user[2]}")
         if profile[IDX_PHONE]:
-            contact.append(f"📱 {profile[IDX_PHONE]}")
+            contact.append(f" {profile[IDX_PHONE]}")
         if contact:
             st.markdown(" | ".join(contact))
 
@@ -295,7 +295,7 @@ def display_recruiter_profile(user, profile):
 
     # About
     if profile[IDX_BIO]:
-        st.markdown("### 📝 About")
+        st.markdown("###  About")
         st.markdown(profile[IDX_BIO])
         st.markdown("---")
 
@@ -303,7 +303,7 @@ def display_recruiter_profile(user, profile):
     col_left, col_right = st.columns(2)
 
     with col_left:
-        st.markdown("### 🛠️ Skills")
+        st.markdown("###  Skills")
         
         if profile[IDX_SKILLS]:
             # Split and clean skills
@@ -324,16 +324,16 @@ def display_recruiter_profile(user, profile):
         else:
             st.info("No skills added.")
 
-        st.markdown("### 💼 Experience Level")
+        st.markdown("###  Experience Level")
         st.markdown(profile[IDX_EXP] if profile[IDX_EXP] else "Not specified")
         st.markdown("### ⏳ Preferred Job Type")
         st.markdown(profile[IDX_JOB_TYPE] if profile[IDX_JOB_TYPE] else "Not specified")
-        st.markdown("### 💰 Expected Salary")
+        st.markdown("###  Expected Salary")
         st.markdown(profile[IDX_SALARY] if profile[IDX_SALARY] else "Not specified")
 
     with col_right:
         # Projects
-        st.markdown("### 🚀 Projects")
+        st.markdown("###  Projects")
         projects = []
         if len(profile) > IDX_PROJECTS and profile[IDX_PROJECTS]:
             try:
@@ -357,7 +357,7 @@ def display_recruiter_profile(user, profile):
                 if tech:
                     html += f'<strong>Tech:</strong> {tech}<br>'
                 if url:
-                    html += f'<a href="{url}" target="_blank">🔗 Project Link</a>'
+                    html += f'<a href="{url}" target="_blank"> Project Link</a>'
                 html += '</div>'
 
                 st.markdown(html, unsafe_allow_html=True)
@@ -371,7 +371,7 @@ def display_recruiter_profile(user, profile):
 
         # Video Introduction
         if len(profile) > IDX_VIDEO and profile[IDX_VIDEO] and os.path.exists(profile[IDX_VIDEO]):
-            st.markdown("### 🎥 Video Introduction")
+            st.markdown("###  Video Introduction")
             st.video(profile[IDX_VIDEO])
 
     st.markdown("---")
@@ -385,7 +385,7 @@ def display_recruiter_profile(user, profile):
     if profile[IDX_PORTFOLIO]:
         social_links.append(f"[Portfolio]({profile[IDX_PORTFOLIO]})")
     if social_links:
-        st.markdown("### 🌐 Connect")
+        st.markdown("###  Connect")
         st.markdown(" | ".join(social_links))
 
 # --- Custom CSS (softer, less blue, buttons auto width) ---
@@ -708,7 +708,7 @@ unread_notifications = get_unread_notifications_count(user_id)
 st.markdown(f"""
 <div class="hero-header">
     <div>
-        <h1>👋 Welcome back, {st.session_state.user_name}!</h1>
+        <h1> Welcome back, {st.session_state.user_name}!</h1>
         <p>Your personalized employee dashboard</p>
     </div>
     <div class="date-badge">
@@ -830,11 +830,11 @@ if "sub_tab" not in st.session_state:
 
 main_tabs = ["Dashboard", "Jobs", "Applications", "Notifications", "Profile"]
 main_icons = {
-    "Dashboard": "📊",
-    "Jobs": "🔍",
-    "Applications": "📋",
-    "Notifications": "🔔",
-    "Profile": "👤"
+    "Dashboard": "",
+    "Jobs": "",
+    "Applications": "",
+    "Notifications": "",
+    "Profile": ""
 }
 
 def job_tuple_to_dict(job_tuple):
@@ -876,13 +876,13 @@ st.session_state.main_tab = selected_main
 # --- Sub Navigation with pills (only when needed) ---
 if st.session_state.main_tab == "Jobs":
     sub_tabs = ["Find Jobs", "Companies", "Saved Jobs"]
-    sub_icons = {"Find Jobs": "🔍", "Companies": "🏢", "Saved Jobs": "🔖"}
+    sub_icons = {"Find Jobs": "", "Companies": "", "Saved Jobs": ""}
 elif st.session_state.main_tab == "Applications":
     sub_tabs = ["My Applications", "Job Requests"]
-    sub_icons = {"My Applications": "📋", "Job Requests": "📝"}
+    sub_icons = {"My Applications": "", "Job Requests": ""}
 elif st.session_state.main_tab == "Profile":
     sub_tabs = ["Profile", "Messages", "Analytics"]
-    sub_icons = {"Profile": "👤", "Messages": "💬", "Analytics": "📈"}
+    sub_icons = {"Profile": "", "Messages": "", "Analytics": ""}
 else:
     sub_tabs = []
     sub_icons = {}
@@ -915,24 +915,24 @@ else:
 
 current_page = st.session_state.sub_tab if st.session_state.sub_tab else st.session_state.main_tab
 if current_page == "Dashboard":
-    st.markdown("## 📊 Overview")
+    st.markdown("##  Overview")
 
     # --- Key Metrics Row (6 cards) ---
     metric1, metric2, metric3, metric4, metric5, metric6 = st.columns(6)
     with metric1:
-        st.markdown(f'<div class="stat-card"><h3>📋 Total Apps</h3><p>{total_apps}</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stat-card"><h3> Total Apps</h3><p>{total_apps}</p></div>', unsafe_allow_html=True)
     with metric2:
-        st.markdown(f'<div class="stat-card"><h3>🗓️ Interviews</h3><p>{interview_count}</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stat-card"><h3> Interviews</h3><p>{interview_count}</p></div>', unsafe_allow_html=True)
     with metric3:
         st.markdown(f'<div class="stat-card"><h3>⏳ Pending</h3><p>{pending_apps}</p></div>', unsafe_allow_html=True)
     with metric4:
         # Calculate offers (accepted applications)
         offers = sum(1 for a in applications if a[4] == 'accepted')
-        st.markdown(f'<div class="stat-card"><h3>🎉 Offers</h3><p>{offers}</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stat-card"><h3> Offers</h3><p>{offers}</p></div>', unsafe_allow_html=True)
     with metric5:
-        st.markdown(f'<div class="stat-card"><h3>🔖 Saved</h3><p>{saved_count}</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stat-card"><h3> Saved</h3><p>{saved_count}</p></div>', unsafe_allow_html=True)
     with metric6:
-        st.markdown(f'<div class="stat-card"><h3>💬 Unread Msgs</h3><p>{unread_msgs}</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stat-card"><h3> Unread Msgs</h3><p>{unread_msgs}</p></div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -940,7 +940,7 @@ if current_page == "Dashboard":
     col_left, col_right = st.columns(2)
 
     with col_left:
-        st.markdown("#### 🗓️ Upcoming Interviews")
+        st.markdown("####  Upcoming Interviews")
         # Filter applications with scheduled interview and future date
         upcoming = []
         now = datetime.now(timezone.utc).astimezone(pytz.timezone("Asia/Kathmandu"))
@@ -960,19 +960,19 @@ if current_page == "Dashboard":
                     <div class="job-card" style="margin-bottom: 0.5rem;">
                         <h4 style="margin-bottom: 0.2rem;">{job_title}</h4>
                         <p style="color: var(--primary); margin-bottom: 0.3rem;">{company}</p>
-                        <p><strong>📅 {date_str}</strong></p>
-                        {f'<p><a href="{meeting_link}" target="_blank">🔗 Join Meeting</a></p>' if meeting_link else ''}
+                        <p><strong> {date_str}</strong></p>
+                        {f'<p><a href="{meeting_link}" target="_blank"> Join Meeting</a></p>' if meeting_link else ''}
                     </div>
                     """, unsafe_allow_html=True)
         else:
             st.info("No upcoming interviews scheduled.")
 
     with col_right:
-        st.markdown("#### 🔔 Recent Activity")
+        st.markdown("####  Recent Activity")
         recent_notifications = get_user_notifications(user_id, limit=10)
         if recent_notifications:
             for notif in recent_notifications[:2]:  # show latest 2
-                icon = "📝" if notif[2] == 'application' else "💬" if notif[2] == 'message' else "🔔"
+                icon = "" if notif[2] == 'application' else "" if notif[2] == 'message' else ""
                 time_str = notif[7].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M') if notif[7] else ''
                 st.markdown(f"""
                 <div class="notification-card" style="margin-bottom: 0.5rem; padding: 0.8rem;">
@@ -998,7 +998,7 @@ if current_page == "Dashboard":
         stats = get_application_stats(user_id)
         if stats:
             df_stats = pd.DataFrame(stats, columns=['status', 'count'])
-            fig_pie = px.pie(df_stats, values='count', names='status', title='🥧 Application Status',
+            fig_pie = px.pie(df_stats, values='count', names='status', title=' Application Status',
                              color_discrete_sequence=px.colors.qualitative.Set3)
             fig_pie.update_layout(
                 plot_bgcolor='rgba(0,0,0,0)',
@@ -1014,7 +1014,7 @@ if current_page == "Dashboard":
         timeline = get_applications_over_time(user_id)
         if timeline:
             df_timeline = pd.DataFrame(timeline, columns=['date', 'count'])
-            fig_line = px.line(df_timeline, x='date', y='count', title='📈 Applications Over Time',
+            fig_line = px.line(df_timeline, x='date', y='count', title=' Applications Over Time',
                                markers=True, line_shape='linear')
             fig_line.update_layout(
                 plot_bgcolor='rgba(0,0,0,0)',
@@ -1040,7 +1040,7 @@ if current_page == "Dashboard":
             df_companies = pd.DataFrame(list(company_counts.items()), columns=['Company', 'Applications'])
             df_companies = df_companies.sort_values('Applications', ascending=True).tail(5)
             fig_bar = px.bar(df_companies, x='Applications', y='Company', orientation='h',
-                             title='🏆 Top Companies by Applications',
+                             title=' Top Companies by Applications',
                              color='Applications', color_continuous_scale='Blues')
             fig_bar.update_layout(
                 plot_bgcolor='rgba(0,0,0,0)',
@@ -1054,7 +1054,7 @@ if current_page == "Dashboard":
             st.info("No application data to show top companies.")
 
     with col_bottom2:
-        st.markdown("#### 💡 Job Recommendations")
+        st.markdown("####  Job Recommendations")
         profile = get_or_create_profile(user_id)
         employee_skills = profile[5] if profile else ""
         jobs = search_jobs(user_id)
@@ -1080,7 +1080,7 @@ if current_page == "Dashboard":
                 <div class="job-card" style="margin-bottom: 0.5rem;">
                     <h4 style="margin-bottom: 0.2rem;">{rec['title']}</h4>
                     <p style="color: var(--primary); margin-bottom: 0.3rem;">{rec['company']}</p>
-                    <p style="font-size: 0.9rem;">📍 {rec['location']} | 💼 {rec['job_type']}</p>
+                    <p style="font-size: 0.9rem;"> {rec['location']} |  {rec['job_type']}</p>
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                         <span style="font-size: 0.8rem;">Match:</span>
                         <div style="flex:1; height:6px; background:#e2e8f0; border-radius:4px;">
@@ -1097,7 +1097,7 @@ if current_page == "Dashboard":
 elif current_page == "Find Jobs":
     if "apply_job_id" in st.session_state:
         # Apply for a specific job
-        st.markdown("## 📝 Apply for Job")
+        st.markdown("##  Apply for Job")
         job_tuple = get_job_by_id(st.session_state.apply_job_id)
         if not job_tuple:
             st.error("Job not found")
@@ -1140,12 +1140,12 @@ elif current_page == "Find Jobs":
             cover_letter = st.text_area("Cover Letter", height=200,
                                        placeholder="Write a brief cover letter...")
             if not profile[4]:
-                st.warning("⚠️ Please upload your resume in Profile section before applying")
+                st.warning(" Please upload your resume in Profile section before applying")
             col_a, col_b = st.columns(2)
             with col_a:
-                submitted = st.form_submit_button("✅ Submit Application")
+                submitted = st.form_submit_button(" Submit Application")
             with col_b:
-                if st.form_submit_button("❌ Cancel"):
+                if st.form_submit_button(" Cancel"):
                     del st.session_state.apply_job_id
                     del st.session_state.apply_job_title
                     st.rerun()
@@ -1161,7 +1161,7 @@ elif current_page == "Find Jobs":
                         "Application Submitted",
                         f"Hi {st.session_state.user_name},\n\nYour application for '{job['title']}' at {job['company_name']} has been received.\n\nWe'll notify you of any updates.\n\nThanks,\nAnvaya Team"
                     )
-                    st.success("✅ Application submitted successfully!")
+                    st.success(" Application submitted successfully!")
                     time.sleep(2)
                     del st.session_state.apply_job_id
                     del st.session_state.apply_job_title
@@ -1196,7 +1196,7 @@ elif current_page == "Find Jobs":
             return filtered
 
         # --- Main Section ---
-        st.markdown("## 🔍 Find Jobs")
+        st.markdown("##  Find Jobs")
         profile = get_or_create_profile(user_id)
         employee_skills = profile[5] if profile else ""
         jobs = search_jobs(user_id)
@@ -1223,7 +1223,7 @@ elif current_page == "Find Jobs":
                 'saved': job_tuple[18],
             }
         job_dicts = [job_to_dict(j) for j in jobs]
-        with st.expander("🔎 Filters", expanded=True):
+        with st.expander(" Filters", expanded=True):
             col1, col2, col3, col4 = st.columns(4)
             with col1:
                 search = st.text_input("Search jobs", placeholder="Title, skills...")
@@ -1260,7 +1260,7 @@ elif current_page == "Find Jobs":
                     <div class="job-card">
                         <h3>{job['title']}</h3>
                         <p style="color: var(--primary);">{job['company_name2']}</p>
-                        <p>📍 {job['location']} | 💼 {job['job_type']} | 💰 {job['salary_range']}</p>
+                        <p> {job['location']} |  {job['job_type']} |  {job['salary_range']}</p>
                         <p>{job['description'][:200]}...</p>
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                             <span style="background:#DBEAFE; padding:0.2rem 0.8rem; border-radius:40px; font-size:0.8rem;">{job['category']}</span>
@@ -1282,23 +1282,23 @@ elif current_page == "Find Jobs":
                         """, unsafe_allow_html=True)
                 with col2:
                     if job['applied'] == 0:
-                        if st.button("📝 Apply Now", key=f"apply_{job['id']}"):
+                        if st.button(" Apply Now", key=f"apply_{job['id']}"):
                             st.session_state.apply_job_id = job['id']
                             st.session_state.apply_job_title = job['title']
                             st.rerun()
                     else:
-                        st.success("✅ Applied")
+                        st.success(" Applied")
                     if job['saved'] == 0:
-                        if st.button("🔖 Save", key=f"save_{job['id']}"):
+                        if st.button(" Save", key=f"save_{job['id']}"):
                             save_job(user_id, job['id'])
                             add_notification(user_id, "save", "Job Saved",
                                            f"You saved {job['title']}")
                             st.rerun()
                     else:
-                        if st.button("📌 Saved", key=f"unsave_{job['id']}"):
+                        if st.button(" Saved", key=f"unsave_{job['id']}"):
                             unsave_job(user_id, job['id'])
                             st.rerun()
-                    if st.button("📋 View Details", key=f"details_{job['id']}"):
+                    if st.button(" View Details", key=f"details_{job['id']}"):
                         if st.session_state.show_job_details == job['id']:
                             st.session_state.show_job_details = None
                         else:
@@ -1325,10 +1325,10 @@ elif current_page == "Find Jobs":
                 st.markdown("---")
                     
 elif current_page == "Companies":
-    st.markdown("## 🏢 Recruiting Companies")
+    st.markdown("##  Recruiting Companies")
     if "apply_job_id" in st.session_state:
         # Apply flow (same as above)
-        st.markdown("## 📝 Apply for Job")
+        st.markdown("##  Apply for Job")
         job_tuple = get_job_by_id(st.session_state.apply_job_id)
         if not job_tuple:
             st.error("Job not found")
@@ -1371,12 +1371,12 @@ elif current_page == "Companies":
             cover_letter = st.text_area("Cover Letter", height=200,
                                        placeholder="Write a brief cover letter...")
             if not profile[4]:
-                st.warning("⚠️ Please upload your resume in Profile section before applying")
+                st.warning(" Please upload your resume in Profile section before applying")
             col_a, col_b = st.columns(2)
             with col_a:
-                submitted = st.form_submit_button("✅ Submit Application", use_container_width=True)
+                submitted = st.form_submit_button(" Submit Application", use_container_width=True)
             with col_b:
-                if st.form_submit_button("❌ Cancel", use_container_width=True):
+                if st.form_submit_button(" Cancel", use_container_width=True):
                     del st.session_state.apply_job_id
                     del st.session_state.apply_job_title
                     st.rerun()
@@ -1392,7 +1392,7 @@ elif current_page == "Companies":
                         "Application Submitted",
                         f"Hi {st.session_state.user_name},\n\nYour application for '{job['title']}' at {job['company_name']} has been received.\n\nWe'll notify you of any updates.\n\nThanks,\nAnvaya Team"
                     )
-                    st.success("✅ Application submitted successfully!")
+                    st.success(" Application submitted successfully!")
                     time.sleep(2)
                     del st.session_state.apply_job_id
                     del st.session_state.apply_job_title
@@ -1401,7 +1401,7 @@ elif current_page == "Companies":
         # Show jobs for selected company
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.markdown(f"### 📋 Jobs at {st.session_state.selected_company_name}")
+            st.markdown(f"###  Jobs at {st.session_state.selected_company_name}")
         with col2:
             if st.button("← Back to Companies"):
                 del st.session_state.selected_company
@@ -1430,22 +1430,22 @@ elif current_page == "Companies":
                 st.markdown(f"""
                 <div class="job-card">
                     <h3>{job_dict['title']}</h3>
-                    <p>📍 {job_dict['location']} | 💼 {job_dict['job_type']} | 💰 {job_dict['salary_range']}</p>
+                    <p> {job_dict['location']} |  {job_dict['job_type']} |  {job_dict['salary_range']}</p>
                     <p>{job_dict['description'][:150]}...</p>
                 </div>
                 """, unsafe_allow_html=True)
                 col_a, col_b, col_c = st.columns(3)
                 with col_a:
                     if job_dict['applied'] == 0:
-                        if st.button(f"📝 Apply Now", key=f"apply_comp_{job[0]}"):
+                        if st.button(f" Apply Now", key=f"apply_comp_{job[0]}"):
                             st.session_state.apply_job_id = job[0]
                             st.session_state.apply_job_title = job_dict['title']
                             st.rerun()
                     else:
-                        st.info("✅ Already applied")
+                        st.info(" Already applied")
                 with col_b:
                     # View Details button
-                    if st.button("📋 View Details", key=f"details_comp_{job[0]}"):
+                    if st.button(" View Details", key=f"details_comp_{job[0]}"):
                         if st.session_state.get("show_job_details_comp") == job[0]:
                             st.session_state.show_job_details_comp = None
                         else:
@@ -1454,13 +1454,13 @@ elif current_page == "Companies":
                 with col_c:
                     # Save button
                     if job_dict.get('saved', 0) == 0:
-                        if st.button("🔖 Save", key=f"save_comp_{job[0]}"):
+                        if st.button(" Save", key=f"save_comp_{job[0]}"):
                             save_job(user_id, job[0])
                             add_notification(user_id, "save", "Job Saved",
                                            f"You saved {job_dict['title']}")
                             st.rerun()
                     else:
-                        if st.button("📌 Saved", key=f"unsave_comp_{job[0]}"):
+                        if st.button(" Saved", key=f"unsave_comp_{job[0]}"):
                             unsave_job(user_id, job[0])
                             st.rerun()
 
@@ -1490,7 +1490,7 @@ elif current_page == "Companies":
         companies = get_all_companies()
         col1, col2 = st.columns([2, 1])
         with col1:
-            search = st.text_input("🔍 Search companies", placeholder="Search by name or industry...")
+            search = st.text_input(" Search companies", placeholder="Search by name or industry...")
         with col2:
             industries = list(set(c[5] for c in companies if c[5]))
             industry_filter = st.selectbox("Industry", ["All"] + industries)
@@ -1508,7 +1508,7 @@ elif current_page == "Companies":
                     <div style="width:60px; height:60px; border-radius:50%; background:linear-gradient(135deg, var(--primary), var(--secondary)); color:white; font-size:2rem; font-weight:bold; display:flex; align-items:center; justify-content:center; margin:0 auto 1rem;">{logo_text}</div>
                     <h4>{company[1]}</h4>
                     <p style="color: var(--text-light);">{company[5] or 'Technology'}</p>
-                    <p style="font-size: 0.9rem;">📍 {company[6] or 'Remote'}</p>
+                    <p style="font-size: 0.9rem;"> {company[6] or 'Remote'}</p>
                 </div>
                 """, unsafe_allow_html=True)
                 if st.button(f"View Jobs", key=f"view_{company[0]}"):
@@ -1518,7 +1518,7 @@ elif current_page == "Companies":
 
 elif current_page == "Saved Jobs":
 
-    st.markdown("## 🔖 Saved Jobs")
+    st.markdown("##  Saved Jobs")
 
     saved = get_saved_jobs(user_id)
 
@@ -1594,15 +1594,15 @@ elif current_page == "Saved Jobs":
                 </div>
 
                 <p style="color:#666; font-size:0.85rem; margin:4px 0;">
-                🏢 {job_dict['company_name']}
+                 {job_dict['company_name']}
                 </p>
 
                 <p style="font-size:0.85rem; color:#555;">
-                📍 {job_dict['location']} &nbsp;&nbsp; 💼 {job_dict['job_type']}
+                 {job_dict['location']} &nbsp;&nbsp;  {job_dict['job_type']}
                 </p>
 
                 <p style="font-size:0.85rem;">
-                💰 {job_dict['salary_range']}
+                 {job_dict['salary_range']}
                 </p>
 
                 </div>
@@ -1618,7 +1618,7 @@ elif current_page == "Saved Jobs":
                         st.error("Job Expired")
 
                     elif job_dict['applied'] == 0:
-                        if st.button("📝 Apply", key=f"apply_saved_{job_dict['id']}"):
+                        if st.button(" Apply", key=f"apply_saved_{job_dict['id']}"):
                             st.session_state.apply_job_id = job_dict['id']
                             st.session_state.apply_job_title = job_dict['title']
                             st.rerun()
@@ -1627,12 +1627,12 @@ elif current_page == "Saved Jobs":
 
                 with col2:
 
-                    if st.button("❌ Remove", key=f"remove_saved_{job_dict['id']}"):
+                    if st.button(" Remove", key=f"remove_saved_{job_dict['id']}"):
                         unsave_job(user_id, job_dict['id'])
                         st.rerun()
 
 elif current_page == "My Applications":
-    st.markdown("## 📋 My Applications")
+    st.markdown("##  My Applications")
 
     applications = get_user_applications(user_id)
 
@@ -1652,10 +1652,10 @@ elif current_page == "My Applications":
 
         status_icons = {
             "pending": "⏳",
-            "reviewed": "👀",
-            "interview": "🎤",
-            "accepted": "✅",
-            "rejected": "❌"
+            "reviewed": "",
+            "interview": "",
+            "accepted": "",
+            "rejected": ""
         }
 
         for i, app in enumerate(applications):
@@ -1666,7 +1666,7 @@ elif current_page == "My Applications":
 
                 status = app[4]
                 color = status_colors.get(status, "#3B82F6")
-                icon = status_icons.get(status, "📄")
+                icon = status_icons.get(status, "")
 
                 applied_at = app[7].strftime('%Y-%m-%d') if app[7] else ""
 
@@ -1684,7 +1684,7 @@ elif current_page == "My Applications":
                 <h4 style="margin:0; line-height:1.3; word-break:break-word;">
                 {app[9]}
                 </h4>
-                <p style="margin:4px 0; color:#666;">🏢 {app[10]}</p>
+                <p style="margin:4px 0; color:#666;"> {app[10]}</p>
                 </div>
 
                 <span style="
@@ -1702,7 +1702,7 @@ elif current_page == "My Applications":
                 </div>
 
                 <p style="font-size:0.85rem; color:#555; margin-top:6px;">
-                📍 {app[11]} &nbsp;&nbsp; 💰 {app[12]}
+                 {app[11]} &nbsp;&nbsp;  {app[12]}
                 </p>
 
                 <p style="font-size:0.75rem; color:#888;">
@@ -1724,8 +1724,8 @@ elif current_page == "My Applications":
                         font-size:0.8rem;
                         margin-bottom:0.5rem;
                     ">
-                        🎤 Interview <br>
-                        🗓 {interview_time.strftime('%Y-%m-%d %H:%M')} <br>
+                         Interview <br>
+                         {interview_time.strftime('%Y-%m-%d %H:%M')} <br>
                         <a href="{app[15]}" target="_blank">Join Meeting</a>
                     </div>
                     """, unsafe_allow_html=True)
@@ -1737,17 +1737,17 @@ elif current_page == "My Applications":
                     st.info(app[6])
 
 elif current_page == "Job Requests":
-    st.markdown("## 📝 My Job Requests")
+    st.markdown("##  My Job Requests")
     if "job_request_tab" not in st.session_state:
         st.session_state.job_request_tab = "My Requests"
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("📋 My Requests", use_container_width=True,
+        if st.button(" My Requests", use_container_width=True,
                      type="primary" if st.session_state.job_request_tab == "My Requests" else "secondary"):
             st.session_state.job_request_tab = "My Requests"
             st.rerun()
     with col2:
-        if st.button("📝 Post a New Request", use_container_width=True,
+        if st.button(" Post a New Request", use_container_width=True,
                      type="primary" if st.session_state.job_request_tab == "Post a New Request" else "secondary"):
             st.session_state.job_request_tab = "Post a New Request"
             st.rerun()
@@ -1770,7 +1770,7 @@ elif current_page == "Job Requests":
                 with col:
 
                     status_color = "#10B981" if req[7] == "open" else "#EF4444"
-                    status_icon = "🟢" if req[7] == "open" else "🔴"
+                    status_icon = "" if req[7] == "open" else ""
 
                     posted_at = req[8].strftime('%Y-%m-%d') if req[8] else ""
 
@@ -1814,11 +1814,11 @@ elif current_page == "Job Requests":
                     </p>
 
                     <p style="font-size:0.85rem; color:#555;">
-                    📂 {req[4]} &nbsp;&nbsp; 📍 {req[5]}
+                     {req[4]} &nbsp;&nbsp;  {req[5]}
                     </p>
 
                     <p style="font-size:0.85rem;">
-                    💰 {req[6]}
+                     {req[6]}
                     </p>
 
                     <p style="font-size:0.75rem; color:#888;">
@@ -1833,12 +1833,12 @@ elif current_page == "Job Requests":
                     col1, col2, col3 = st.columns(3)
 
                     with col1:
-                        if st.button("✏️", key=f"edit_{req[0]}"):
+                        if st.button("", key=f"edit_{req[0]}"):
                             st.session_state.edit_request_id = req[0]
                             st.rerun()
 
                     with col2:
-                        if st.button("🗑️", key=f"del_{req[0]}"):
+                        if st.button("", key=f"del_{req[0]}"):
                             delete_job_request(req[0])
                             add_notification(
                                 user_id,
@@ -1850,7 +1850,7 @@ elif current_page == "Job Requests":
 
                     with col3:
                         new_status = "closed" if req[7] == "open" else "open"
-                        btn_label = "🔒" if req[7] == "open" else "🔓"
+                        btn_label = "" if req[7] == "open" else ""
 
                         if st.button(btn_label, key=f"status_{req[0]}"):
                             update_job_request(
@@ -1879,9 +1879,9 @@ elif current_page == "Job Requests":
                         status = st.selectbox("Status", ["open", "closed"], index=0 if req_to_edit[7]=="open" else 1)
                         col_a, col_b = st.columns(2)
                         with col_a:
-                            submitted = st.form_submit_button("💾 Update Request")
+                            submitted = st.form_submit_button(" Update Request")
                         with col_b:
-                            if st.form_submit_button("❌ Cancel"):
+                            if st.form_submit_button(" Cancel"):
                                 del st.session_state.edit_request_id
                                 st.rerun()
                         if submitted:
@@ -1918,7 +1918,7 @@ elif current_page == "Job Requests":
                 st.rerun()
 
 elif current_page == "Messages":
-    st.markdown("## 💬 Messages")
+    st.markdown("##  Messages")
     conversations = get_conversations(user_id)
     if not conversations:
         st.info("No messages yet.")
@@ -1954,7 +1954,7 @@ elif current_page == "Messages":
             st.markdown("---")
             col1, col2 = st.columns([3, 1])
             with col1:
-                st.markdown(f"### 💬 Chat with {st.session_state.chat_company_name}")
+                st.markdown(f"###  Chat with {st.session_state.chat_company_name}")
             with col2:
                 if st.button("Close Chat"):
                     del st.session_state.chat_company_id
@@ -1985,7 +1985,7 @@ elif current_page == "Messages":
             </script>
             """, unsafe_allow_html=True)
             message = st.text_area("Type your message", height=100, key="chat_message_input")
-            if st.button("📤 Send", key="send_message_btn"):
+            if st.button(" Send", key="send_message_btn"):
                 if message:
                     try:
                         send_message(user_id, "employee",
@@ -2001,7 +2001,7 @@ elif current_page == "Messages":
                     st.warning("Please enter a message.")
 
 elif current_page == "Notifications":
-    st.markdown("## 🔔 All Notifications")
+    st.markdown("##  All Notifications")
     
     col1, col2 = st.columns([3, 1])
     with col2:
@@ -2015,7 +2015,7 @@ elif current_page == "Notifications":
         st.info("No notifications yet.")
     else:
         for notif in all_notifications:
-            icon = "📝" if notif[2] == 'application' else "💬" if notif[2] == 'message' else "🔔"
+            icon = "" if notif[2] == 'application' else "" if notif[2] == 'message' else ""
             bg = "#DCFCE7" if notif[2] == 'application' else "#DBEAFE" if notif[2] == 'message' else "#FEF3C7"
             time_str = notif[7].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M') if notif[7] else ''
             is_read = notif[6]  # assuming is_read is at index 6
@@ -2032,7 +2032,7 @@ elif current_page == "Notifications":
 
 
 elif current_page == "Profile":
-    st.markdown("## 👤 My Profile")
+    st.markdown("##  My Profile")
 
     user = get_user_by_id(user_id)
     profile = get_or_create_profile(user_id)
@@ -2066,18 +2066,18 @@ elif current_page == "Profile":
         <div style="text-align:center;">
             <div style="width:120px; height:120px; border-radius:50%; background:linear-gradient(135deg, var(--primary), #3B82F6); display:flex; align-items:center; justify-content:center; color:white; font-size:3rem; font-weight:bold; margin:0 auto 1rem;">{user[1][0].upper() if user[1] else 'U'}</div>
             <h3>{user[1]}</h3>
-            <p>📧 {user[2]}</p>
-            {f'<p>📱 {profile[IDX_PHONE]}</p>' if profile[IDX_PHONE] else ''}
-            {f'<p>📍 {profile[IDX_LOCATION]}</p>' if profile[IDX_LOCATION] else ''}
+            <p> {user[2]}</p>
+            {f'<p> {profile[IDX_PHONE]}</p>' if profile[IDX_PHONE] else ''}
+            {f'<p> {profile[IDX_LOCATION]}</p>' if profile[IDX_LOCATION] else ''}
         </div>
         """, unsafe_allow_html=True)
 
-        if st.button("👁️ View Profile as Recruiter", use_container_width=True):
+        if st.button(" View Profile as Recruiter", use_container_width=True):
             st.session_state.recruiter_view = not st.session_state.recruiter_view
             st.rerun()
 
         # --- Profile Completion Meter ---
-        st.markdown("#### 📊 Profile Completion")
+        st.markdown("####  Profile Completion")
         # Calculate completion percentage
         fields = [
             bool(user[1]),  # name
@@ -2114,10 +2114,10 @@ elif current_page == "Profile":
         """, unsafe_allow_html=True)
 
         st.markdown("---")
-        st.markdown("#### 📄 Resume/CV")
+        st.markdown("####  Resume/CV")
 
         if profile[IDX_RESUME]:
-            st.markdown(get_resume_download_link(profile[IDX_RESUME], "📥 Download Current Resume"), unsafe_allow_html=True)
+            st.markdown(get_resume_download_link(profile[IDX_RESUME], " Download Current Resume"), unsafe_allow_html=True)
 
         uploaded_file = st.file_uploader("Upload New Resume (PDF)", type=['pdf'], key="resume_uploader")
 
@@ -2151,7 +2151,7 @@ elif current_page == "Profile":
             col_a, col_b = st.columns(2)
 
             with col_a:
-                if st.button("📄 Autofill Profile with AI", use_container_width=True):
+                if st.button(" Autofill Profile with AI", use_container_width=True):
                     with st.spinner("Reading resume..."):
                         file_bytes = st.session_state.uploaded_resume.getvalue()
                         resume_text = extract_text_from_pdf(file_bytes)
@@ -2187,20 +2187,20 @@ elif current_page == "Profile":
                                     resume_path=resume_path
                                 )
 
-                                st.success("✅ Profile autofilled from resume!")
+                                st.success(" Profile autofilled from resume!")
                                 st.session_state.uploaded_resume = None
                                 st.session_state.show_autofill_buttons = False
                                 st.session_state.last_resume_text = resume_text
                                 st.rerun()
 
             with col_b:
-                if st.button("❌ Cancel", use_container_width=True):
+                if st.button(" Cancel", use_container_width=True):
                     st.session_state.uploaded_resume = None
                     st.session_state.show_autofill_buttons = False
                     st.rerun()
 
         if st.session_state.get("last_resume_text") and not st.session_state.show_autofill_buttons:
-            if st.button("✨ Get Resume Goodness Score", use_container_width=True):
+            if st.button(" Get Resume Goodness Score", use_container_width=True):
                 with st.spinner("Analyzing..."):
                     feedback = get_resume_goodness_score(st.session_state.last_resume_text)
                     st.session_state.goodness_feedback = feedback
@@ -2209,13 +2209,13 @@ elif current_page == "Profile":
         if st.session_state.get("goodness_feedback"):
             st.markdown(f"""
             <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 0.8rem; border-radius: 8px; margin-top: 0.5rem;">
-                <p style="font-size:0.85rem; margin:0;"><strong>✨ Resume Insight</strong><br>{st.session_state.goodness_feedback}</p>
+                <p style="font-size:0.85rem; margin:0;"><strong> Resume Insight</strong><br>{st.session_state.goodness_feedback}</p>
             </div>
             """, unsafe_allow_html=True)
 
         # --- Video Introduction ---
         st.markdown("---")
-        st.markdown("#### 🎥 Video Introduction (30 sec - 2 min)")
+        st.markdown("####  Video Introduction (30 sec - 2 min)")
 
         video_path = profile[IDX_VIDEO] if len(profile) > IDX_VIDEO else None
 
@@ -2225,11 +2225,11 @@ elif current_page == "Profile":
             with col_dl:
                 with open(video_path, "rb") as f:
                     video_bytes = f.read()
-                st.download_button("📥 Download Video", data=video_bytes,
+                st.download_button(" Download Video", data=video_bytes,
                                    file_name=os.path.basename(video_path),
                                    use_container_width=True)
             with col_del:
-                if st.button("🗑️ Delete Video", use_container_width=True):
+                if st.button(" Delete Video", use_container_width=True):
                     os.remove(video_path)
                     update_profile(user_id, video_path="")
                     st.rerun()
@@ -2244,7 +2244,7 @@ elif current_page == "Profile":
             if uploaded_video.size > 50 * 1024 * 1024:
                 st.error("File too large. Please keep under 50MB.")
             else:
-                if st.button("💾 Save Video Introduction"):
+                if st.button(" Save Video Introduction"):
                     video_dir = "videos"
                     os.makedirs(video_dir, exist_ok=True)
                     video_filename = f"{user[2]}_{uploaded_video.name}"
@@ -2256,14 +2256,14 @@ elif current_page == "Profile":
                     st.rerun()
 
         st.markdown("---")
-        st.markdown("#### 🌐 Social Links")
+        st.markdown("####  Social Links")
         if profile[IDX_LINKEDIN]: st.markdown(f"[LinkedIn]({profile[IDX_LINKEDIN]})")
         if profile[IDX_GITHUB]: st.markdown(f"[GitHub]({profile[IDX_GITHUB]})")
         if profile[IDX_PORTFOLIO]: st.markdown(f"[Portfolio]({profile[IDX_PORTFOLIO]})")
 
         # --- Job Alert Toggle ---
         st.markdown("---")
-        st.markdown("#### 🔔 Job Alerts")
+        st.markdown("####  Job Alerts")
         job_alerts = False
         if len(profile) > IDX_JOB_ALERTS:
             job_alerts = profile[IDX_JOB_ALERTS]
@@ -2274,7 +2274,7 @@ elif current_page == "Profile":
 
         # --- Change Password Section (unchanged) ---
         st.markdown("---")
-        st.markdown("#### 🔐 Change Password")
+        st.markdown("####  Change Password")
         if "password_change_step" not in st.session_state:
             st.session_state.password_change_step = 1
             st.session_state.otp = None
@@ -2339,7 +2339,7 @@ elif current_page == "Profile":
         else:
         # --- Edit Profile Form ---
             with st.form("profile_edit_form"):
-                st.markdown("#### ✏️ Edit Profile")
+                st.markdown("####  Edit Profile")
                 col_a, col_b = st.columns(2)
                 with col_a:
                     name = st.text_input("Full Name", value=user[1] or "")
@@ -2362,7 +2362,7 @@ elif current_page == "Profile":
                     github = st.text_input("GitHub URL", value=profile[IDX_GITHUB] or "")
                 with col_d:
                     portfolio = st.text_input("Portfolio URL", value=profile[IDX_PORTFOLIO] or "")
-                submitted = st.form_submit_button("💾 Save Changes")
+                submitted = st.form_submit_button(" Save Changes")
                 if submitted:
                     update_user_name(user_id, name)
                     update_profile(user_id,
@@ -2374,7 +2374,7 @@ elif current_page == "Profile":
 
             # --- Projects Section ---
             st.markdown("---")
-            st.markdown("#### 🚀 Projects")
+            st.markdown("####  Projects")
 
             # Parse existing projects
             projects = []
@@ -2387,7 +2387,7 @@ elif current_page == "Profile":
             # Display projects
             if projects:
                 for idx, proj in enumerate(projects):
-                    with st.expander(f"📁 {proj.get('name', 'Unnamed')}"):
+                    with st.expander(f" {proj.get('name', 'Unnamed')}"):
                         st.markdown(f"**Description:** {proj.get('description', '')}")
                         if proj.get('url'):
                             st.markdown(f"**Link:** [{proj['url']}]({proj['url']})")
@@ -2395,11 +2395,11 @@ elif current_page == "Profile":
                             st.markdown(f"**Technologies:** {proj['technologies']}")
                         col_edit, col_del = st.columns(2)
                         with col_edit:
-                            if st.button("✏️ Edit", key=f"edit_proj_{idx}"):
+                            if st.button(" Edit", key=f"edit_proj_{idx}"):
                                 st.session_state.edit_project_idx = idx
                                 st.rerun()
                         with col_del:
-                            if st.button("🗑️ Delete", key=f"del_proj_{idx}"):
+                            if st.button(" Delete", key=f"del_proj_{idx}"):
                                 projects.pop(idx)
                                 update_profile(user_id, projects=json.dumps(projects))
                                 st.rerun()
@@ -2417,7 +2417,7 @@ elif current_page == "Profile":
                     tech = st.text_input("Technologies (comma separated)", value=proj.get("technologies", ""))
                     col_save, col_cancel = st.columns(2)
                     with col_save:
-                        if st.form_submit_button("💾 Save"):
+                        if st.form_submit_button(" Save"):
                             proj_new = {
                                 "name": name,
                                 "description": desc,
@@ -2433,24 +2433,24 @@ elif current_page == "Profile":
                             del st.session_state.edit_project_idx
                             st.rerun()
                     with col_cancel:
-                        if st.form_submit_button("❌ Cancel"):
+                        if st.form_submit_button(" Cancel"):
                             del st.session_state.edit_project_idx
                             st.rerun()
             else:
                 # Button to add new project
-                if st.button("➕ Add Project"):
+                if st.button(" Add Project"):
                     st.session_state.edit_project_idx = len(projects)  # new project at end
                     st.rerun()
 
             # GitHub Import
-            st.markdown("#### ⬇️ Import from GitHub")
+            st.markdown("####  Import from GitHub")
             github_username = profile[IDX_GITHUB] if profile[IDX_GITHUB] else ""
             if github_username:
                 # Extract username from URL if full URL
                 match = re.search(r"github\.com/([A-Za-z0-9-]+)", github_username)
                 if match:
                     github_username = match.group(1)
-                if st.button(f"📦 Fetch 3 latest repos from {github_username}"):
+                if st.button(f" Fetch 3 latest repos from {github_username}"):
                     with st.spinner("Fetching repositories..."):
                         repos = fetch_github_repos(github_username)
                         if repos:
@@ -2468,8 +2468,8 @@ elif current_page == "Profile":
 
             # --- AI Career Suggestions ---
             st.markdown("---")
-            st.markdown("#### ✨ AI Career Suggestions")
-            if st.button("🎯 Get Personalized Suggestions"):
+            st.markdown("####  AI Career Suggestions")
+            if st.button(" Get Personalized Suggestions"):
                 with st.spinner("Analyzing your profile..."):
                     skills = profile[IDX_SKILLS] or ""
                     exp = profile[IDX_EXP] or ""
@@ -2485,19 +2485,19 @@ elif current_page == "Profile":
         st.markdown("---")
         col_logout, col_admin = st.columns(2)
         with col_logout:
-            if st.button("🚪 Logout", type="secondary"):
+            if st.button(" Logout", type="secondary"):
                 for key in ['authenticated', 'user_id', 'user_name', 'user_email', 'main_tab', 'sub_tab', 'reg_face', 'verify_img']:
                     if key in st.session_state:
                         del st.session_state[key]
                 st.switch_page("app.py")
         with col_admin:
             if st.session_state.get("is_admin", False):
-                if st.button("🛡️ Admin Panel", type="secondary"):
+                if st.button(" Admin Panel", type="secondary"):
                     st.session_state.previous_page = "pages/employee_dashboard.py"
                     st.switch_page("pages/admin_dashboard.py")
                     
 elif current_page == "Analytics":
-    st.markdown("## 📊 My Analytics")
+    st.markdown("##  My Analytics")
     stats = get_application_stats(user_id)
     timeline = get_applications_over_time(user_id)
     interview_count = get_interview_count(user_id)
