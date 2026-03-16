@@ -964,17 +964,24 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                     if score>=80: badges.append("⭐ Top Match")
                     if score>=60: badges.append("🔥 Strong Skills")
                     if score<40: badges.append("⚠ Needs Review")
-                    badge_html=""
+                    badge_html = ""
                     for badge in badges:
                         badge_html += f"""
-                    <span style="
-                    background:#EEF2FF;
-                    color:#3730A3;
-                    padding:4px 8px;
-                    border-radius:12px;
-                    font-size:0.7rem;
-                    margin-right:4px;
-                    ">{badge}</span>
+                        <span style="
+                        display: inline-flex;
+                        align-items: center;
+                        background:#EEF2FF;
+                        color:#3730A3;
+                        padding:2px 8px;
+                        border-radius:12px;
+                        font-size:0.7rem;
+                        margin-right:4px;
+                        margin-bottom:4px;
+                        white-space: nowrap;
+                        line-height: 1;
+                        ">
+                            {badge}
+                        </span>
                         """
 
                     border_style = "3px solid #10B981" if score>=85 else "1px solid #eee"
