@@ -1124,7 +1124,7 @@ elif current_page in ["Open Requests", "My Interests"]:
                     <strong>Skills:</strong> {req[12]}<br>
                     <strong>Bio:</strong> {req[15]}<br>
                     <strong>Description:</strong> {req[3]}
-                        </p>
+                    </p>
                     </div>
                     """, unsafe_allow_html=True)
 
@@ -1132,10 +1132,11 @@ elif current_page in ["Open Requests", "My Interests"]:
                     b1, b2 = st.columns([1,1])
                     with b1:
                         if req[13]:
-                            st.markdown(
-                                get_resume_download_link(req[13], "📄 Download Resume"),
-                                unsafe_allow_html=True
-                            )
+                            if get_resume_download_link(req[13]):
+                                st.markdown(
+                                    get_resume_download_link(req[13], "📄 Download Resume"),
+                                    unsafe_allow_html=True
+                                )
                     with b2:
                         with st.form(key=f"interest_form_{req[0]}", clear_on_submit=True):
                             message = st.text_input("Message", key=f"msg_{req[0]}")
