@@ -975,7 +975,8 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                         font-size:0.7rem;
                         margin-right:4px;
                         white-space:nowrap;
-                        ">{badge}</span>
+                        ">{badge}
+                        </span>
                         """
 
                     border_style = "3px solid #10B981" if score>=85 else "1px solid #eee"
