@@ -961,7 +961,7 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
 
                     # ===== AI BADGES =====
                     badges=[]
-                    if score>=80: badges.append("⭐ Top")
+                    if score>=80: badges.append("⭐ Top Match")
                     if score>=60: badges.append("🔥 Strong Skills")
                     if score<40: badges.append("⚠ Needs Review")
                     badge_html=""
@@ -974,7 +974,6 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                     border-radius:12px;
                     font-size:0.7rem;
                     margin-right:4px;
-                    white-space:nowrap;
                     ">{badge}</span>
                         """
 
