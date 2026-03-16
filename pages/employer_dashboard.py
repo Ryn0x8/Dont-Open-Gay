@@ -1105,45 +1105,53 @@ elif current_page in ["Open Requests", "My Interests"]:
             for i, req in enumerate(requests):
                 col = cols[i % 3]
                 with col:
+                    # ===== CARD CONTENT =====
                     st.markdown(f"""
                     <div style="
-                    background:white;
-                    padding:1rem;
-                    border-radius:14px;
-                    box-shadow:0 4px 10px rgba(0,0,0,0.05);
-                    margin-bottom:1rem;
-                    border:1px solid #eee;
+                        background:white;
+                        padding:1rem;
+                        border-radius:14px;
+                        box-shadow:0 4px 10px rgba(0,0,0,0.05);
+                        margin-bottom:1rem;
+                        border:1px solid #eee;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-between;
+                        height: 100%;
                     ">
-                    <h4 style="margin:0 0 0.5rem 0;">{req[2]}</h4>
-                    <p style="margin:0 0 4px 0;color:#666;">by {req[10]}</p>
+                        <div>
+                            <h4 style="margin:0 0 0.5rem 0;">{req[2]}</h4>
+                            <p style="margin:0 0 4px 0;color:#666;">by {req[10]}</p>
 
-                    <p style="font-size:0.85rem;color:#555;">
-                    <strong>Category:</strong> {req[4]}<br>
-                    <strong>Location:</strong> {req[5]}<br>
-                    <strong>Budget:</strong> {req[6]}<br>
-                    <strong>Skills:</strong> {req[12]}<br>
-                    <strong>Bio:</strong> {req[15]}<br>
-                    <strong>Description:</strong> {req[3]}
-                    </p>
-                    </div>
+                            <p style="font-size:0.85rem;color:#555;">
+                                <strong>Category:</strong> {req[4]}<br>
+                                <strong>Location:</strong> {req[5]}<br>
+                                <strong>Budget:</strong> {req[6]}<br>
+                                <strong>Skills:</strong> {req[12]}<br>
+                                <strong>Bio:</strong> {req[15]}<br>
+                                <strong>Description:</strong> {req[3]}
+                            </p>
+                        </div>
+
+                        <div style="display:flex; gap:0.5rem; flex-wrap: wrap; margin-top:0.5rem;">
                     """, unsafe_allow_html=True)
 
-                    # ===== Buttons Row =====
-                    b1, b2 = st.columns([1,1])
-                    with b1:
-                        if req[13]:
-                            if get_resume_download_link(req[13]):
-                                st.markdown(
-                                    get_resume_download_link(req[13], "📄 Download Resume"),
-                                    unsafe_allow_html=True
-                                )
-                    with b2:
-                        with st.form(key=f"interest_form_{req[0]}", clear_on_submit=True):
-                            message = st.text_input("Message", key=f"msg_{req[0]}")
-                            if st.form_submit_button("✋ Express Interest", use_container_width=True) and message:
-                                express_interest_in_request(req[0], st.session_state.company_id, message)
-                                st.success("Interest expressed! The employee will be notified.")
-                                st.rerun()
+                    # ===== RESUME BUTTON =====
+                    if req[13] and get_resume_download_link(req[13]):
+                        st.markdown(
+                            get_resume_download_link(req[13], "📄 Download Resume"),
+                            unsafe_allow_html=True
+                        )
+
+                    # ===== EXPRESS INTEREST =====
+                    with st.form(key=f"interest_form_{req[0]}", clear_on_submit=True):
+                        message = st.text_input("Message", key=f"msg_{req[0]}")
+                        if st.form_submit_button("✋ Express Interest", use_container_width=True) and message:
+                            express_interest_in_request(req[0], st.session_state.company_id, message)
+                            st.success("Interest expressed! The employee will be notified.")
+                            st.rerun()
+
+                    st.markdown("</div></div>", unsafe_allow_html=True)
     else:  # My Interests
         st.markdown(f"## ✋ My Interests")
         # For now, placeholder
