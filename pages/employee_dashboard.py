@@ -1833,12 +1833,12 @@ elif current_page == "Job Requests":
                     col1, col2, col3 = st.columns(3)
 
                     with col1:
-                        if st.button("✏️", key=f"edit_{req[0]}"):
+                        if st.button("Edit", key=f"edit_{req[0]}"):
                             st.session_state.edit_request_id = req[0]
                             st.rerun()
 
                     with col2:
-                        if st.button("🗑️", key=f"del_{req[0]}"):
+                        if st.button("Delete", key=f"del_{req[0]}"):
                             delete_job_request(req[0])
                             add_notification(
                                 user_id,
@@ -1850,7 +1850,7 @@ elif current_page == "Job Requests":
 
                     with col3:
                         new_status = "closed" if req[7] == "open" else "open"
-                        btn_label = "🔒" if req[7] == "open" else "🔓"
+                        btn_label = "Close" if req[7] == "open" else "Open"
 
                         if st.button(btn_label, key=f"status_{req[0]}"):
                             update_job_request(

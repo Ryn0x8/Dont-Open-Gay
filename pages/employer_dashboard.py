@@ -729,41 +729,137 @@ elif current_page == "Post a Job":
 
     with tab2:
         st.markdown("## 📋 Your Job Postings")
+
         jobs = get_company_jobs_all(st.session_state.company_id)
+
         if not jobs:
             st.info("You haven't posted any jobs yet.")
-        else:
-            for job in jobs:
-                with st.expander(f"{job['title']} - {job['status'].upper()}"):
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.markdown(f"**Category:** {job.get('category', 'N/A')}")
-                        st.markdown(f"**Location:** {job.get('location', 'N/A')}")
-                        st.markdown(f"**Type:** {job.get('job_type', 'N/A')}")
-                        st.markdown(f"**Salary:** {job.get('salary_range', 'N/A')}")
-                        st.markdown(f"**Experience:** {job.get('experience_level', 'N/A')}")
-                        st.markdown(f"**Description:** {job.get('description', 'N/A')}")
-                        st.markdown(f"**Requirements:** {job.get('requirements', 'N/A')}")
-                        st.markdown(f"**Skills Required:** {job.get('skills_required', 'N/A')}")
-                        deadline_str = job['deadline'].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d') if job.get('deadline') else 'Not set'
-                        st.markdown(f"**Deadline:** {deadline_str}")
-                        st.markdown(f"**Posted:** {job['created_at'].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d') if job.get('created_at') else 'Unknown'}")
-                    with col2:
-                        if st.button(f"🗑️ Delete Job", key=f"delete_job_{job['id']}"):
-                            st.session_state.job_to_delete = job['id']
-                            st.rerun()
 
-                        if st.session_state.get("job_to_delete") == job['id']:
-                            st.warning("Are you sure?")
+        else:
+
+            cols = st.columns(3)
+
+            status_colors = {
+                "open": "#10B981",
+                "closed": "#EF4444",
+                "paused": "#F59E0B"
+            }
+
+            status_icons = {
+                "open": "🟢",
+                "closed": "🔴",
+                "paused": "⏸️"
+            }
+
+            for i, job in enumerate(jobs):
+
+                col = cols[i % 3]
+
+                with col:
+
+                    status = job.get("status", "open")
+                    color = status_colors.get(status, "#3B82F6")
+                    icon = status_icons.get(status, "📄")
+
+                    deadline = (
+                        job["deadline"]
+                        .astimezone(pytz.timezone("Asia/Kathmandu"))
+                        .strftime('%Y-%m-%d')
+                        if job.get("deadline") else "Not set"
+                    )
+
+                    posted = (
+                        job["created_at"]
+                        .astimezone(pytz.timezone("Asia/Kathmandu"))
+                        .strftime('%Y-%m-%d')
+                        if job.get("created_at") else "Unknown"
+                    )
+
+                    st.markdown(f"""
+                    <div style="background:white;
+                    padding:1.2rem;
+                    border-radius:14px;
+                    box-shadow:0 4px 10px rgba(0,0,0,0.05);
+                    margin-bottom:1rem;
+                    border:1px solid #eee;">
+
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+
+                    <div style="flex:1;">
+                    <h4 style="margin:0; line-height:1.3;">
+                    {job['title']}
+                    </h4>
+                    <p style="margin:4px 0; color:#666;">
+                    🏢 {job.get('category', 'N/A')}
+                    </p>
+                    </div>
+
+                    <span style="
+                    flex-shrink:0;
+                    background:{color}20;
+                    color:{color};
+                    padding:0.25rem 0.8rem;
+                    border-radius:20px;
+                    font-size:0.75rem;
+                    font-weight:600;
+                    white-space:nowrap;">
+                    {icon} {status.upper()}
+                    </span>
+
+                    </div>
+
+                    <p style="font-size:0.85rem; color:#555; margin-top:6px;">
+                    📍 {job.get('location','N/A')} &nbsp;&nbsp;
+                    💰 {job.get('salary_range','N/A')}
+                    </p>
+
+                    <p style="font-size:0.8rem; color:#666;">
+                    🧑‍💼 {job.get('experience_level','N/A')} &nbsp;&nbsp;
+                    📄 {job.get('job_type','N/A')}
+                    </p>
+
+                    <p style="font-size:0.75rem; color:#888;">
+                    Deadline: {deadline} <br>
+                    Posted: {posted}
+                    </p>
+
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    if st.button("📄 Details", key=f"job_details_{job['id']}_{i}"):
+                        st.session_state.show_job_details = job["id"]
+
+                    if st.session_state.get("show_job_details") == job["id"]:
+                        st.info(f"""
+        Description:
+        {job.get('description','N/A')}
+
+        Requirements:
+        {job.get('requirements','N/A')}
+
+        Skills:
+        {job.get('skills_required','N/A')}
+                        """)
+
+                    if st.button("🗑 Delete", key=f"delete_job_{job['id']}_{i}"):
+                        st.session_state.job_to_delete = job["id"]
+
+                    if st.session_state.get("job_to_delete") == job["id"]:
+                        st.warning("Are you sure you want to delete this job?")
+
+                        col1, col2 = st.columns(2)
+
+                        with col1:
                             if st.button("✅ Yes", key=f"confirm_yes_{job['id']}"):
-                                delete_job(job['id'])
+                                delete_job(job["id"])
                                 del st.session_state.job_to_delete
                                 st.success("Job deleted!")
                                 st.rerun()
+
+                        with col2:
                             if st.button("❌ No", key=f"confirm_no_{job['id']}"):
                                 del st.session_state.job_to_delete
                                 st.rerun()
-
 elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "Rejected"]:
     st.markdown(f"## 📋 Applications – {current_page}")
     
