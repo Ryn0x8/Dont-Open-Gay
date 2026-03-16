@@ -967,15 +967,15 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                     badge_html=""
                     for badge in badges:
                         badge_html += f"""
-                        <span style="
-                        background:#EEF2FF;
-                        color:#3730A3;
-                        padding:4px 8px;
-                        border-radius:12px;
-                        font-size:0.7rem;
-                        margin-right:4px;
-                        white-space:nowrap;
-                        ">{badge}</span>
+                    <span style="
+                    background:#EEF2FF;
+                    color:#3730A3;
+                    padding:4px 8px;
+                    border-radius:12px;
+                    font-size:0.7rem;
+                    margin-right:4px;
+                    white-space:nowrap;
+                    ">{badge}</span>
                         """
 
                     border_style = "3px solid #10B981" if score>=85 else "1px solid #eee"
