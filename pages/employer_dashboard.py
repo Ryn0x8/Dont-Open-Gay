@@ -1063,7 +1063,8 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
 
                     # ===== RESUME DOWNLOAD =====
                     if app[13]:
-                        st.markdown(get_resume_download_link(app[13],"📄 Download Resume"), unsafe_allow_html=True)
+                        if get_resume_download_link(app[13]):
+                            st.markdown(get_resume_download_link(app[13],"📄 Download Resume"), unsafe_allow_html=True)
 
                     # ===== INTERVIEW SCHEDULING =====
                     if new_status=="interview" or app[4]=="interview":
