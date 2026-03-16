@@ -1094,26 +1094,51 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                                                 
 elif current_page in ["Open Requests", "My Interests"]:
     if current_page == "Open Requests":
-        st.markdown(f"## 👥 Open Job Requests")
+        st.markdown("## 👥 Open Job Requests")
         requests = get_all_open_job_requests()
+        
         if not requests:
             st.info("No open job requests.")
         else:
+            cols = st.columns(3)  # 3-column card layout
+
             for i, req in enumerate(requests):
-                with st.expander(f"{req[2]} by {req[10]}"):
-                    col1, col2 = st.columns([2, 1])
-                    with col1:
-                        st.markdown(f"**Category:** {req[4]}")
-                        st.markdown(f"**Location:** {req[5]}")
-                        st.markdown(f"**Budget:** {req[6]}")
-                        st.markdown(f"**Description:** {req[3]}")
-                        st.markdown(f"**Skills:** {req[12]}")
-                        st.markdown(f"**Bio:** {req[15]}")
-                    with col2:
+                col = cols[i % 3]
+                with col:
+                    st.markdown(f"""
+                    <div style="
+                    background:white;
+                    padding:1rem;
+                    border-radius:14px;
+                    box-shadow:0 4px 10px rgba(0,0,0,0.05);
+                    margin-bottom:1rem;
+                    border:1px solid #eee;
+                    ">
+                    <h4 style="margin:0 0 0.5rem 0;">{req[2]}</h4>
+                    <p style="margin:0 0 4px 0;color:#666;">by {req[10]}</p>
+
+                    <p style="font-size:0.85rem;color:#555;">
+                    <strong>Category:</strong> {req[4]}<br>
+                    <strong>Location:</strong> {req[5]}<br>
+                    <strong>Budget:</strong> {req[6]}<br>
+                    <strong>Skills:</strong> {req[12]}<br>
+                    <strong>Bio:</strong> {req[15]}<br>
+                    <strong>Description:</strong> {req[3]}
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # ===== Buttons Row =====
+                    b1, b2 = st.columns([1,1])
+                    with b1:
                         if req[13]:
-                            st.markdown(get_resume_download_link(req[13], "📄 Download Resume"), unsafe_allow_html=True)
+                            st.markdown(
+                                get_resume_download_link(req[13], "📄 Download Resume"),
+                                unsafe_allow_html=True
+                            )
+                    with b2:
                         with st.form(key=f"interest_form_{req[0]}", clear_on_submit=True):
-                            message = st.text_input("Message to employee")
+                            message = st.text_input("Message", key=f"msg_{req[0]}")
                             if st.form_submit_button("✋ Express Interest", use_container_width=True) and message:
                                 express_interest_in_request(req[0], st.session_state.company_id, message)
                                 st.success("Interest expressed! The employee will be notified.")
