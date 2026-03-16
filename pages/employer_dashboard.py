@@ -1025,15 +1025,15 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
 
                     for badge in badges:
                         badge_html += f"""
-<span style="
-background:#EEF2FF;
-color:#3730A3;
-padding:4px 8px;
-border-radius:12px;
-font-size:0.7rem;
-margin-right:4px;">
-{badge}
-</span>
+                    <span style="
+                    background:#EEF2FF;
+                    color:#3730A3;
+                    padding:4px 8px;
+                    border-radius:12px;
+                    font-size:0.7rem;
+                    margin-right:4px;">
+                    {badge}
+                    </span>
                         """
 
                     # ===== CARD UI =====
@@ -1156,11 +1156,13 @@ margin-right:4px;">
                     # ===== RESUME =====
 
                     if app[13]:
+                        if get_resume_download_link(app[13]):
 
-                        st.markdown(
-                            get_resume_download_link(app[13],"📄 Download Resume"),
-                            unsafe_allow_html=True
-                        )
+
+                            st.markdown(
+                                get_resume_download_link(app[13],"📄 Download Resume"),
+                                unsafe_allow_html=True
+                            )
 
                     # ===== INTERVIEW SCHEDULING =====
 
@@ -1226,7 +1228,7 @@ margin-right:4px;">
                         </div>
                         """, unsafe_allow_html=True)
 
-
+                        
 elif current_page in ["Open Requests", "My Interests"]:
     if current_page == "Open Requests":
         st.markdown(f"## 👥 Open Job Requests")
