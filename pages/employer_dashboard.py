@@ -877,75 +877,43 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
         st_autorefresh(interval=10000, key="employer_chat_autorefresh")
 
         col1, col2 = st.columns([3,1])
-
         with col1:
             st.markdown(f"### 💬 Chat with {st.session_state.chat_employee_name}")
-
         with col2:
             if st.button("← Back to Applications"):
                 for key in ['chat_employee_id','chat_employee_name','chat_application_id']:
-                    if key in st.session_state:
-                        del st.session_state[key]
+                    if key in st.session_state: del st.session_state[key]
                 st.rerun()
 
-        msgs = get_messages_between_company_and_employee(
-            company_id,
-            st.session_state.chat_employee_id
-        )
-
-        mark_company_messages_read(
-            company_id,
-            st.session_state.chat_employee_id
-        )
+        msgs = get_messages_between_company_and_employee(company_id, st.session_state.chat_employee_id)
+        mark_company_messages_read(company_id, st.session_state.chat_employee_id)
 
         st.markdown('<div class="chat-container" id="chat-container">', unsafe_allow_html=True)
 
         for msg in msgs:
-
-            sender = 'company' if msg[2] == 'company' else 'employee'
-
-            msg_time = msg[9].astimezone(
-                pytz.timezone("Asia/Kathmandu")
-            ).strftime('%Y-%m-%d %H:%M') if msg[9] else ''
-
-            if sender == 'company':
-
+            sender = 'company' if msg[2]=='company' else 'employee'
+            msg_time = msg[9].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M') if msg[9] else ''
+            if sender=='company':
                 st.markdown(f"""
                 <div style="text-align:right;margin:0.5rem 0;">
-                <div class="chat-bubble-company">
-                {msg[6]}<br>
-                <span class="chat-timestamp">{msg_time}</span>
-                </div>
+                    <div class="chat-bubble-company">{msg[6]}<br>
+                    <span class="chat-timestamp">{msg_time}</span></div>
                 </div>
                 """, unsafe_allow_html=True)
-
             else:
-
                 st.markdown(f"""
                 <div style="text-align:left;margin:0.5rem 0;">
-                <div class="chat-bubble-employee">
-                <strong>{st.session_state.chat_employee_name}</strong><br>
-                {msg[6]}<br>
-                <span class="chat-timestamp">{msg_time}</span>
-                </div>
+                    <div class="chat-bubble-employee"><strong>{st.session_state.chat_employee_name}</strong><br>{msg[6]}<br>
+                    <span class="chat-timestamp">{msg_time}</span></div>
                 </div>
                 """, unsafe_allow_html=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
 
         with st.form("send_message_employer"):
-
             message = st.text_area("Type message", key="employer_chat_message")
-
             if st.form_submit_button("Send", use_container_width=True):
-
-                send_message_from_company(
-                    company_id,
-                    st.session_state.chat_employee_id,
-                    message,
-                    st.session_state.chat_application_id
-                )
-
+                send_message_from_company(company_id, st.session_state.chat_employee_id, message, st.session_state.chat_application_id)
                 st.rerun()
 
     # ================= APPLICATION DASHBOARD =================
@@ -955,283 +923,171 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
         apps = get_applications_for_company(company_id)
 
         if current_page != "All Applications":
-
-            status_map = {
-                "Pending":"pending",
-                "Interview":"interview",
-                "Accepted":"accepted",
-                "Rejected":"rejected"
-            }
-
+            status_map = {"Pending":"pending","Interview":"interview","Accepted":"accepted","Rejected":"rejected"}
             status_filter = status_map[current_page]
-
-            apps = [app for app in apps if app[4] == status_filter]
+            apps = [app for app in apps if app[4]==status_filter]
 
         if not apps:
-
             st.info("No applications in this category.")
-
         else:
 
+            # ========== SORT SELECTOR ==========
+            sort_option = st.selectbox("Sort Applications", ["Best Match","Newest","Oldest","Name (A-Z)","Name (Z-A)"])
+            if sort_option=="Best Match":
+                apps = sorted(apps, key=lambda x: x[5], reverse=True)
+            elif sort_option=="Newest":
+                apps = sorted(apps, key=lambda x: x[7], reverse=True)
+            elif sort_option=="Oldest":
+                apps = sorted(apps, key=lambda x: x[7])
+            elif sort_option=="Name (A-Z)":
+                apps = sorted(apps, key=lambda x: x[10].lower())
+            elif sort_option=="Name (Z-A)":
+                apps = sorted(apps, key=lambda x: x[10].lower(), reverse=True)
+
+            # ========== CARD DISPLAY ==========
             cols = st.columns(3)
-
-            status_colors = {
-                "pending":"#F59E0B",
-                "reviewed":"#3B82F6",
-                "interview":"#8B5CF6",
-                "accepted":"#10B981",
-                "rejected":"#EF4444"
-            }
-
-            status_icons = {
-                "pending":"⏳",
-                "reviewed":"👀",
-                "interview":"🎤",
-                "accepted":"✅",
-                "rejected":"❌"
-            }
+            status_colors = {"pending":"#F59E0B","reviewed":"#3B82F6","interview":"#8B5CF6","accepted":"#10B981","rejected":"#EF4444"}
+            status_icons  = {"pending":"⏳","reviewed":"👀","interview":"🎤","accepted":"✅","rejected":"❌"}
 
             for i, app in enumerate(apps):
-
-                col = cols[i % 3]
-
+                col = cols[i%3]
                 with col:
 
                     status = app[4]
-
                     color = status_colors.get(status,"#3B82F6")
                     icon = status_icons.get(status,"📄")
-
-                    applied = app[7].astimezone(
-                        pytz.timezone("Asia/Kathmandu")
-                    ).strftime('%Y-%m-%d') if app[7] else ""
-
+                    applied = app[7].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d') if app[7] else ""
                     score = app[5]
 
                     # ===== AI BADGES =====
-
-                    badges = []
-
-                    if score >= 80:
-                        badges.append("⭐ Top Match")
-
-                    if score >= 60:
-                        badges.append("🔥 Strong Skills")
-
-                    if score < 40:
-                        badges.append("⚠ Needs Review")
-
-                    badge_html = ""
-
+                    badges=[]
+                    if score>=80: badges.append("⭐ Top Match")
+                    if score>=60: badges.append("🔥 Strong Skills")
+                    if score<40: badges.append("⚠ Needs Review")
+                    badge_html=""
                     for badge in badges:
                         badge_html += f"""
-                    <span style="
-                    background:#EEF2FF;
-                    color:#3730A3;
-                    padding:4px 8px;
-                    border-radius:12px;
-                    font-size:0.7rem;
-                    margin-right:4px;">
-                    {badge}
-                    </span>
+                        <span style="
+                        background:#EEF2FF;
+                        color:#3730A3;
+                        padding:4px 8px;
+                        border-radius:12px;
+                        font-size:0.7rem;
+                        margin-right:4px;
+                        white-space:nowrap;
+                        ">{badge}</span>
                         """
 
-                    # ===== CARD UI =====
+                    border_style = "3px solid #10B981" if score>=85 else "1px solid #eee"
 
+                    # ===== CARD HTML =====
                     st.markdown(f"""
                     <div style="background:white;
                     padding:1.2rem;
                     border-radius:14px;
                     box-shadow:0 4px 10px rgba(0,0,0,0.05);
                     margin-bottom:1rem;
-                    border:1px solid #eee;">
+                    border:{border_style};">
 
-                    <div style="display:flex;justify-content:space-between;">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                            <div>
+                                <h4 style="margin:0;">{app[10]}</h4>
+                                <p style="margin:4px 0;color:#666;">📄 {app[9]}</p>
+                            </div>
 
-                    <div>
-                    <h4 style="margin:0;">{app[10]}</h4>
-                    <p style="margin:4px 0;color:#666;">📄 {app[9]}</p>
-                    </div>
+                            <span style="
+                            background:{color}20;
+                            color:{color};
+                            padding:4px 10px;
+                            border-radius:20px;
+                            font-size:0.75rem;
+                            font-weight:600;
+                            white-space:nowrap;
+                            flex-shrink:0;">
+                            {icon} {status.upper()}
+                            </span>
+                        </div>
 
-                    <span style="
-                    background:{color}20;
-                    color:{color};
-                    padding:4px 10px;
-                    border-radius:20px;
-                    font-size:0.75rem;
-                    font-weight:600;
-                    white-space:nowrap;
-                    flex-shrink:0;
-                    ">
-                    {icon} {status.upper()}
-                    </span>
+                        <p style="font-size:0.85rem;color:#555;">
+                        📍 {app[14]} <br>
+                        📧 {app[11]} <br>
+                        📞 {app[15]}
+                        </p>
 
-                    </div>
-
-                    <p style="font-size:0.85rem;color:#555;">
-                    📍 {app[14]} <br>
-                    📧 {app[11]} <br>
-                    📞 {app[15]}
-                    </p>
-
-                    <p style="font-size:0.8rem;">
-                    Match Score: <strong>{score}%</strong>
-                    </p>
-
-                    <div>{badge_html}</div>
-
-                    <p style="font-size:0.75rem;color:#888;">
-                    Applied {applied}
-                    </p>
-
+                        <p style="font-size:0.8rem;">Match Score: <strong>{score}%</strong></p>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">{badge_html}</div>
+                        <p style="font-size:0.75rem;color:#888;">Applied {applied}</p>
                     </div>
                     """, unsafe_allow_html=True)
 
-                    # ===== BUTTONS =====
-
-                    b1, b2 = st.columns(2)
-
+                    # ===== BUTTONS ROW =====
+                    b1,b2 = st.columns(2)
                     with b1:
                         if st.button("💬 Chat", key=f"chat_{app[0]}_{i}"):
-
                             st.session_state.chat_employee_id = app[1]
                             st.session_state.chat_employee_name = app[10]
                             st.session_state.chat_application_id = app[0]
-
                             st.rerun()
-
                     with b2:
                         if st.button("🔍 ATS", key=f"ats_{app[0]}_{i}"):
-
                             with st.spinner("Analyzing resume..."):
-
                                 job_details = get_job_by_id(app[3])
-
                                 if job_details:
-
                                     resume_path = app[13]
-
                                     if resume_path and os.path.exists(resume_path):
-
                                         with open(resume_path,"rb") as f:
                                             resume_file = io.BytesIO(f.read())
-
-                                        result = evaluate_candidate(
-                                            resume_file,
-                                            job_details[5],
-                                            job_details[11]
-                                        )
-
+                                        result = evaluate_candidate(resume_file,job_details[5],job_details[11])
                                         if result:
-
-                                            score = result["score"]
+                                            ats_score = result["score"]
                                             explanation = result["explanation"]
-
-                                            colour = "#10B981" if score >=70 else "#F59E0B" if score >=40 else "#EF4444"
-
+                                            colour = "#10B981" if ats_score>=70 else "#F59E0B" if ats_score>=40 else "#EF4444"
                                             st.markdown(f"""
-                                            <div style="background:white;
-                                            padding:1rem;
-                                            border-radius:12px;
-                                            border:1px solid #eee;">
-                                            <b>ATS Score:</b>
-                                            <span style="color:{colour};font-size:1.2rem;">
-                                            {score}%
-                                            </span>
-                                            <br>{explanation}
+                                            <div style="background:white;padding:1rem;border-radius:12px;border:1px solid #eee;">
+                                                <b>ATS Score:</b>
+                                                <span style="color:{colour};font-size:1.2rem;">{ats_score}%</span>
+                                                <br>{explanation}
                                             </div>
                                             """, unsafe_allow_html=True)
 
                     # ===== STATUS UPDATE =====
-
-                    new_status = st.selectbox(
-                        "Update Status",
-                        ["pending","reviewed","interview","accepted","rejected"],
-                        index=["pending","reviewed","interview","accepted","rejected"].index(app[4]),
-                        key=f"status_{app[0]}_{i}"
-                    )
-
+                    new_status = st.selectbox("Update Status", ["pending","reviewed","interview","accepted","rejected"],
+                                              index=["pending","reviewed","interview","accepted","rejected"].index(app[4]),
+                                              key=f"status_{app[0]}_{i}")
                     if new_status != app[4]:
-
                         update_application_status(app[0], new_status)
                         st.rerun()
 
-                    # ===== RESUME =====
-
+                    # ===== RESUME DOWNLOAD =====
                     if app[13]:
-                        if get_resume_download_link(app[13]):
-
-
-                            st.markdown(
-                                get_resume_download_link(app[13],"📄 Download Resume"),
-                                unsafe_allow_html=True
-                            )
+                        st.markdown(get_resume_download_link(app[13],"📄 Download Resume"), unsafe_allow_html=True)
 
                     # ===== INTERVIEW SCHEDULING =====
-
-                    if new_status == "interview" or app[4] == "interview":
-
+                    if new_status=="interview" or app[4]=="interview":
                         with st.form(key=f"schedule_{app[0]}_{i}"):
-
                             st.markdown("#### Schedule Interview")
-
                             nepal_tz = pytz.timezone("Asia/Kathmandu")
-
                             scheduled_date = st.date_input("Date")
                             scheduled_time = st.time_input("Time")
-
-                            interview_type = st.selectbox(
-                                "Type",
-                                ["Video Call","Phone","In-person"]
-                            )
-
+                            interview_type = st.selectbox("Type",["Video Call","Phone","In-person"])
                             meeting_link = st.text_input("Meeting Link")
-
                             if st.form_submit_button("Schedule", use_container_width=True):
-
-                                scheduled_datetime = nepal_tz.localize(
-                                    datetime.combine(scheduled_date, scheduled_time)
-                                )
-
-                                upsert_interview(
-                                    app[0],
-                                    app[1],
-                                    company_id,
-                                    app[2],
-                                    scheduled_datetime,
-                                    interview_type,
-                                    meeting_link
-                                )
-
+                                scheduled_datetime = nepal_tz.localize(datetime.combine(scheduled_date,scheduled_time))
+                                upsert_interview(app[0],app[1],company_id,app[2],scheduled_datetime,interview_type,meeting_link)
                                 st.success("Interview scheduled!")
                                 st.rerun()
 
                     # ===== INTERVIEW DISPLAY =====
-
-                    if app[4] == "interview" and app[16]:
-
+                    if app[4]=="interview" and app[16]:
                         st.markdown(f"""
-                        <div style="background:#3B82F620;
-                        padding:1rem;
-                        border-radius:12px;
-                        margin:0.5rem 0;">
-
-                        <h4>🗓 Interview {app[18]}</h4>
-
-                        <p>
-                        {app[17].astimezone(
-                        pytz.timezone("Asia/Kathmandu")
-                        ).strftime('%Y-%m-%d %H:%M')}
-                        </p>
-
-                        <a href="{app[19]}" target="_blank">
-                        Join Meeting
-                        </a>
-
+                        <div style="background:#3B82F620;padding:1rem;border-radius:12px;margin:0.5rem 0;">
+                            <h4>🗓 Interview {app[18]}</h4>
+                            <p>{app[17].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M')}</p>
+                            <a href="{app[19]}" target="_blank">Join Meeting</a>
                         </div>
                         """, unsafe_allow_html=True)
-
                         
+                                                
 elif current_page in ["Open Requests", "My Interests"]:
     if current_page == "Open Requests":
         st.markdown(f"## 👥 Open Job Requests")
