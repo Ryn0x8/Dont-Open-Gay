@@ -1025,15 +1025,15 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
 
                     for badge in badges:
                         badge_html += f"""
-                        <span style="
-                        background:#EEF2FF;
-                        color:#3730A3;
-                        padding:4px 8px;
-                        border-radius:12px;
-                        font-size:0.7rem;
-                        margin-right:4px;">
-                        {badge}
-                        </span>
+<span style="
+background:#EEF2FF;
+color:#3730A3;
+padding:4px 8px;
+border-radius:12px;
+font-size:0.7rem;
+margin-right:4px;">
+{badge}
+</span>
                         """
 
                     # ===== CARD UI =====
@@ -1226,7 +1226,7 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                         </div>
                         """, unsafe_allow_html=True)
 
-                        
+
 elif current_page in ["Open Requests", "My Interests"]:
     if current_page == "Open Requests":
         st.markdown(f"## 👥 Open Job Requests")
