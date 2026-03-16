@@ -1108,30 +1108,29 @@ elif current_page in ["Open Requests", "My Interests"]:
                     # ===== CARD CONTENT =====
                     st.markdown(f"""
                     <div style="
-                        background:white;
-                        padding:1rem;
-                        border-radius:14px;
-                        box-shadow:0 4px 10px rgba(0,0,0,0.05);
-                        margin-bottom:1rem;
-                        border:1px solid #eee;
-                        display: flex;
-                        flex-direction: column;
-                        justify-content: space-between;
-                        height: 100%;
+                    background:white;
+                    padding:1rem;
+                    border-radius:14px;
+                    box-shadow:0 4px 10px rgba(0,0,0,0.05);
+                    margin-bottom:1rem;
+                    border:1px solid #eee;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                    height: 100%;
                     ">
-                        <div>
-                            <h4 style="margin:0 0 0.5rem 0;">{req[2]}</h4>
-                            <p style="margin:0 0 4px 0;color:#666;">by {req[10]}</p>
-
-                            <p style="font-size:0.85rem;color:#555;">
-                                <strong>Category:</strong> {req[4]}<br>
-                                <strong>Location:</strong> {req[5]}<br>
-                                <strong>Budget:</strong> {req[6]}<br>
-                                <strong>Skills:</strong> {req[12]}<br>
-                                <strong>Bio:</strong> {req[15]}<br>
-                                <strong>Description:</strong> {req[3]}
-                            </p>
-                        </div>
+                    <div>
+                    <h4 style="margin:0 0 0.5rem 0;">{req[2]}</h4>
+                    <p style="margin:0 0 4px 0;color:#666;">by {req[10]}</p>
+                    <p style="font-size:0.85rem;color:#555;">
+                    <strong>Category:</strong> {req[4]}<br>
+                    <strong>Location:</strong> {req[5]}<br>
+                    <strong>Budget:</strong> {req[6]}<br>
+                    <strong>Skills:</strong> {req[12]}<br>
+                    <strong>Bio:</strong> {req[15]}<br>
+                    <strong>Description:</strong> {req[3]}
+                    </p>
+                    </div>
 
                         <div style="display:flex; gap:0.5rem; flex-wrap: wrap; margin-top:0.5rem;">
                     """, unsafe_allow_html=True)
