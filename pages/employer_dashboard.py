@@ -1131,8 +1131,7 @@ elif current_page in ["Open Requests", "My Interests"]:
                     <strong>Description:</strong> {req[3]}
                     </p>
                     </div>
-
-                        <div style="display:flex; gap:0.5rem; flex-wrap: wrap; margin-top:0.5rem;">
+                    <div style="display:flex; gap:0.5rem; flex-wrap: wrap; margin-top:0.5rem;">
                     """, unsafe_allow_html=True)
 
                     # ===== RESUME BUTTON =====
