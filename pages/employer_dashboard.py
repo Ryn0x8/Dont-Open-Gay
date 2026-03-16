@@ -1239,13 +1239,13 @@ elif current_page == "Notifications":
             time_str = act['time'].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M') if act['time'] else ''
             st.markdown(f"""
             <div class="notification-card" style="margin-bottom: 0.5rem;">
-                <div style="display: flex; align-items: center;">
-                    <div class="notification-icon" style="background: {bg}; margin-right: 1rem;">{icon}</div>
-                    <div>
-                        <div class="notification-title">{act['content']}</div>
-                        <div class="notification-time">{time_str}</div>
-                    </div>
-                </div>
+            <div style="display: flex; align-items: center;">
+            <div class="notification-icon" style="background: {bg}; margin-right: 1rem;">{icon}</div>
+            <div>
+            <div class="notification-title">{act['content']}</div>
+            <div class="notification-time">{time_str}</div>
+            </div>
+            </div>
             </div>
             """, unsafe_allow_html=True)
     else:
