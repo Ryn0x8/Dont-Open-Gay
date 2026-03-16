@@ -1059,7 +1059,10 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                     padding:4px 10px;
                     border-radius:20px;
                     font-size:0.75rem;
-                    font-weight:600;">
+                    font-weight:600;
+                    white-space:nowrap;
+                    flex-shrink:0;
+                    ">
                     {icon} {status.upper()}
                     </span>
 
