@@ -896,15 +896,15 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
             if sender=='company':
                 st.markdown(f"""
                 <div style="text-align:right;margin:0.5rem 0;">
-                    <div class="chat-bubble-company">{msg[6]}<br>
-                    <span class="chat-timestamp">{msg_time}</span></div>
+                <div class="chat-bubble-company">{msg[6]}<br>
+                <span class="chat-timestamp">{msg_time}</span></div>
                 </div>
                 """, unsafe_allow_html=True)
             else:
                 st.markdown(f"""
                 <div style="text-align:left;margin:0.5rem 0;">
-                    <div class="chat-bubble-employee"><strong>{st.session_state.chat_employee_name}</strong><br>{msg[6]}<br>
-                    <span class="chat-timestamp">{msg_time}</span></div>
+                <div class="chat-bubble-employee"><strong>{st.session_state.chat_employee_name}</strong><br>{msg[6]}<br>
+                <span class="chat-timestamp">{msg_time}</span></div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -989,34 +989,33 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                     margin-bottom:1rem;
                     border:{border_style};">
 
-                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-                            <div>
-                                <h4 style="margin:0;">{app[10]}</h4>
-                                <p style="margin:4px 0;color:#666;">📄 {app[9]}</p>
-                            </div>
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                    <div>
+                    <h4 style="margin:0;">{app[10]}</h4>
+                    <p style="margin:4px 0;color:#666;">📄 {app[9]}</p>
+                    </div>
+                    <span style="
+                    background:{color}20;
+                    color:{color};
+                    padding:4px 10px;
+                    border-radius:20px;
+                    font-size:0.75rem;
+                    font-weight:600;
+                    white-space:nowrap;
+                    flex-shrink:0;">
+                    {icon} {status.upper()}
+                    </span>
+                    </div>
 
-                            <span style="
-                            background:{color}20;
-                            color:{color};
-                            padding:4px 10px;
-                            border-radius:20px;
-                            font-size:0.75rem;
-                            font-weight:600;
-                            white-space:nowrap;
-                            flex-shrink:0;">
-                            {icon} {status.upper()}
-                            </span>
-                        </div>
+                    <p style="font-size:0.85rem;color:#555;">
+                    📍 {app[14]} <br>
+                    📧 {app[11]} <br>
+                    📞 {app[15]}
+                    </p>
 
-                        <p style="font-size:0.85rem;color:#555;">
-                        📍 {app[14]} <br>
-                        📧 {app[11]} <br>
-                        📞 {app[15]}
-                        </p>
-
-                        <p style="font-size:0.8rem;">Match Score: <strong>{score}%</strong></p>
-                        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">{badge_html}</div>
-                        <p style="font-size:0.75rem;color:#888;">Applied {applied}</p>
+                    <p style="font-size:0.8rem;">Match Score: <strong>{score}%</strong></p>
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">{badge_html}</div>
+                    <p style="font-size:0.75rem;color:#888;">Applied {applied}</p>
                     </div>
                     """, unsafe_allow_html=True)
 
@@ -1044,9 +1043,9 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                                             colour = "#10B981" if ats_score>=70 else "#F59E0B" if ats_score>=40 else "#EF4444"
                                             st.markdown(f"""
                                             <div style="background:white;padding:1rem;border-radius:12px;border:1px solid #eee;">
-                                                <b>ATS Score:</b>
-                                                <span style="color:{colour};font-size:1.2rem;">{ats_score}%</span>
-                                                <br>{explanation}
+                                            <b>ATS Score:</b>
+                                            <span style="color:{colour};font-size:1.2rem;">{ats_score}%</span>
+                                            <br>{explanation}
                                             </div>
                                             """, unsafe_allow_html=True)
 
@@ -1081,9 +1080,9 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                     if app[4]=="interview" and app[16]:
                         st.markdown(f"""
                         <div style="background:#3B82F620;padding:1rem;border-radius:12px;margin:0.5rem 0;">
-                            <h4>🗓 Interview {app[18]}</h4>
-                            <p>{app[17].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M')}</p>
-                            <a href="{app[19]}" target="_blank">Join Meeting</a>
+                        <h4>🗓 Interview {app[18]}</h4>
+                        <p>{app[17].astimezone(pytz.timezone("Asia/Kathmandu")).strftime('%Y-%m-%d %H:%M')}</p>
+                        <a href="{app[19]}" target="_blank">Join Meeting</a>
                         </div>
                         """, unsafe_allow_html=True)
                         
