@@ -848,6 +848,7 @@ elif current_page == "Post a Job":
                     Skills:
                     {job.get('skills_required','N/A')}
                         """)
+                        del st.session_state.show_job_details
 
                     if st.session_state.get("job_to_delete") == job["id"]:
                         st.warning("Are you sure you want to delete this job?")
