@@ -826,23 +826,28 @@ elif current_page == "Post a Job":
                     </div>
                     """, unsafe_allow_html=True)
 
-                    if st.button("📄 Details", key=f"job_details_{job['id']}_{i}"):
-                        st.session_state.show_job_details = job["id"]
+                    btn1, btn2 = st.columns(2)
+
+                    with btn1:
+                        if st.button("📄 Details", key=f"job_details_{job['id']}_{i}"):
+                            st.session_state.show_job_details = job["id"]
+
+                    with btn2:
+                        if st.button("🗑 Delete", key=f"delete_job_{job['id']}_{i}"):
+                            st.session_state.job_to_delete = job["id"]
+
 
                     if st.session_state.get("show_job_details") == job["id"]:
                         st.info(f"""
-        Description:
-        {job.get('description','N/A')}
+                    Description:
+                    {job.get('description','N/A')}
 
-        Requirements:
-        {job.get('requirements','N/A')}
+                    Requirements:
+                    {job.get('requirements','N/A')}
 
-        Skills:
-        {job.get('skills_required','N/A')}
+                    Skills:
+                    {job.get('skills_required','N/A')}
                         """)
-
-                    if st.button("🗑 Delete", key=f"delete_job_{job['id']}_{i}"):
-                        st.session_state.job_to_delete = job["id"]
 
                     if st.session_state.get("job_to_delete") == job["id"]:
                         st.warning("Are you sure you want to delete this job?")
