@@ -1024,35 +1024,64 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                     """, unsafe_allow_html=True)
 
                     # ===== BUTTONS ROW =====
-                    b1,b2 = st.columns(2)
+                    b1, b2 = st.columns(2)
+
                     with b1:
                         if st.button("💬 Chat", key=f"chat_{app[0]}_{i}"):
                             st.session_state.chat_employee_id = app[1]
                             st.session_state.chat_employee_name = app[10]
                             st.session_state.chat_application_id = app[0]
                             st.rerun()
+
                     with b2:
                         if st.button("🔍 ATS", key=f"ats_{app[0]}_{i}"):
-                            with st.spinner("Analyzing resume..."):
-                                job_details = get_job_by_id(app[3])
-                                if job_details:
-                                    resume_path = app[13]
-                                    if resume_path and os.path.exists(resume_path):
-                                        with open(resume_path,"rb") as f:
-                                            resume_file = io.BytesIO(f.read())
-                                        result = evaluate_candidate(resume_file,job_details[5],job_details[11])
-                                        if result:
-                                            ats_score = result["score"]
-                                            explanation = result["explanation"]
-                                            colour = "#10B981" if ats_score>=70 else "#F59E0B" if ats_score>=40 else "#EF4444"
-                                            st.markdown(f"""
-                                            <div style="background:white;padding:1rem;border-radius:12px;border:1px solid #eee;">
-                                            <b>ATS Score:</b>
-                                            <span style="color:{colour};font-size:1.2rem;">{ats_score}%</span>
-                                            <br>{explanation}
-                                            </div>
-                                            """, unsafe_allow_html=True)
+                            st.session_state[f"show_ats_{app[0]}"] = True
 
+                    # ===== ATS RESULT (FULL WIDTH) =====
+                    if st.session_state.get(f"show_ats_{app[0]}"):
+
+                        with st.spinner("Analyzing resume..."):
+                            job_details = get_job_by_id(app[3])
+
+                            if job_details:
+                                resume_path = app[13]
+
+                                if resume_path and os.path.exists(resume_path):
+                                    with open(resume_path, "rb") as f:
+                                        resume_file = io.BytesIO(f.read())
+
+                                    result = evaluate_candidate(
+                                        resume_file,
+                                        job_details[5],
+                                        job_details[11]
+                                    )
+
+                                    if result:
+                                        ats_score = result["score"]
+                                        explanation = result["explanation"]
+
+                                        colour = (
+                                            "#10B981" if ats_score >= 70
+                                            else "#F59E0B" if ats_score >= 40
+                                            else "#EF4444"
+                                        )
+
+                                        st.markdown(f"""
+                                        <div style="
+                                            background:white;
+                                            padding:1rem;
+                                            border-radius:12px;
+                                            border:1px solid #eee;
+                                            margin-top:0.5rem;
+                                        ">
+                                            <b>ATS Score:</b>
+                                            <span style="color:{colour};font-size:1.2rem;">
+                                                {ats_score}%
+                                            </span>
+                                            <br><br>
+                                            {explanation}
+                                        </div>
+                                        """, unsafe_allow_html=True)
                     # ===== STATUS UPDATE =====
                     new_status = st.selectbox("Update Status", ["pending","reviewed","interview","accepted","rejected"],
                                               index=["pending","reviewed","interview","accepted","rejected"].index(app[4]),
