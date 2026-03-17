@@ -1082,6 +1082,7 @@ elif current_page in ["All Applications", "Pending", "Interview", "Accepted", "R
                                             {explanation}
                                         </div>
                                         """, unsafe_allow_html=True)
+                                        st.session_state[f"show_ats_{app[0]}"] = False
                     # ===== STATUS UPDATE =====
                     new_status = st.selectbox("Update Status", ["pending","reviewed","interview","accepted","rejected"],
                                               index=["pending","reviewed","interview","accepted","rejected"].index(app[4]),
